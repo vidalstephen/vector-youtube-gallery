@@ -13,6 +13,7 @@ use VectorYT\Gallery\Admin\AdminMenu;
 use VectorYT\Gallery\Admin\DiagnosticsPage;
 use VectorYT\Gallery\Admin\SettingsPage;
 use VectorYT\Gallery\Admin\SourcesPage;
+use VectorYT\Gallery\Admin\VideosPage;
 use VectorYT\Gallery\Database\Installer;
 use VectorYT\Gallery\Database\Migrator;
 use VectorYT\Gallery\Logging\Logger;
@@ -234,13 +235,21 @@ final class Plugin {
             )
         );
         $c->set(
+            'admin.videos',
+            static fn( Container $c ): VideosPage => new VideosPage(
+                $c->get( 'settings' ),
+                $c->get( 'logger' )
+            )
+        );
+        $c->set(
             'admin.menu',
             static fn( Container $c ): AdminMenu => new AdminMenu(
                 $c->get( 'settings' ),
                 $c->get( 'secrets' ),
                 $c->get( 'admin.settings' ),
                 $c->get( 'admin.sources' ),
-                $c->get( 'admin.diagnostics' )
+                $c->get( 'admin.diagnostics' ),
+                $c->get( 'admin.videos' )
             )
         );
     }

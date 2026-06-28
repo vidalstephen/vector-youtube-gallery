@@ -31,7 +31,7 @@ final class VideoRepository {
         global $wpdb;
 
         $existing = $this->find_by_youtube_id( (string) $api_resource['id'] );
-        $normalized = ( new VideoNormalizer() )->normalize( $api_resource, $classification );
+        $normalized = VideoNormalizer::with_defaults()->normalize( $api_resource, $classification );
         $normalized['updated_at'] = gmdate( 'Y-m-d H:i:s' );
 
         if ( null === $existing ) {

@@ -22,7 +22,7 @@ final class VideoNormalizerTest extends TestCase {
         parent::setUp();
         \Brain\Monkey\setUp();
         BrainHelpers::stubEscapeFunctions();
-        $this->normalizer = new VideoNormalizer();
+        $this->normalizer = VideoNormalizer::with_defaults();
     }
 
     protected function tearDown(): void {
@@ -62,9 +62,20 @@ final class VideoNormalizerTest extends TestCase {
     public function test_short_video_classified_as_short_candidate(): void {
         $v = $this->sample_standard_video();
         $v['contentDetails']['duration'] = 'PT45S';
+        // Without #Shorts tag AND without vertical confirmation (Phase 3.5 will
+        // add player-embed dimension parsing), the classifier conservatively
+        // returns 'standard' — a 45s video could be a horizontal short clip.
         $row = $this->normalizer->normalize( $v );
-        $this->assertSame( 'short_candidate', $row['content_type'] );
+        $this->assertSame( 'standard', $row['content_type'] );
         $this->assertSame( 45, $row['duration_seconds'] );
+    }
+
+    public function test_short_video_with_shorts_tag_promoted_to_short_confirmed(): void {
+        $v = $this->sample_standard_video();
+        $v['contentDetails']['duration'] = 'PT45S';
+        $v['snippet']['tags'] = array( 'music', '#Shorts' );
+        $row = $this->normalizer->normalize( $v );
+        $this->assertSame( 'short_confirmed', $row['content_type'] );
     }
 
     public function test_live_active_classification(): void {

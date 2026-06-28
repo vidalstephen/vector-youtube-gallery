@@ -119,6 +119,8 @@ final class Schema {
             is_hidden tinyint(1) NOT NULL DEFAULT 0,
             is_pinned tinyint(1) NOT NULL DEFAULT 0,
             manual_content_type varchar(32) DEFAULT NULL,
+            manual_content_source varchar(190) DEFAULT NULL,
+            manual_reason varchar(500) DEFAULT NULL,
             last_checked_at datetime DEFAULT NULL,
             last_success_at datetime DEFAULT NULL,
             api_data_expires_at datetime DEFAULT NULL,

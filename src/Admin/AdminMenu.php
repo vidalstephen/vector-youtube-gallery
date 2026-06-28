@@ -35,6 +35,7 @@ final class AdminMenu {
         private readonly SettingsPage $settings_page,
         private readonly SourcesPage $sources_page,
         private readonly DiagnosticsPage $diagnostics_page,
+        private readonly VideosPage $videos_page,
     ) {}
 
     public function register(): void {
@@ -75,6 +76,15 @@ final class AdminMenu {
             self::REQUIRED_CAP,
             self::PARENT_SLUG . '-diagnostics',
             array( $this->diagnostics_page, 'render' )
+        );
+
+        add_submenu_page(
+            self::PARENT_SLUG,
+            __( 'Videos', 'vector-youtube-gallery' ),
+            __( 'Videos', 'vector-youtube-gallery' ),
+            self::REQUIRED_CAP,
+            self::PARENT_SLUG . '-videos',
+            array( $this->videos_page, 'render' )
         );
 
         // Phase 6 placeholders — show as disabled rows so users see what's coming.
