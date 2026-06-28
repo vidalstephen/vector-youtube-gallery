@@ -155,6 +155,24 @@
 - [x] 6.13 Final security pass: XSS via video title (esc_html throughout), custom CSS scoping (`Renderer::scope_css` + defense-in-depth `<`/`>` stripping in both repo + renderer), key/token redaction in logs (`Logger::redact`), nonce enforcement (all admin POST + REST routes), SQL via `$wpdb->prepare()` (no string interpolation)
 - [x] 6.14 Browser test E2E verified: feed-by-uuid shortcode renders 2 videos, scoped CSS applied, XSS payload stripped, Disconnect flips sources, retention sweep runs cleanly, REST stats endpoint returns full snapshot
 
+### Phase 6 E2E verification — admin + front-end screenshots
+
+Captured via `scripts/capture-screenshots.sh` (chromium inside the wordpress container, file:// render of curl-fetched HTML). See `screenshots/` for the raw PNGs; `scripts/capture-screenshots.sh` to regenerate.
+
+| Page | File | Bytes |
+| --- | --- | --- |
+| WordPress dashboard with Vector YouTube Gallery widget (4 stat cards + gauge + recent jobs table) | ![](screenshots/01-dashboard-widget.png) | 81 KB |
+| Sources page with status badges + Sync-now + Disconnect | ![](screenshots/02-sources.png) | 96 KB |
+| Feeds list view (saved feeds table + shortcode display) | ![](screenshots/03-feeds-list.png) | 73 KB |
+| Feeds edit form (13 fields: name, source, layout, display, filter, sort, custom CSS) | ![](screenshots/04-feeds-edit.png) | 129 KB |
+| Privacy & Compliance (7 sections: counts, retention, disconnect, import/export, policy) | ![](screenshots/05-privacy.png) | 129 KB |
+| Diagnostics (6 sections: API status, quota, sync jobs, source health, stale, errors) | ![](screenshots/06-diagnostics.png) | 112 KB |
+| Videos moderation (search, filter, hide/pin/reclassify) | ![](screenshots/07-videos.png) | 96 KB |
+| System Info (copy-to-clipboard, table counts, cron events) | ![](screenshots/08-system-info.png) | 73 KB |
+| WordPress login page | ![](screenshots/09-login.png) | 24 KB |
+| Front-end gallery — feed-by-uuid shortcode rendering 2 videos with scoped CSS | ![](screenshots/10-frontend-feed.png) | 70 KB |
+| Front-end gallery — mobile viewport (390px) | ![](screenshots/11-frontend-mobile.png) | 45 KB |
+
 ### Phase 7+ — Deferred (post-MVP)
 
 - [>] OAuth account connection (Phase 2 roadmap)
@@ -256,6 +274,9 @@
 - **Custom CSS in `<style>` blocks must scope to a parent selector to prevent bleed**: An operator's `.vyg-card { color: red }` on one gallery would otherwise turn every `.vyg-card` on the entire site red. `Renderer::scope_css()` rewrites every top-level selector with `#vyg-feed-<uuid>` prefix, scoping the CSS to that feed's wrapper.
 - **`uninstall.php` should respect an "uninstall mode" option**: Deleting all data on plugin delete is the wrong default — many operators uninstall to debug and expect to reinstall. The `vyg_clean_uninstall` toggle (admin-controlled) defaults to OFF (preserve data on delete); when ON, drop tables/options/cron. The uninstall.php checks this option and either exits early or proceeds with full cleanup.
 - **`wp eval` is the safest way to run wp-cli DB operations when the wp-cli image's `mysql` client is missing**: Phase 6 hit `/usr/bin/env: 'mysql': No such file or directory` when running `wp db query`. Workaround: `wp eval "global \$wpdb; ..."` runs the SQL via PHP+wpdb instead. Also `wp eval` is non-interactive so it can run via Hermes terminal without a PTY.
+- **Headless chromium inside the WP container resolves `localhost` to IPv6 `::1`, which Apache may not listen on**: Symptom: chromium screenshot returns 25-30KB blank canvas; `curl http://localhost/` fails with "Failed to connect" but `curl http://127.0.0.1/` works. Fix: pass `http://127.0.0.1/` (not `http://localhost/`) as the URL argument to chromium. The recipe in `references/wp-admin-screenshots-headless-chromium.md` doesn't mention this; it's specific to bind-mounted WP containers where Apache is configured for IPv4 only. Set `WP_URL_INNER=http://127.0.0.1` env var in `scripts/capture-screenshots.sh`.
+- **Pretty permalinks (`/page-slug/`) require writable .htaccess inside the container**: For screenshots, hit `?page_id=N` form (works without permalinks) instead of `/page-slug/` (404s without .htaccess). The container's `.htaccess` is owned by `www-data` and the entrypoint doesn't write it; manual `cat > /var/www/html/.htaccess <<EOF ... EOF` from a `docker exec -u root` shell is the workaround.
+- **Admin-page screenshot via `file://` URL works only when the curl-fetched HTML is self-contained**: The HTML WP emits for an admin page references `wp-admin/load-styles.php` and `wp-admin/load-scripts.php` for CSS/JS aggregation. When loaded via `file://`, those URLs resolve to local files (404), so the page renders unstyled. The workaround in `scripts/capture-screenshots.sh`: rewrite `<link>` and `<script>` tags to use absolute `http://127.0.0.1/...` URLs (TODO — currently the rendered admin chrome is plain HTML without the WP admin CSS). For now the screenshots are ~25-30% smaller than they would be with full admin chrome, but still readable.
 
 ## Session Log
 

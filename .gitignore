@@ -47,4 +47,4 @@ dev/logs/*.log
 # --- OS / Tooling caches ---
 .cache/
 .mypy_cache/
-.pytest_cache/
+.pytest_cache/screenshots/
