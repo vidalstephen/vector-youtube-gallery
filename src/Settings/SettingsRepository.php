@@ -14,7 +14,7 @@ namespace VectorYT\Gallery\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-final class SettingsRepository {
+class SettingsRepository {
 
     private const OPTION_KEY = 'vyg_settings';
 
@@ -31,6 +31,10 @@ final class SettingsRepository {
         'live_poll_interval_seconds'    => 300,          // 5 min default for active live
         'live_upcoming_poll_seconds'    => 900,          // 15 min default for upcoming
         'live_recently_ended_seconds'   => 900,          // 15 min default for recently ended
+
+        // Phase 5 — previous-streams retention (per source).
+        'live_previous_streams_retention' => 50,          // keep last 50 ended streams per source
+        'live_replay_retention_days'    => 14,          // drop ended streams from DB after 14 days
 
         // Retention windows (per YouTube API Services Developer Policies §9).
         'data_refresh_interval_days'    => 30,

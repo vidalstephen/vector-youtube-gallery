@@ -1,0 +1,50 @@
+{
+    "kind": "youtube#videoListResponse",
+    "items": [
+        {
+            "id": "live_active_001",
+            "snippet": {
+                "title": "Live Stream Active",
+                "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+                "publishedAt": "2024-06-28T10:00:00Z"
+            },
+            "contentDetails": { "duration": "PT0S" },
+            "status": { "uploadStatus": "processed", "embeddable": true, "privacyStatus": "public" },
+            "liveStreamingDetails": {
+                "actualStartTime": "2024-06-28T19:45:00Z",
+                "concurrentViewers": "1234"
+            },
+            "statistics": { "viewCount": "5000", "likeCount": "200" }
+        },
+        {
+            "id": "live_upcoming_001",
+            "snippet": {
+                "title": "Live Stream Upcoming",
+                "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+                "publishedAt": "2024-06-28T10:00:00Z"
+            },
+            "contentDetails": { "duration": "PT0S" },
+            "status": { "uploadStatus": "processed", "embeddable": true, "privacyStatus": "public" },
+            "liveStreamingDetails": {
+                "scheduledStartTime": "2024-06-30T18:00:00Z"
+            },
+            "statistics": {}
+        },
+        {
+            "id": "live_ended_001",
+            "snippet": {
+                "title": "Live Stream Ended",
+                "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+                "publishedAt": "2024-06-27T10:00:00Z"
+            },
+            "contentDetails": { "duration": "PT5400S" },
+            "status": { "uploadStatus": "processed", "embeddable": true, "privacyStatus": "public" },
+            "liveStreamingDetails": {
+                "actualStartTime": "2024-06-27T19:00:00Z",
+                "actualEndTime": "2024-06-27T20:30:00Z",
+                "concurrentViewers": "456"
+            },
+            "statistics": { "viewCount": "12500" }
+        }
+    ]
+}

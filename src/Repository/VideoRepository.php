@@ -14,7 +14,7 @@ use VectorYT\Gallery\Normalize\VideoNormalizer;
 
 defined( 'ABSPATH' ) || exit;
 
-final class VideoRepository {
+class VideoRepository {
 
     public function table(): string {
         return Schema::table( 'vyg_videos' );
@@ -130,8 +130,9 @@ final class VideoRepository {
      */
     public function mark_unavailable( string $youtube_id, string $reason ): void {
         global $wpdb;
+        $table = $this->table();
         $wpdb->update(
-            $this->table(),
+            $table,
             array(
                 'availability_status' => substr( $reason, 0, 32 ),
                 'updated_at'           => gmdate( 'Y-m-d H:i:s' ),
@@ -140,5 +141,36 @@ final class VideoRepository {
             array( '%s', '%s' ),
             array( '%s' )
         );
+    }
+
+    /**
+     * Generic column-update by primary key. Used by LiveStatusPollJob.
+     *
+     * @param array<string,mixed> $updates
+     */
+    public function update_by_id( int $id, array $updates ): int {
+        global $wpdb;
+        if ( $id <= 0 || empty( $updates ) ) {
+            return 0;
+        }
+        $table = $this->table();
+        $formats = array();
+        foreach ( array_keys( $updates ) as $col ) {
+            $formats[] = $this->format_for_column( $col );
+        }
+        $result = $wpdb->update( $table, $updates, array( 'id' => $id ), $formats, array( '%d' ) );
+        return false === $result ? 0 : count( $updates );
+    }
+
+    /**
+     * Format spec for a known column.
+     */
+    private function format_for_column( string $col ): string {
+        $int_cols = array(
+            'id', 'duration_seconds', 'view_count', 'like_count', 'comment_count',
+            'is_short', 'is_live', 'is_deleted', 'is_hidden', 'is_pinned',
+            'concurrent_viewers', 'source_id',
+        );
+        return in_array( $col, $int_cols, true ) ? '%d' : '%s';
     }
 }

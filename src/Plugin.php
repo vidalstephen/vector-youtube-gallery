@@ -20,11 +20,13 @@ use VectorYT\Gallery\Logging\Logger;
 use VectorYT\Gallery\Render\AssetManager;
 use VectorYT\Gallery\Render\BlockRegistrar;
 use VectorYT\Gallery\Render\FeedQuery;
+use VectorYT\Gallery\Render\LiveQuery;
 use VectorYT\Gallery\Render\Renderer;
 use VectorYT\Gallery\Render\ShortcodeRegistrar;
 use VectorYT\Gallery\Render\TemplateLoader;
 use VectorYT\Gallery\Render\VideoRenderer;
 use VectorYT\Gallery\Repository\PlaylistRepository;
+use VectorYT\Gallery\Repository\PreviousStreamsRepository;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Repository\SyncLogRepository;
 use VectorYT\Gallery\Repository\VideoRepository;
@@ -34,6 +36,7 @@ use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Sync\DeletedVideoDetector;
 use VectorYT\Gallery\Sync\IncrementalSyncJob;
 use VectorYT\Gallery\Sync\InitialImportJob;
+use VectorYT\Gallery\Sync\LiveStatusPollJob;
 use VectorYT\Gallery\Sync\MetadataRefreshJob;
 use VectorYT\Gallery\Sync\RetryPolicy;
 use VectorYT\Gallery\Sync\WpCronSyncScheduler;
@@ -99,12 +102,17 @@ final class Plugin {
         if ( ! wp_next_scheduled( 'vyg_cron_metadata_refresh' ) ) {
             wp_schedule_event( time() + DAY_IN_SECONDS, 'twicedaily', 'vyg_cron_metadata_refresh' );
         }
+        // Phase 5 — live status poll runs every 5 minutes by default.
+        if ( ! wp_next_scheduled( 'vyg_cron_live_poll' ) ) {
+            wp_schedule_event( time() + MINUTE_IN_SECONDS, 'vyg_five_minutes', 'vyg_cron_live_poll' );
+        }
     }
 
     public static function on_deactivate(): void {
         // Clear scheduled events. NO data deletion here.
         wp_clear_scheduled_hook( 'vyg_cron_incremental_all' );
         wp_clear_scheduled_hook( 'vyg_cron_metadata_refresh' );
+        wp_clear_scheduled_hook( 'vyg_cron_live_poll' );
     }
 
     private static function meets_requirements(): bool {
@@ -148,6 +156,7 @@ final class Plugin {
         $c->set( 'repo.videos',   static fn(): VideoRepository => new VideoRepository() );
         $c->set( 'repo.playlists',static fn(): PlaylistRepository => new PlaylistRepository() );
         $c->set( 'repo.logs',     static fn(): SyncLogRepository => new SyncLogRepository() );
+        $c->set( 'repo.previous', static fn(): PreviousStreamsRepository => new PreviousStreamsRepository() );
 
         // --- YouTube API client (mock when VYG_USE_MOCK=1) ---
         $c->set(
@@ -211,6 +220,18 @@ final class Plugin {
                 $c->get( 'sync.deleted_detector' )
             )
         );
+        $c->set(
+            'sync.live_poll',
+            static fn( Container $c ): LiveStatusPollJob => new LiveStatusPollJob(
+                $c->get( 'youtube.api' ),
+                $c->get( 'repo.videos' ),
+                $c->get( 'repo.previous' ),
+                $c->get( 'repo.logs' ),
+                $c->get( 'quota' ),
+                $c->get( 'logger' ),
+                $c->get( 'settings' )
+            )
+        );
 
         // --- Admin pages ---
         $c->set(
@@ -263,6 +284,7 @@ final class Plugin {
 
         // --- Rendering ---
         $c->set( 'render.feed',     static fn(): FeedQuery => new FeedQuery() );
+        $c->set( 'render.live',     static fn( Container $c ): LiveQuery => new LiveQuery( $c->get( 'repo.previous' ) ) );
         $c->set( 'render.video',    static fn(): VideoRenderer => new VideoRenderer() );
         $c->set( 'render.templates',static fn(): TemplateLoader => new TemplateLoader() );
         $c->set( 'render.assets',   static fn(): AssetManager => new AssetManager() );
@@ -271,7 +293,8 @@ final class Plugin {
             static fn( Container $c ): Renderer => new Renderer(
                 $c->get( 'render.feed' ),
                 $c->get( 'render.video' ),
-                $c->get( 'render.templates' )
+                $c->get( 'render.templates' ),
+                $c->get( 'render.live' )
             )
         );
         $c->set(
@@ -341,6 +364,24 @@ final class Plugin {
                 'vyg_job_id'  => $job_id,
                 'max_videos'  => 100,
             ) );
+        } );
+
+        // Cron tick: Phase 5 live-status poll.
+        add_action( 'vyg_cron_live_poll', static function () use ( $c ): void {
+            /** @var LiveStatusPollJob $job */
+            $job = $c->get( 'sync.live_poll' );
+            $job->handle( array() );
+        } );
+
+        // Register a 5-minute cron interval for the live poll.
+        add_filter( 'cron_schedules', static function ( array $schedules ): array {
+            if ( ! isset( $schedules['vyg_five_minutes'] ) ) {
+                $schedules['vyg_five_minutes'] = array(
+                    'interval' => 5 * MINUTE_IN_SECONDS,
+                    'display'  => __( 'Every 5 Minutes (Vector YouTube Gallery Live Poll)', 'vector-youtube-gallery' ),
+                );
+            }
+            return $schedules;
         } );
     }
 }

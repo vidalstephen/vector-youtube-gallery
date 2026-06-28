@@ -21,7 +21,7 @@ use VectorYT\Gallery\Database\Schema;
 
 defined( 'ABSPATH' ) || exit;
 
-final class QuotaTracker {
+class QuotaTracker {
 
     private const QUOTA_COST = array(
         'channels'      => 1,

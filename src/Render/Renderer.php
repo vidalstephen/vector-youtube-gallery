@@ -31,10 +31,20 @@ final class Renderer {
         'live'         => \VectorYT\Gallery\Render\Layouts\LiveLayout::class,
     );
 
+    /**
+     * Layouts that need a LiveQuery dependency injected.
+     *
+     * @var array<string,bool>
+     */
+    private const LAYOUTS_NEEDING_LIVE_QUERY = array(
+        'live' => true,
+    );
+
     public function __construct(
         private readonly FeedQuery $feed,
         private readonly VideoRenderer $video_renderer,
         private readonly TemplateLoader $templates,
+        private readonly LiveQuery $live_query,
     ) {}
 
     /**
@@ -108,7 +118,11 @@ final class Renderer {
 
         /** @var LayoutInterface $layout_class */
         $layout_class = self::LAYOUTS[ $layout_slug ];
-        $layout = new $layout_class();
+        if ( isset( self::LAYOUTS_NEEDING_LIVE_QUERY[ $layout_slug ] ) ) {
+            $layout = new $layout_class( $this->live_query );
+        } else {
+            $layout = new $layout_class();
+        }
         return $layout->render( $ctx );
     }
 }

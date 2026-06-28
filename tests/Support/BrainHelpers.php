@@ -72,6 +72,11 @@ final class BrainHelpers {
         Functions\when( 'current_user_can' )->alias( static fn( string $cap ): bool => true );
         Functions\when( 'is_readable' )->alias( static fn( string $path ): bool => file_exists( $path ) );
         Functions\when( 'wp_create_nonce' )->alias( static fn( string $action ): string => 'nonce-' . md5( $action ) );
+        Functions\when( 'current_time' )->alias( static fn( string $type = 'mysql', ?int $gmt = null ): string => gmdate( 'Y-m-d H:i:s' ) );
+        Functions\when( 'mysql2date' )->alias( static function ( string $format, string $date ): string {
+            $ts = strtotime( $date . ' UTC' );
+            return $ts ? gmdate( $format, $ts ) : $date;
+        } );
     }
 
     /**
