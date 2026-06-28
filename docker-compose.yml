@@ -1,0 +1,120 @@
+# Vector YouTube Gallery — Local Development Stack
+#
+# Free, self-hosted, fully isolated. Mirrors production-class WordPress + MariaDB
+# without touching host PHP. Use `docker compose up -d` and access WP at :8000.
+#
+# Services:
+#   - wordpress: WordPress 6.4 + PHP 8.2 + Apache
+#   - db:       MariaDB 10.11
+#   - adminer:  DB admin UI (port :8080)
+#   - wpcli:    Scriptable WP admin (run-on-demand, no port)
+#
+# Usage:
+#   cp dev/.env.example dev/.env  # then edit if needed
+#   docker compose --env-file dev/.env up -d
+#   docker compose --env-file dev/.env run --rm wpcli core install \
+#     --url=http://localhost:8000 --title="VYG Dev" \
+#     --admin_user=admin --admin_password=admin --admin_email=dev@example.org --skip-email
+#   open http://localhost:8000/wp-admin
+#   open http://localhost:8080  (Adminer: server=db, user=wordpress, pass from .env, db=wordpress)
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: vyg-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vyg_net
+
+  wordpress:
+    image: wordpress:6.4-php8.2-apache
+    container_name: vyg-wp
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WP_PORT}:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('SCRIPT_DEBUG', true);
+        define('AUTOMATIC_UPDATER_DISABLED', true);
+        define('WP_AUTO_UPDATE_CORE', false);
+    volumes:
+      - wp_data:/var/www/html
+      - ./:/var/www/html/wp-content/plugins/vector-youtube-gallery:rw
+      - ./dev/logs:/var/www/html/wp-content/debug.log:rw
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vyg_net
+
+  adminer:
+    image: adminer:4.8.1
+    container_name: vyg-adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT}:8080"  # default 8090 (8080 collides with filebrowser on this host)
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      - db
+    networks:
+      - vyg_net
+
+  wpcli:
+    image: wordpress:cli-php8.2
+    container_name: vyg-wpcli
+    profiles: ["manual"]   # only runs when invoked; safe to leave alone
+    depends_on:
+      db:
+        condition: service_healthy
+      wordpress:
+        condition: service_started
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WP_CLI_CACHE_DIR: /tmp/.wp-cli-cache
+    volumes:
+      - wp_data:/var/www/html
+      - ./:/var/www/html/wp-content/plugins/vector-youtube-gallery:rw
+    user: "33:33"
+    networks:
+      - vyg_net
+    # Run with:
+    #   docker compose --env-file dev/.env run --rm wpcli --url=http://localhost:8000 core version
+
+volumes:
+  db_data:
+    name: vyg_db_data
+  wp_data:
+    name: vyg_wp_data
+
+networks:
+  vyg_net:
+    name: vyg_net
+    driver: bridge

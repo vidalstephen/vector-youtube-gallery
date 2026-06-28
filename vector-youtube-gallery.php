@@ -1,0 +1,69 @@
+<?php
+/**
+ * Plugin Name:       Vector YouTube Gallery
+ * Plugin URI:        https://github.com/yourname/vector-youtube-gallery
+ * Description:       Local-indexed YouTube gallery system. Fast, compliant, refreshable.
+ * Version:           0.1.0-alpha
+ * Requires at least: 6.4
+ * Requires PHP:      8.1
+ * Author:            Stephen Vidal
+ * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       vector-youtube-gallery
+ * Domain Path:       /languages
+ *
+ * @package VectorYT\Gallery
+ */
+
+declare(strict_types=1);
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Plugin constants.
+ *
+ * Naming: VYG_* for runtime, VYG_DIR/VYG_URL for filesystem paths.
+ * Keep this block boring and synchronous — no logic, no side effects.
+ */
+define( 'VYG_VERSION', '0.1.0-alpha' );
+define( 'VYG_PLUGIN_FILE', __FILE__ );
+define( 'VYG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );      // /path/to/wp-content/plugins/vector-youtube-gallery/
+define( 'VYG_PLUGIN_URL', plugin_dir_url( __FILE__ ) );       // https://site/wp-content/plugins/vector-youtube-gallery/
+define( 'VYG_PLUGIN_BASENAME', plugin_basename( __FILE__ ) ); // vector-youtube-gallery/vector-youtube-gallery.php
+define( 'VYG_DB_VERSION', '0.1.0' );
+define( 'VYG_MIN_PHP', '8.1' );
+define( 'VYG_MIN_WP', '6.4' );
+define( 'VYG_API_NAMESPACE', 'vyg/v1' );
+
+/**
+ * Mock-mode switch — used by ApiKeyClient to choose between live and mock clients.
+ * Mirrors dev/.env VYG_USE_MOCK. Default: 0 (live). Dev should override via:
+ *   putenv('VYG_USE_MOCK=1');  // in dev/.env loaded into the container
+ * Or wp-config.php: define('VYG_USE_MOCK', true);
+ */
+if ( ! defined( 'VYG_USE_MOCK' ) ) {
+    $vyg_mock = getenv( 'VYG_USE_MOCK' );
+    define( 'VYG_USE_MOCK', in_array( $vyg_mock, array( '1', 'true', 'yes' ), true ) );
+}
+
+/**
+ * Bootstrap the plugin on `plugins_loaded`.
+ * Kept as a static method call so activation/deactivation/uninstall hooks
+ * can resolve the class without instantiation timing issues.
+ */
+require_once VYG_PLUGIN_DIR . 'src/Plugin.php';
+require_once VYG_PLUGIN_DIR . 'src/Container.php';
+
+add_action( 'plugins_loaded', array( \VectorYT\Gallery\Plugin::class, 'boot' ) );
+
+/**
+ * Activation hook — runs once on activation (not on every load).
+ * Creates DB tables, sets default options, schedules events.
+ */
+register_activation_hook( __FILE__, array( \VectorYT\Gallery\Plugin::class, 'on_activate' ) );
+
+/**
+ * Deactivation hook — clears scheduled events but does NOT delete data
+ * (data removal is a separate, explicit user action via Privacy & Compliance).
+ */
+register_deactivation_hook( __FILE__, array( \VectorYT\Gallery\Plugin::class, 'on_deactivate' ) );

@@ -1,0 +1,49 @@
+# --- Editor / OS ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+*.bak
+
+# --- Secrets (NEVER commit) ---
+.env
+.env.local
+*.env.local
+dev/.env
+dev/secrets/
+
+# --- PHP / Composer ---
+vendor/
+composer.lock
+.phpunit.result.cache
+.phpunit.cache/
+
+# --- Node / Build ---
+node_modules/
+assets/dist/*.map
+assets/src/**/*.{js,css}
+!assets/src/**/index.js
+!assets/src/**/index.scss
+
+# --- WordPress dev volumes ---
+dev/wordpress/
+dev/db/
+dev/wp-content/
+dev/uploads/
+dev/logs/
+
+# --- Test artifacts ---
+tests/coverage/
+tests/.cache/
+playwright-report/
+test-results/
+
+# --- Logs ---
+*.log
+dev/logs/*.log
+
+# --- OS / Tooling caches ---
+.cache/
+.mypy_cache/
+.pytest_cache/
