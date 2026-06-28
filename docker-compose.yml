@@ -53,12 +53,15 @@ services:
       WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
       WORDPRESS_DB_NAME: ${DB_NAME}
       WORDPRESS_DEBUG: 1
+      VYG_USE_MOCK: ${VYG_USE_MOCK:-0}
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_DEBUG_LOG', true);
-        define('WP_DEBUG_DISPLAY', false);
+        define('WP_DEBUG_DISPLAY', true);
         define('SCRIPT_DEBUG', true);
         define('AUTOMATIC_UPDATER_DISABLED', true);
         define('WP_AUTO_UPDATE_CORE', false);
+        @ini_set('display_errors', '1');
+        @error_reporting(E_ALL);
     volumes:
       - wp_data:/var/www/html
       - ./:/var/www/html/wp-content/plugins/vector-youtube-gallery:rw
@@ -108,11 +111,43 @@ services:
     # Run with:
     #   docker compose --env-file dev/.env run --rm wpcli --url=http://localhost:8000 core version
 
+  # PHP CLI for running PHPUnit against the plugin without a host PHP install.
+  # Uses the same PHP 8.2 + WordPress stack as the wordpress service for parity.
+  #
+  # First-run setup (installs composer into the container's own /tmp; tmpfs, always writable):
+  #   docker compose --env-file dev/.env --profile test run --rm phpunit \
+  #     sh -c 'curl -sS https://getcomposer.org/installer | php -- --install-dir=/tmp/composer-bin --filename=composer && export PATH=/tmp/composer-bin:$PATH && composer install'
+  #
+  # Subsequent runs (just re-run composer install + phpunit; /tmp persists within a run):
+  #   docker compose --env-file dev/.env --profile test run --rm phpunit \
+  #     sh -c 'curl -sS https://getcomposer.org/installer | php -- --install-dir=/tmp/composer-bin --filename=composer --quiet && export PATH=/tmp/composer-bin:$PATH && composer install --quiet && vendor/bin/phpunit'
+  phpunit:
+    image: wordpress:cli-php8.2
+    container_name: vyg-phpunit
+    profiles: ["manual", "test"]
+    depends_on:
+      - wordpress
+    working_dir: /var/www/html/wp-content/plugins/vector-youtube-gallery
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+    volumes:
+      - wp_data:/var/www/html
+      - ./:/var/www/html/wp-content/plugins/vector-youtube-gallery:rw
+      - phpunit_cache:/tmp/.phpunit-cache
+    user: "33:33"
+    networks:
+      - vyg_net
+
 volumes:
   db_data:
     name: vyg_db_data
   wp_data:
     name: vyg_wp_data
+  phpunit_cache:
+    name: vyg_phpunit_cache
 
 networks:
   vyg_net:

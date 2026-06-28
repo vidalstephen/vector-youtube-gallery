@@ -50,9 +50,19 @@ if ( ! defined( 'VYG_USE_MOCK' ) ) {
  * Bootstrap the plugin on `plugins_loaded`.
  * Kept as a static method call so activation/deactivation/uninstall hooks
  * can resolve the class without instantiation timing issues.
+ *
+ * Autoloading: prefer Composer's PSR-4 autoloader (vendor/autoload.php) when
+ * present. Fall back to a minimal manual require so the plugin still loads
+ * if Composer install hasn't been run yet (common in fresh checkouts).
  */
-require_once VYG_PLUGIN_DIR . 'src/Plugin.php';
-require_once VYG_PLUGIN_DIR . 'src/Container.php';
+$autoload = __DIR__ . '/vendor/autoload.php';
+if ( is_file( $autoload ) ) {
+    require_once $autoload;
+} else {
+    // Minimal fallback — require the bootstrap classes by hand.
+    require_once __DIR__ . '/src/Container.php';
+    require_once __DIR__ . '/src/Plugin.php';
+}
 
 add_action( 'plugins_loaded', array( \VectorYT\Gallery\Plugin::class, 'boot' ) );
 

@@ -15,9 +15,10 @@ dev/secrets/
 
 # --- PHP / Composer ---
 vendor/
-composer.lock
 .phpunit.result.cache
 .phpunit.cache/
+
+# Keep composer.lock tracked (locks dev dep versions for reproducible builds)
 
 # --- Node / Build ---
 node_modules/

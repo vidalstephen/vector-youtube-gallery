@@ -1,0 +1,33 @@
+{
+  "kind": "youtube#playlistItemListResponse",
+  "etag": "mock-playlist-items-etag",
+  "pageInfo": { "totalResults": 2, "resultsPerPage": 50 },
+  "items": [
+    {
+      "kind": "youtube#playlistItem",
+      "id": "UExiY0YyREFDNkZGQjU3NERFLEMzQjY5ODg4Q0YwQzE0NDc1NA",
+      "snippet": {
+        "publishedAt": "2026-01-01T10:00:00Z",
+        "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+        "title": "Mock video 1",
+        "description": "First mock video in default playlist.",
+        "position": 0,
+        "resourceId": { "kind": "youtube#video", "videoId": "dQw4w9WgXcQ" }
+      },
+      "contentDetails": { "videoId": "dQw4w9WgXcQ", "videoPublishedAt": "2025-12-15T12:00:00Z" }
+    },
+    {
+      "kind": "youtube#playlistItem",
+      "id": "UExiY0YyREFDNkZGQjU3NERFLEMzQjY5ODg4Q0YwQzE0NDc1NQ",
+      "snippet": {
+        "publishedAt": "2026-01-02T10:00:00Z",
+        "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+        "title": "Mock video 2",
+        "description": "Second mock video in default playlist.",
+        "position": 1,
+        "resourceId": { "kind": "youtube#video", "videoId": "9bZkp7q19f0" }
+      },
+      "contentDetails": { "videoId": "9bZkp7q19f0", "videoPublishedAt": "2025-12-16T12:00:00Z" }
+    }
+  ]
+}

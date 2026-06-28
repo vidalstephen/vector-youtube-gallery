@@ -31,10 +31,12 @@ final class Container {
     private array $instances = array();
 
     /**
-     * Register a factory under an id. Factory runs once on first get().
+     * Register a factory under an id. Factory is invoked once on first get().
+     * The factory may optionally accept the Container instance so it can
+     * resolve dependencies.
      *
-     * @param string   $id      Service id, e.g. 'logger'.
-     * @param callable $factory Zero-arg factory returning the service object.
+     * @param string          $id      Service id, e.g. 'logger'.
+     * @param callable(Container=):object $factory Zero/one-arg factory.
      */
     public function set( string $id, callable $factory ): void {
         $this->factories[ $id ] = $factory;
@@ -53,7 +55,11 @@ final class Container {
         if ( ! isset( $this->factories[ $id ] ) ) {
             return null;
         }
-        $obj = ( $this->factories[ $id ] )();
+        // Reflection-light: pass Container to factories that accept it.
+        $factory  = $this->factories[ $id ];
+        $refl     = new \ReflectionFunction( \Closure::fromCallable( $factory ) );
+        $args     = $refl->getNumberOfParameters() >= 1 ? array( $this ) : array();
+        $obj      = $factory( ...$args );
         $this->instances[ $id ] = $obj;
         return $obj;
     }

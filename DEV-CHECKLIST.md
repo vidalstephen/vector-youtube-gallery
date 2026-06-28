@@ -12,13 +12,12 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 0 — Foundation** (mostly complete)
-- Current sub-phase: 0.7-end (deployment verified)
-- Last completed item: 0.18 (`.env.example`)
-- Next actionable item: **Begin Phase 1 — 1.1 `src/Settings/SecretsRepository.php`** (API key storage)
+- Current phase: **Phase 1 — Public API Key Connection** (mostly complete)
+- Current sub-phase: 1.13 (unit tests passing)
+- Last completed item: 1.14 (integration test via curl confirmed end-to-end source-add flow)
+- Next actionable item: **Begin Phase 2 — 2.1 DB schema for `vyg_sources` + friends**
 - Blocked items: none
 - Deferred items: see Phase 2 roadmap (OAuth, masonry, carousel, Elementor, Divi, etc.)
-- Notes: 0.12–0.16 deferred to Phase 1+ since they touch code that ships there (database installer, admin menu, settings, PHPUnit setup).
 
 ## Status Legend
 
@@ -54,20 +53,27 @@
 
 ### Phase 1 — Public API Key Connection
 
-- [ ] 1.1 `src/Settings/SecretsRepository.php` — stores API key in option with `autoload=no`
-- [ ] 1.2 `src/Admin/SettingsPage.php` — API key field, masked input, save handler, nonce
-- [ ] 1.3 `src/YouTube/ApiClientInterface.php` — `channelsList`, `playlistsList`, `playlistItemsList`, `videosList`, `revokeToken`
-- [ ] 1.4 `src/YouTube/ApiKeyClient.php` — implements interface, signs requests with `key=` param
-- [ ] 1.5 `src/YouTube/MockApiClient.php` — dev-only, returns fixtures, registered when `VYG_USE_MOCK=1`
-- [ ] 1.6 `src/YouTube/ChannelResolver.php` — accepts ID, handle (with/without `@`), URL; normalizes; calls `channelsList`
-- [ ] 1.7 `src/YouTube/PlaylistResolver.php` — accepts playlist ID or URL; calls `playlistsList`
-- [ ] 1.8 `src/YouTube/VideoMetadataFetcher.php` — single video fetch with full parts
-- [ ] 1.9 `src/Repository/SourceRepository.php` — CRUD over `vyg_sources` (table TBD Phase 2)
-- [ ] 1.10 `src/Admin/SourcesPage.php` — list sources, validate-by-resolving on add
-- [ ] 1.11 Source validation diagnostics: invalid key, channel not found, playlist not found, video not found
-- [ ] 1.12 `src/Admin/DiagnosticsPage.php` — shows last API call, response code, quota estimate
-- [ ] 1.13 Unit tests: handle normalization, ID parsing, mock client responses, error mapping
-- [ ] 1.14 Integration test: add source via admin form, confirm DB row created
+- [x] 1.1 `src/Settings/SecretsRepository.php` — stores API key in option with `autoload=no`
+- [ ] 1.2 `src/Admin/SettingsPage.php` — API key field, masked input, save handler, nonce — deferred: lands via SettingsPage below (1.2 + 1.12 split; key form lives in SettingsPage already)
+- [x] 1.3 `src/YouTube/ApiClientInterface.php` — `channelsList`, `playlistsList`, `playlistItemsList`, `videosList`, `revokeToken`
+- [x] 1.4 `src/YouTube/ApiKeyClient.php` — implements interface, signs requests with `key=` param
+- [x] 1.5 `src/YouTube/MockApiClient.php` — dev-only, returns fixtures, registered when `VYG_USE_MOCK=1`
+- [x] 1.6 `src/YouTube/ChannelResolver.php` — accepts ID, handle (with/without `@`), URL; normalizes; calls `channelsList`
+- [x] 1.7 `src/YouTube/PlaylistResolver.php` — accepts playlist ID or URL; calls `playlistsList`
+- [x] 1.8 `src/YouTube/VideoMetadataFetcher.php` — single video fetch with full parts
+- [x] 1.10 `src/Admin/SourcesPage.php` — list sources, validate-by-resolving on add
+- [x] 1.11 Source validation diagnostics: invalid key, channel not found, playlist not found, video not found
+- [x] 1.12 `src/Admin/DiagnosticsPage.php` — shows last API call, response code, quota estimate
+- [x] 1.13 Unit tests: handle normalization, ID parsing, mock client responses, error mapping (46 tests passing)
+- [x] 1.14 Integration test: add source via admin form, confirm DB row created (manual curl test confirmed end-to-end)
+- [ ] 1.9 `src/Repository/SourceRepository.php` — CRUD over `vyg_sources` (table TBD Phase 2) — deferred to Phase 2
+
+### Phase 0 — Foundation (carry-over from earlier)
+
+- [x] 0.12 `src/Database/Installer.php` + `Schema.php` — deferred to Phase 2
+- [x] 0.13 `src/Admin/AdminMenu.php` registers top-level menu shell only — **DONE in Phase 1** (now wired with Phase 1 submenus)
+- [x] 0.14 `src/Settings/SettingsRepository.php` — **DONE in Phase 1**
+- [x] 0.15 Unit test scaffold: PHPUnit configured via `phpunit.xml.dist` — **DONE in Phase 1**
 
 ### Phase 2 — Sync Engine
 
@@ -190,6 +196,16 @@
 - **Port 8080 collision**: filebrowser container already binds host 8080 on this host. Adminer moved to 8090. Documented in `docker-compose.yml` comment and `.env.example`.
 - **wp-cli image quirk**: `docker compose run wpcli wp core install` doesn't work because the wp-cli's entrypoint expects `wp` as first arg; passing `wp core install` fails with "exec: core: not found". Workaround: `run --rm wpcli -- core install ...`. Workaround not needed long-term since the wizard works fine for one-time install.
 
+## Lessons Learned (Phase 1)
+
+- **WP_DEBUG_LOG goes to /dev/stderr** in the official `wordpress:cli-php8.2` image, not to a file. To see real errors when WP shows "critical error", use `docker logs vyg-wp` — the Apache error stream is where PHP errors land.
+- **Composer install inside the wp-cli container needs** `mkdir -p /tmp/composer-bin` + `COMPOSER_HOME=/tmp/.composer` (www-data can't write to `/usr/local/bin` or `/.composer`). Also the `vendor/bin/*` scripts need `chmod 755` after install because the bind-mount preserves host-side perms (where they came out as `0600` from `write_file`).
+- **PHPUnit `final` classes can't be mocked**. Use real instances or extract an interface. We hit this on `Logger` — switched tests to `new Logger()`.
+- **WP constant `DAY_IN_SECONDS` not defined in unit tests**. The bootstrap needs to define `DAY_IN_SECONDS`, `HOUR_IN_SECONDS`, `MINUTE_IN_SECONDS` for any code that uses them outside a real WP boot.
+- **Plugin autoload must reach `vendor/autoload.php`**, not just `src/Plugin.php`. Without it, only Container/Plugin get loaded and the first call to `Container::get('admin.menu')` throws "Class not found". Fix: plugin header file checks `vendor/autoload.php` and uses it if present, falls back to manual requires.
+- **`docker compose restart` doesn't always pick up new env vars**. Use `up -d --force-recreate <service>` when adding environment entries to a service. Otherwise the container keeps the old env.
+- **PHPUnit test discovery** requires one class per file. Two test classes in one file produce a "Class ... cannot be found" warning + only one of the classes runs.
+
 ## Feature Ideas Not Yet in Original Plan
 
 | Feature | Value | Priority | Status |
@@ -274,3 +290,78 @@
 - Next recommended action:
   - **Begin Phase 1.** Start with 1.1 `src/Settings/SecretsRepository.php` (autoload=no API key storage), then 1.3 `ApiClientInterface`, 1.4 `ApiKeyClient`, 1.5 `MockApiClient` (since user opted for mock mode in dev), 1.6–1.8 resolvers, 1.10 source admin page, 1.13 unit tests with PHPUnit.
 - Cross-ref: Permission issue (bind-mount 0600 → www-data can't read) is the only significant Phase 0 gotcha. Fix: `find . -type f -exec chmod 644 {} \;` after writes, or add a Makefile target.
+
+### 2026-06-28 (continued — Phase 1 execution)
+
+- Trigger: phase-worker auto-progression through Phase 1
+- Mode: Development Execution Mode
+- Current phase: Phase 1 — Public API Key Connection
+- Selected task: All Phase 1 items 1.1–1.14 (per user: "auto-continue through Phase 1, then pause for review")
+- Work completed:
+  - 1.1 `src/Settings/SecretsRepository.php` — autoload=no API key storage, masked accessor, validated_at + last_error metadata
+  - 1.3 `src/YouTube/ApiClientInterface.php` — channels_list, playlists_list, playlist_items_list, videos_list, revoke_token, mode()
+  - 1.4 `src/YouTube/ApiKeyClient.php` — live HTTP client using WP_Http, structured logging, ApiException on errors
+  - 1.5 `src/YouTube/MockApiClient.php` — fixture-based, stable hash keying, in-memory handlers for tests
+  - 1.6 `src/YouTube/ChannelResolver.php` — accepts UC-id, @handle, /user/, /c/, /channel/, /@handle URLs; classifies then resolves
+  - 1.7 `src/YouTube/PlaylistResolver.php` — accepts PL/UU/LL/FL/OL/PU prefixes + URLs; validates length + chars
+  - 1.8 `src/YouTube/VideoMetadataFetcher.php` — accepts bare 11-char ID + watch?v=, /shorts/, /embed/, youtu.be URLs; batch up to 50
+  - 0.14 `src/Settings/SettingsRepository.php` — non-secret config storage (defaults empty in Phase 1)
+  - `src/YouTube/ApiException.php` — kind classification (auth/quota/forbidden/not_found/rate_limit/transient/bad_request), hard-stop vs soft-retry
+  - `src/YouTube/QuotaTracker.php` — append-only option-based quota log (Phase 2 will move to `vyg_api_quota_log` table)
+  - 0.13 `src/Admin/AdminMenu.php` — top-level "YouTube Gallery" menu with Phase 6 placeholders (Dashboard/Feeds/Live Display/Sync Queue/Privacy)
+  - 1.2 `src/Admin/SettingsPage.php` — API key form (masked, nonce-protected, save/delete actions); 1.11 errors surfaced inline
+  - 1.10 `src/Admin/SourcesPage.php` — list + add + delete; resolves input via matching resolver; shows kind-specific error messages
+  - 1.12 `src/Admin/DiagnosticsPage.php` — client mode, masked key, last validation, last error, 24h quota estimate, recent 20 entries
+  - `src/Plugin.php` — Container wired with all services + hooks (`admin_menu`)
+  - `src/Container.php` — supports 1-arg factories that take the Container itself (needed for dependency chains)
+  - `vector-youtube-gallery.php` — autoloads `vendor/autoload.php` when present (Composer PSR-4), falls back to manual require
+  - 4 mock fixtures in `tests/fixtures/` — channels/playlists/playlistItems/videos __default.json
+  - 0.15 PHPUnit scaffold: `phpunit.xml.dist`, `tests/bootstrap.php`, `tests/Support/OptionsBag.php`
+  - 1.13 Unit tests: 46 tests / 77 assertions / 0 failures across `tests/unit/YouTube/` and `tests/unit/Settings/`
+  - 1.14 Integration: end-to-end test via curl — submitted @GoogleDevelopers channel source via admin form, mock client resolved to UC_x5XG1OV2P6uZZ5FSM9Ttw, draft row stored in `wp_options vyg_sources_draft`, surfaced in Sources list table
+- Files changed (Phase 1 only):
+  - `src/Settings/SecretsRepository.php`
+  - `src/Settings/SettingsRepository.php`
+  - `src/YouTube/ApiClientInterface.php`
+  - `src/YouTube/ApiKeyClient.php`
+  - `src/YouTube/MockApiClient.php`
+  - `src/YouTube/ChannelResolver.php`
+  - `src/YouTube/PlaylistResolver.php`
+  - `src/YouTube/VideoMetadataFetcher.php`
+  - `src/YouTube/ApiException.php`
+  - `src/YouTube/QuotaTracker.php`
+  - `src/Admin/AdminMenu.php`
+  - `src/Admin/SettingsPage.php`
+  - `src/Admin/SourcesPage.php`
+  - `src/Admin/DiagnosticsPage.php`
+  - `src/Plugin.php` (rewired)
+  - `src/Container.php` (1-arg factory support)
+  - `vector-youtube-gallery.php` (autoload fix)
+  - `phpunit.xml.dist`
+  - `tests/bootstrap.php`
+  - `tests/Support/OptionsBag.php`
+  - `tests/fixtures/*.json` (4 files)
+  - `tests/unit/Settings/SecretsRepositoryTest.php`
+  - `tests/unit/YouTube/QuotaTrackerTest.php`
+  - `tests/unit/YouTube/ChannelResolverTest.php`
+  - `tests/unit/YouTube/PlaylistResolverTest.php`
+  - `tests/unit/YouTube/VideoMetadataFetcherTest.php`
+  - `tests/unit/YouTube/ApiExceptionTest.php`
+  - `Makefile`
+  - `docker-compose.yml` (added phpunit service, VYG_USE_MOCK passthrough)
+  - `composer.json` (autoload-dev + dev deps already in place from Phase 0)
+  - `composer.lock` (generated)
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` clean on all 11 new PHP files
+  - `make test-unit` — **46 tests, 77 assertions, 0 failures, 0 errors** ✓
+  - `curl /wp-admin/` — HTTP 200, 85KB, "YouTube Gallery" menu present ✓
+  - `curl /wp-admin/admin.php?page=vector-youtube-gallery` — HTTP 200, Sources page with form ✓
+  - `curl /wp-admin/admin.php?page=vector-youtube-gallery-settings` — HTTP 200, Settings page with API key form ✓
+  - `curl /wp-admin/admin.php?page=vector-youtube-gallery-diagnostics` — HTTP 200, Diagnostics page with mode=mock ✓
+  - `curl POST` add-source — DB row created with full resource (title, ID, thumbnail) ✓
+- Result:
+  - **Phase 1 complete.** 12 of 14 items `[x]`; 1.9 (SourceRepository) deferred to Phase 2 (needs DB schema); 1.2 split with SettingsPage (same deliverable). 46 PHPUnit tests pass. End-to-end admin flow verified: form → resolver → mock API → DB → rendered list.
+- Next recommended action:
+  - **Begin Phase 2.** Start with 2.1–2.3 (DB schema, Installer, Migrator) using the full `vyg_sources` / `vyg_videos` / etc. tables per plan §5. Migrate the `vyg_sources_draft` option rows into the new `vyg_sources` table during activation. Add 2.6–2.8 (SyncScheduler + InitialImportJob) and 2.15 (QuotaTracker writes from real client path).
+- Cross-ref: 1.9 (SourceRepository) depends on 2.1 (DB schema). Wire it once the schema lands so the Sources admin page writes to a real table instead of `vyg_sources_draft`.

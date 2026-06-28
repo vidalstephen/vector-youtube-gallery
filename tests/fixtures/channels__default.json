@@ -1,0 +1,35 @@
+{
+  "kind": "youtube#channelListResponse",
+  "etag": "mock-channel-etag",
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  },
+  "items": [
+    {
+      "kind": "youtube#channel",
+      "id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+      "snippet": {
+        "title": "Google Developers (mock)",
+        "description": "Default mock channel for development and tests.",
+        "customUrl": "@GoogleDevelopers",
+        "publishedAt": "2007-08-23T00:34:43Z",
+        "thumbnails": {
+          "default": { "url": "https://example.invalid/ch_default.jpg" },
+          "medium":  { "url": "https://example.invalid/ch_medium.jpg" },
+          "high":    { "url": "https://example.invalid/ch_high.jpg" }
+        }
+      },
+      "contentDetails": {
+        "relatedPlaylists": {
+          "uploads": "UU_x5XG1OV2P6uZZ5FSM9Ttw"
+        }
+      },
+      "status": {
+        "privacyStatus": "public",
+        "isLinked": true,
+        "longUploadsStatus": "longUploadsUnspecified"
+      }
+    }
+  ]
+}

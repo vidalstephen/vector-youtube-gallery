@@ -1,0 +1,25 @@
+{
+  "kind": "youtube#playlistListResponse",
+  "etag": "mock-playlist-etag",
+  "pageInfo": { "totalResults": 1, "resultsPerPage": 1 },
+  "items": [
+    {
+      "kind": "youtube#playlist",
+      "id": "PLBCF2DAC6FFB574DE",
+      "snippet": {
+        "title": "Mock Playlist",
+        "description": "Default mock playlist for development and tests.",
+        "publishedAt": "2020-01-01T00:00:00Z",
+        "thumbnails": {
+          "default": { "url": "https://example.invalid/pl_default.jpg" }
+        },
+        "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+        "channelTitle": "Google Developers (mock)"
+      },
+      "contentDetails": {
+        "itemCount": 3
+      },
+      "status": { "privacyStatus": "public" }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "mock-video-etag",
+  "pageInfo": { "totalResults": 2, "resultsPerPage": 50 },
+  "items": [
+    {
+      "kind": "youtube#video",
+      "id": "dQw4w9WgXcQ",
+      "snippet": {
+        "title": "Rick Astley - Never Gonna Give You Up (mock)",
+        "description": "Mock video metadata for development.",
+        "publishedAt": "2009-10-25T06:57:33Z",
+        "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+        "channelTitle": "Google Developers (mock)",
+        "tags": ["mock", "test"],
+        "categoryId": "10",
+        "liveBroadcastContent": "none",
+        "thumbnails": {
+          "default": { "url": "https://example.invalid/v_default.jpg" },
+          "medium":  { "url": "https://example.invalid/v_medium.jpg" },
+          "high":    { "url": "https://example.invalid/v_high.jpg" },
+          "standard":{ "url": "https://example.invalid/v_standard.jpg" },
+          "maxres":  { "url": "https://example.invalid/v_maxres.jpg" }
+        }
+      },
+      "contentDetails": {
+        "duration": "PT3M33S",
+        "dimension": "2d",
+        "definition": "hd"
+      },
+      "status": {
+        "uploadStatus": "processed",
+        "privacyStatus": "public",
+        "embeddable": true,
+        "license": "youtube"
+      },
+      "statistics": {
+        "viewCount": "1000000",
+        "likeCount": "5000",
+        "commentCount": "100"
+      },
+      "player": {
+        "embedHtml": "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\"></iframe>"
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "id": "9bZkp7q19f0",
+      "snippet": {
+        "title": "PSY - Gangnam Style (mock)",
+        "description": "Second mock video.",
+        "publishedAt": "2012-07-15T08:00:00Z",
+        "channelId": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
+        "channelTitle": "Google Developers (mock)",
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "contentDetails": {
+        "duration": "PT4M13S",
+        "dimension": "2d",
+        "definition": "hd"
+      },
+      "status": {
+        "uploadStatus": "processed",
+        "privacyStatus": "public",
+        "embeddable": true
+      },
+      "statistics": {
+        "viewCount": "4000000000"
+      }
+    }
+  ]
+}
