@@ -8,6 +8,11 @@
 
 declare(strict_types=1);
 
+// 0. Patchwork (loaded by Brain\Monkey autoload) reads patchwork.json from cwd.
+//    chdir to the plugin root BEFORE requiring autoload so redefinition works.
+$plugin_root = dirname( __DIR__ );
+chdir( $plugin_root );
+
 // Path to this file's directory.
 $tests_dir = __DIR__;
 

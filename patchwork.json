@@ -1,0 +1,10 @@
+{
+    "redefinable-internals": [
+        "number_format",
+        "strtotime",
+        "gmdate",
+        "is_readable",
+        "file_exists",
+        "md5"
+    ]
+}

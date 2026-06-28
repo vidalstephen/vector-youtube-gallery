@@ -1,0 +1,66 @@
+/* Shorts layout — vertical-friendly cards. */
+.vyg-feed--shorts.vyg-shorts {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+
+@media (min-width: 600px) {
+    .vyg-feed--shorts.vyg-shorts {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .vyg-feed--shorts.vyg-shorts {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+
+.vyg-shorts__card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.vyg-shorts__link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.vyg-shorts__thumb-wrap {
+    position: relative;
+    aspect-ratio: 9 / 16;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.vyg-shorts__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vyg-shorts__duration {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.vyg-shorts__title {
+    margin: 0.4em 0 0;
+    font-size: 0.85em;
+    line-height: 1.3;
+    font-weight: 500;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

@@ -17,10 +17,18 @@ use VectorYT\Gallery\Admin\VideosPage;
 use VectorYT\Gallery\Database\Installer;
 use VectorYT\Gallery\Database\Migrator;
 use VectorYT\Gallery\Logging\Logger;
+use VectorYT\Gallery\Render\AssetManager;
+use VectorYT\Gallery\Render\BlockRegistrar;
+use VectorYT\Gallery\Render\FeedQuery;
+use VectorYT\Gallery\Render\Renderer;
+use VectorYT\Gallery\Render\ShortcodeRegistrar;
+use VectorYT\Gallery\Render\TemplateLoader;
+use VectorYT\Gallery\Render\VideoRenderer;
 use VectorYT\Gallery\Repository\PlaylistRepository;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Repository\SyncLogRepository;
 use VectorYT\Gallery\Repository\VideoRepository;
+use VectorYT\Gallery\REST\FeedController;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Sync\DeletedVideoDetector;
@@ -252,6 +260,38 @@ final class Plugin {
                 $c->get( 'admin.videos' )
             )
         );
+
+        // --- Rendering ---
+        $c->set( 'render.feed',     static fn(): FeedQuery => new FeedQuery() );
+        $c->set( 'render.video',    static fn(): VideoRenderer => new VideoRenderer() );
+        $c->set( 'render.templates',static fn(): TemplateLoader => new TemplateLoader() );
+        $c->set( 'render.assets',   static fn(): AssetManager => new AssetManager() );
+        $c->set(
+            'render.renderer',
+            static fn( Container $c ): Renderer => new Renderer(
+                $c->get( 'render.feed' ),
+                $c->get( 'render.video' ),
+                $c->get( 'render.templates' )
+            )
+        );
+        $c->set(
+            'render.shortcode',
+            static fn( Container $c ): ShortcodeRegistrar => new ShortcodeRegistrar(
+                $c->get( 'render.renderer' ),
+                $c->get( 'render.feed' ),
+                $c->get( 'render.assets' )
+            )
+        );
+        $c->set(
+            'render.block',
+            static fn(): BlockRegistrar => new BlockRegistrar()
+        );
+        $c->set(
+            'rest.feed',
+            static fn( Container $c ): FeedController => new FeedController(
+                $c->get( 'render.renderer' )
+            )
+        );
     }
 
     /**
@@ -270,6 +310,12 @@ final class Plugin {
         add_action( 'vyg_sync_source_initial',     static fn( $args ) => $c->get( 'sync.initial' )->handle( $args ) );
         add_action( 'vyg_sync_source_incremental', static fn( $args ) => $c->get( 'sync.incremental' )->handle( $args ) );
         add_action( 'vyg_refresh_video_batch',     static fn( $args ) => $c->get( 'sync.refresh' )->handle( $args ) );
+
+        // Front-end render.
+        $c->get( 'render.assets' )->register();
+        $c->get( 'render.shortcode' )->register();
+        $c->get( 'render.block' )->register();
+        $c->get( 'rest.feed' )->register_routes();
 
         // Cron tick: queue incremental syncs for every active source.
         add_action( 'vyg_cron_incremental_all', static function () use ( $c ): void {

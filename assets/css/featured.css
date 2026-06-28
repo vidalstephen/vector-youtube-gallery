@@ -1,0 +1,55 @@
+/* Featured layout — hero + grid. */
+.vyg-feed--featured.vyg-featured {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.vyg-featured__hero {
+    width: 100%;
+}
+
+.vyg-featured__link {
+    display: block;
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 16 / 9;
+}
+
+.vyg-featured__hero-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vyg-featured__hero-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 1em 1.2em;
+    color: #fff;
+    font-size: 1.3em;
+    font-weight: 700;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+}
+
+.vyg-featured__rest.vyg-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.vyg-featured__rest.vyg-grid--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vyg-featured__rest.vyg-grid--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vyg-featured__rest.vyg-grid--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.vyg-featured__rest.vyg-grid--cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+@media (max-width: 600px) {
+    .vyg-featured__rest.vyg-grid--cols-3,
+    .vyg-featured__rest.vyg-grid--cols-4,
+    .vyg-featured__rest.vyg-grid--cols-5 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "redefinable-internals": [
+        "number_format",
+        "date",
+        "strtotime",
+        "gmdate"
+    ]
+}

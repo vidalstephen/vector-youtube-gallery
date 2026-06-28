@@ -1,0 +1,81 @@
+/* Vector YouTube Gallery — base layout primitives.
+ * Apply tokens that every layout can rely on.
+ */
+.vyg-feed {
+    box-sizing: border-box;
+    font-family: inherit;
+    color: inherit;
+}
+
+.vyg-feed *,
+.vyg-feed *::before,
+.vyg-feed *::after {
+    box-sizing: border-box;
+}
+
+.vyg-feed img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.vyg-feed a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.vyg-feed__loadmore-wrap {
+    margin: 1.5em 0;
+    text-align: center;
+}
+
+.vyg-feed__loadmore.button {
+    display: inline-block;
+}
+
+.vyg-feed__remaining {
+    margin-left: 0.5em;
+    color: #555;
+    font-size: 0.85em;
+}
+
+/* Lightbox overlay (consumed by js/lightbox.js) */
+.vyg-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+}
+
+.vyg-lightbox.is-open {
+    display: flex;
+}
+
+.vyg-lightbox__frame {
+    position: relative;
+    width: min(90vw, 1280px);
+    aspect-ratio: 16 / 9;
+    background: #000;
+}
+
+.vyg-lightbox__frame iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.vyg-lightbox__close {
+    position: absolute;
+    top: -2.2em;
+    right: 0;
+    background: transparent;
+    color: #fff;
+    border: 0;
+    font-size: 1.8em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2em 0.5em;
+}

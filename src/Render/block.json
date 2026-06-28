@@ -1,0 +1,56 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "vectoryt/gallery",
+    "version": "0.1.0",
+    "title": "YouTube Gallery",
+    "category": "embed",
+    "icon": "video-alt3",
+    "description": "Render a YouTube source feed from the Vector YouTube Gallery plugin.",
+    "keywords": ["youtube", "gallery", "shorts", "live", "video"],
+    "textdomain": "vector-youtube-gallery",
+    "supports": {
+        "html": false,
+        "align": ["wide", "full"],
+        "spacing": {
+            "margin": true,
+            "padding": true
+        }
+    },
+    "attributes": {
+        "source_uuid": {
+            "type": "string",
+            "default": ""
+        },
+        "layout": {
+            "type": "string",
+            "default": "grid"
+        },
+        "per_page": {
+            "type": "number",
+            "default": 12
+        },
+        "columns": {
+            "type": "number",
+            "default": 3
+        },
+        "orderby": {
+            "type": "string",
+            "default": "published_at"
+        },
+        "order": {
+            "type": "string",
+            "default": "DESC"
+        },
+        "content_type": {
+            "type": "string",
+            "default": ""
+        },
+        "pagination": {
+            "type": "string",
+            "default": "none"
+        }
+    },
+    "editorScript": "file:./index.js",
+    "render": "file:./render.php"
+}
