@@ -2,10 +2,6 @@
 /**
  * Plugin bootstrap.
  *
- * `boot()` is the single entry point called on `plugins_loaded`.
- * It wires the Container, registers WordPress hooks, and is the only place
- * where subsystems know about each other.
- *
  * @package VectorYT\Gallery
  */
 
@@ -17,9 +13,21 @@ use VectorYT\Gallery\Admin\AdminMenu;
 use VectorYT\Gallery\Admin\DiagnosticsPage;
 use VectorYT\Gallery\Admin\SettingsPage;
 use VectorYT\Gallery\Admin\SourcesPage;
+use VectorYT\Gallery\Database\Installer;
+use VectorYT\Gallery\Database\Migrator;
 use VectorYT\Gallery\Logging\Logger;
+use VectorYT\Gallery\Repository\PlaylistRepository;
+use VectorYT\Gallery\Repository\SourceRepository;
+use VectorYT\Gallery\Repository\SyncLogRepository;
+use VectorYT\Gallery\Repository\VideoRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
+use VectorYT\Gallery\Sync\DeletedVideoDetector;
+use VectorYT\Gallery\Sync\IncrementalSyncJob;
+use VectorYT\Gallery\Sync\InitialImportJob;
+use VectorYT\Gallery\Sync\MetadataRefreshJob;
+use VectorYT\Gallery\Sync\RetryPolicy;
+use VectorYT\Gallery\Sync\WpCronSyncScheduler;
 use VectorYT\Gallery\YouTube\ApiClientInterface;
 use VectorYT\Gallery\YouTube\ApiKeyClient;
 use VectorYT\Gallery\YouTube\ChannelResolver;
@@ -55,9 +63,6 @@ final class Plugin {
         return self::$container;
     }
 
-    /**
-     * Reset the container — only for tests.
-     */
     public static function reset_container(): void {
         self::$container = null;
     }
@@ -71,10 +76,26 @@ final class Plugin {
                 array( 'back_link' => true )
             );
         }
+
+        // Boot the container so Installer can resolve dependencies.
+        self::boot();
+        /** @var Installer $installer */
+        $installer = self::$container->get( 'installer' );
+        $installer->install();
+
+        // Schedule default cron events (idempotent — uses wp_schedule_event which no-ops on dupe).
+        if ( ! wp_next_scheduled( 'vyg_cron_incremental_all' ) ) {
+            wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'vyg_cron_incremental_all' );
+        }
+        if ( ! wp_next_scheduled( 'vyg_cron_metadata_refresh' ) ) {
+            wp_schedule_event( time() + DAY_IN_SECONDS, 'twicedaily', 'vyg_cron_metadata_refresh' );
+        }
     }
 
     public static function on_deactivate(): void {
-        // Phase 6 will clear scheduled events. No data deletion here.
+        // Clear scheduled events. NO data deletion here.
+        wp_clear_scheduled_hook( 'vyg_cron_incremental_all' );
+        wp_clear_scheduled_hook( 'vyg_cron_metadata_refresh' );
     }
 
     private static function meets_requirements(): bool {
@@ -105,6 +126,19 @@ final class Plugin {
         $c->set( 'secrets',  static fn(): SecretsRepository => new SecretsRepository() );
         $c->set( 'settings', static fn(): SettingsRepository => new SettingsRepository() );
         $c->set( 'quota',    static fn(): QuotaTracker => new QuotaTracker() );
+        $c->set( 'retry',    static fn(): RetryPolicy => new RetryPolicy() );
+
+        // --- Database ---
+        $c->set( 'migrator',  static fn(): Migrator => new Migrator( new Logger() ) );
+        $c->set( 'installer', static function ( Container $c ): Installer {
+            return new Installer( $c->get( 'migrator' ), $c->get( 'logger' ) );
+        } );
+
+        // --- Repositories ---
+        $c->set( 'repo.sources',  static fn(): SourceRepository => new SourceRepository() );
+        $c->set( 'repo.videos',   static fn(): VideoRepository => new VideoRepository() );
+        $c->set( 'repo.playlists',static fn(): PlaylistRepository => new PlaylistRepository() );
+        $c->set( 'repo.logs',     static fn(): SyncLogRepository => new SyncLogRepository() );
 
         // --- YouTube API client (mock when VYG_USE_MOCK=1) ---
         $c->set(
@@ -124,17 +158,49 @@ final class Plugin {
         );
 
         // --- Resolvers ---
+        $c->set( 'youtube.channels', static fn( Container $c ): ChannelResolver => new ChannelResolver( $c->get( 'youtube.api' ), $c->get( 'logger' ) ) );
+        $c->set( 'youtube.playlists', static fn( Container $c ): PlaylistResolver => new PlaylistResolver( $c->get( 'youtube.api' ), $c->get( 'logger' ) ) );
+        $c->set( 'youtube.videos',  static fn( Container $c ): VideoMetadataFetcher => new VideoMetadataFetcher( $c->get( 'youtube.api' ), $c->get( 'logger' ) ) );
+
+        // --- Sync jobs ---
+        $c->set( 'sync.deleted_detector', static fn(): DeletedVideoDetector => new DeletedVideoDetector() );
         $c->set(
-            'youtube.channels',
-            static fn( Container $c ): ChannelResolver => new ChannelResolver( $c->get( 'youtube.api' ), $c->get( 'logger' ) )
+            'sync.initial',
+            static fn( Container $c ): InitialImportJob => new InitialImportJob(
+                $c->get( 'repo.logs' ),
+                $c->get( 'retry' ),
+                $c->get( 'quota' ),
+                $c->get( 'logger' ),
+                $c->get( 'repo.sources' ),
+                $c->get( 'repo.videos' ),
+                $c->get( 'repo.playlists' ),
+                $c->get( 'youtube.api' )
+            )
         );
         $c->set(
-            'youtube.playlists',
-            static fn( Container $c ): PlaylistResolver => new PlaylistResolver( $c->get( 'youtube.api' ), $c->get( 'logger' ) )
+            'sync.incremental',
+            static fn( Container $c ): IncrementalSyncJob => new IncrementalSyncJob(
+                $c->get( 'repo.logs' ),
+                $c->get( 'retry' ),
+                $c->get( 'quota' ),
+                $c->get( 'logger' ),
+                $c->get( 'repo.sources' ),
+                $c->get( 'repo.videos' ),
+                $c->get( 'repo.playlists' ),
+                $c->get( 'youtube.api' )
+            )
         );
         $c->set(
-            'youtube.videos',
-            static fn( Container $c ): VideoMetadataFetcher => new VideoMetadataFetcher( $c->get( 'youtube.api' ), $c->get( 'logger' ) )
+            'sync.refresh',
+            static fn( Container $c ): MetadataRefreshJob => new MetadataRefreshJob(
+                $c->get( 'repo.logs' ),
+                $c->get( 'retry' ),
+                $c->get( 'quota' ),
+                $c->get( 'logger' ),
+                $c->get( 'repo.videos' ),
+                $c->get( 'youtube.api' ),
+                $c->get( 'sync.deleted_detector' )
+            )
         );
 
         // --- Admin pages ---
@@ -153,7 +219,9 @@ final class Plugin {
                 $c->get( 'youtube.channels' ),
                 $c->get( 'youtube.playlists' ),
                 $c->get( 'youtube.videos' ),
-                $c->get( 'secrets' ),
+                $c->get( 'repo.sources' ),
+                $c->get( 'repo.logs' ),
+                $c->get( 'sync.initial' ),
                 $c->get( 'logger' )
             )
         );
@@ -178,28 +246,46 @@ final class Plugin {
     }
 
     /**
-     * Load in-memory mock handlers (no fixtures needed for common queries).
-     *
      * @return array<string,callable>
      */
     private static function load_mock_handlers(): array {
-        // Channel fixtures are loaded from tests/fixtures/channels__*.json
-        // by MockApiClient's fixture resolver. Handlers here are reserved
-        // for dynamic content (e.g. tests that want a specific channel).
         return array();
     }
 
     private static function register_hooks(): void {
         $c = self::$container;
 
-        add_action(
-            'admin_menu',
-            static fn() => ( $c->get( 'admin.menu' ) )->register()
-        );
+        add_action( 'admin_menu', static fn() => $c->get( 'admin.menu' )->register() );
 
-        // Future phases will add:
-        //   add_action( 'rest_api_init', ... )
-        //   add_shortcode( 'vyg_feed', ... )
-        //   add_action( 'init', ... ) for block registration
+        // Sync job hooks (called by WP-Cron).
+        add_action( 'vyg_sync_source_initial',     static fn( $args ) => $c->get( 'sync.initial' )->handle( $args ) );
+        add_action( 'vyg_sync_source_incremental', static fn( $args ) => $c->get( 'sync.incremental' )->handle( $args ) );
+        add_action( 'vyg_refresh_video_batch',     static fn( $args ) => $c->get( 'sync.refresh' )->handle( $args ) );
+
+        // Cron tick: queue incremental syncs for every active source.
+        add_action( 'vyg_cron_incremental_all', static function () use ( $c ): void {
+            /** @var SourceRepository $sources */
+            $sources = $c->get( 'repo.sources' );
+            /** @var SyncLogRepository $logs */
+            $logs = $c->get( 'repo.logs' );
+            foreach ( $sources->list( array( 'status' => 'active' ) ) as $source ) {
+                $job_id = $logs->create_job( 'incremental', (int) $source['id'] );
+                wp_schedule_single_event( time() + 60, 'vyg_sync_source_incremental', array(
+                    'vyg_job_id' => $job_id,
+                    'source_id'  => (int) $source['id'],
+                ) );
+            }
+        } );
+
+        // Cron tick: kick a single metadata refresh job.
+        add_action( 'vyg_cron_metadata_refresh', static function () use ( $c ): void {
+            /** @var SyncLogRepository $logs */
+            $logs = $c->get( 'repo.logs' );
+            $job_id = $logs->create_job( 'metadata_refresh' );
+            wp_schedule_single_event( time() + 60, 'vyg_refresh_video_batch', array(
+                'vyg_job_id'  => $job_id,
+                'max_videos'  => 100,
+            ) );
+        } );
     }
 }

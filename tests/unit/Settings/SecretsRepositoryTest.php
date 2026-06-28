@@ -9,10 +9,10 @@ namespace VectorYT\Gallery\Tests\Unit\Settings;
 
 use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
-use Brain\Monkey\Functions;
 use PHPUnit\Framework\TestCase;
-use VectorYT\Gallery\Settings\SecretsRepository;
+use VectorYT\Gallery\Tests\Support\BrainHelpers;
 use VectorYT\Gallery\Tests\Support\OptionsBag;
+use VectorYT\Gallery\Settings\SecretsRepository;
 
 /**
  * @covers \VectorYT\Gallery\Settings\SecretsRepository
@@ -27,13 +27,9 @@ final class SecretsRepositoryTest extends TestCase {
         OptionsBag::reset();
 
         // Stub the WP option functions.
-        Functions\when( 'get_option' )->alias( static fn( string $key, $default = false ) => OptionsBag::get( $key, $default ) );
-        Functions\when( 'update_option' )->alias( static fn( string $key, $value, $autoload = null ) => OptionsBag::update( $key, $value, $autoload ) );
-        Functions\when( 'delete_option' )->alias( static fn( string $key ) => OptionsBag::delete( $key ) );
+        BrainHelpers::stubOptionFunctions();
         // Stub sanitize_key/sanitize_text_field — these are WP helpers used by SecretsRepository.
-        // WP sanitize_key: lowercase, then strip everything except [a-z0-9_\-].
-        Functions\when( 'sanitize_key' )->alias( static fn( string $s ): string => strtolower( preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $s ) ) ) );
-        Functions\when( 'sanitize_text_field' )->alias( static fn( string $s ): string => trim( strip_tags( $s ) ) );
+        BrainHelpers::stubEscapeFunctions();
 
         $this->repo = new SecretsRepository();
     }
