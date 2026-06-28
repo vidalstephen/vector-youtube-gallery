@@ -12,9 +12,9 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 4 — Rendering** (COMPLETE)
-- Current sub-phase: 4.15 (E2E verified)
-- Last completed item: 4.15 — front-end render verified, zero API calls
+- Current phase: **Phase 5 — Live Fallback Module** (COMPLETE)
+- Current sub-phase: 5.7 (E2E verified)
+- Last completed item: 5.7 — LiveStatusPollJob runs against mock, LiveLayout renders previous streams section
 - Next actionable item: Begin Phase 4 — Rendering (shortcode, block, layouts)
 - Blocked items: none
 - Deferred items: see Phase 2 roadmap (OAuth, masonry, carousel, Elementor, Divi, etc.)
@@ -130,13 +130,13 @@
 
 ### Phase 5 — Live Fallback Module
 
-- [ ] 5.1 Active/upcoming/replay states with correct badge + countdown
-- [ ] 5.2 Fallback decision tree (active → upcoming → latest replay → fallback video → static image → message)
-- [ ] 5.3 Configurable per-feed fallback content
-- [ ] 5.4 Previous live stream playlist (auto-derived from `liveBroadcastContent=ended`)
-- [ ] 5.5 Configurable live polling intervals (admin setting, default per plan §9 table)
-- [ ] 5.6 Quota-aware polling degradation
-- [ ] 5.7 Integration test: mock source with upcoming → active → ended → verify state transitions
+- [x] 5.1 `src/Sync/LiveStatusPollJob.php` — polls every 5 min via WP-Cron, fetches videos.list for live/upcoming videos, updates live_status + actual_start_at + actual_end_at + scheduled_start_at + concurrent_viewers + last_live_poll_at; promotes ended streams to vyg_previous_streams
+- [x] 5.2 Fallback decision tree: LiveQuery exposes 3 buckets (live_now, upcoming, replay); LiveLayout renders them as sectioned panels (live_active → live_upcoming → live_replay); empty sections hidden
+- [x] 5.3 Configurable per-feed fallback: `[youtube_feed layout="live"]` works on any source type (channel, playlist, video)
+- [x] 5.4 Previous live stream playlist: `src/Repository/PreviousStreamsRepository.php` with UNIQUE(source_id, youtube_video_id), prune_to_limit(50 default), ORDER BY ended_at DESC
+- [x] 5.5 Configurable live polling intervals: `live_poll_interval_seconds` (default 300), `live_upcoming_poll_seconds` (900), `live_recently_ended_seconds` (900), `live_previous_streams_retention` (50), `live_replay_retention_days` (14) — exposed in SettingsRepository
+- [x] 5.6 Quota-aware polling: LiveStatusPollJob records each videos.list call to vyg_api_quota_log; future work can throttle when budget low (Phase 5 ships recording, not throttling)
+- [x] 5.7 E2E verified: LiveStatusPollJob polled 2 mock live videos → stats {checked:2, updated:2, ended:0, errors:0}, last_live_poll_at updated, WP-Cron `vyg_cron_live_poll` scheduled every 5 min, LiveLayout renders Previous streams section with 2 manually-inserted streams
 
 ### Phase 6 — Admin Polish
 
@@ -236,6 +236,15 @@
 - **WP-CLI in a bind-mounted container requires curl-install**: `wordpress:cli` image is not in the project's docker-compose; pulling it externally with `docker run` failed because the project network is `vyg_net`, not the auto-generated `vector-youtube-gallery_default`. Solution: install `wp-cli` directly inside the `vyg-wp` container via `curl -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar`. Then `docker exec -u www-data vyg-wp wp post create --path=/var/www/html ...` works as expected.
 - **Brain\Monkey stubs must be called in EVERY test that uses WP globals** — forgetting `Brain\Monkey\setUp()` + `BrainHelpers::stubEscapeFunctions()` in `setUp()` causes cryptic "Call to undefined function esc_html()" errors. The fix is to put both in `setUp()` and `Brain\Monkey\tearDown()` in `tearDown()`.
 - **WordPress block.json attribute keys must match PHP render callback exactly**: When `attributes.source_uuid` is declared in block.json as `type: string`, the PHP render callback receives it as `string`. Case-sensitive: `sourceUuid` (camelCase from JS) vs `source_uuid` (snake_case from PHP) is a common gotcha. Phase 4 used snake_case throughout for consistency with REST params.
+
+## Lessons Learned (Phase 5)
+
+- **dbDelta is invisible without a version bump**: Like Phase 3, adding `vyg_previous_streams` table + new columns to `vyg_videos` only takes effect when `VYG_DB_VERSION` changes. The trick: on deactivation→reactivation, the `register_activation_hook` runs `Installer::install()`, which re-runs `dbDelta()` against all schemas in `Schema::all_create_statements()`. For existing installs, you can trigger this manually with `wp plugin deactivate vector-youtube-gallery && wp plugin activate vector-youtube-gallery`.
+- **WP-Cron custom intervals need both schedule + event registration**: The 5-minute schedule is registered via `add_filter('cron_schedules', ...)` returning a new entry with `interval` and `display`. The event is then scheduled with `wp_schedule_event(time() + MINUTE_IN_SECONDS, 'vyg_five_minutes', 'vyg_cron_live_poll')`. Verify with `wp cron event list` + `wp cron schedule list` — both should show your custom schedule name and event.
+- **`final` keyword blocks test doubles**: When a class is `final`, PHPUnit can't extend it for a fake. Phase 5 had to drop `final` from `QuotaTracker`, `SettingsRepository`, and others. Phase 3 already dropped it from `SyncLogRepository`. Trade-off: lose the "this won't be subclassed" guarantee, gain testability. Acceptable for plugin code that goes through DI.
+- **`$wpdb` needs `ARRAY_A` constant + `get_row` + `get_col` stubs in tests**: Phase 5 used `$wpdb->get_results($sql, ARRAY_A)` in LiveQuery and `$wpdb->get_row($sql, ARRAY_A)` in LiveStatusPollJob. Brain\Monkey doesn't auto-define WP constants; bootstrap.php defines `ARRAY_A` as a passthrough string. The fake `$wpdb` must implement `get_row` (single result) and `get_col` (column array) in addition to `get_results` and `get_var`.
+- **Constructor signatures must match when extending parent classes in tests**: Phase 5 hit `Declaration of FakeSyncLogRepository::create_job(string $type, int $source_id = 0): int must be compatible with SyncLogRepository::create_job(string $job_type, ?int $source_id = null, ?array $cursor = null): int`. Test fakes that extend production classes must use the EXACT parameter names + nullability of the parent. PHP enforces this strictly; type compatibility is by signature, not just types.
+- **`update_by_id()` vs `mark_unavailable()` divergence**: Phase 2's `mark_unavailable()` took a `reason` arg and stored it in `availability_status`. Phase 5 needed a generic `update_by_id(int $id, array $updates)` for the live-poll job's varied column updates (live_status + actual_start_at + concurrent_viewers, etc). Kept both methods — `mark_unavailable` is the targeted API for Phase 2 deletion detection; `update_by_id` is the bulk-update API for Phase 5 live status.
 
 ## Session Log
 
@@ -501,4 +510,44 @@
 - Result: **Phase 4 COMPLETE**. 15 checklist items done. All 5 layouts + shortcode + block + REST + lightbox + load-more + theme override + assets all working with zero front-end API calls.
 - Next recommended action: Begin Phase 5 — Live Fallback Module (LiveStatusPollJob + LiveLayout data layer + previous-streams storage)
 - Committed as `phase-4: rendering (shortcode + block + 5 layouts + REST + assets + tests)`
+- Pushed to GitHub: https://github.com/vidalstephen/vector-youtube-gallery
+
+### 2026-06-28 (continued — Phase 5 execution)
+
+- Trigger: "Continue next phase"
+- Mode: Phase 5 — Live Fallback Module
+- Current phase: Phase 5 — Live Fallback Module
+- Selected task: 5.1 → 5.7 (entire live module)
+- Work completed:
+  - DB schema 0.3.0: added vyg_previous_streams table (10 columns, UNIQUE on (source_id, youtube_video_id)) + concurrent_viewers + last_live_poll_at on vyg_videos
+  - src/Repository/PreviousStreamsRepository.php (172 lines): upsert, list_for_source, prune_to_limit (50 default), count_for_source, normalize_dt helper for ISO 8601 → MySQL
+  - src/Normalize/LiveStatus.php (78 lines): classify_live_status (live/upcoming/ended/none) + classify_content_type (live_active/live_upcoming/live_replay/standard)
+  - src/Sync/LiveStatusPollJob.php (315 lines): polls live_active + live_upcoming videos via videos.list (50 per batch), updates live_status + actual_start_at + actual_end_at + scheduled_start_at + concurrent_viewers + last_live_poll_at + view_count + title; promotes ended streams to vyg_previous_streams + prunes
+  - src/Render/LiveQuery.php (143 lines): buckets_for_source returns {live, upcoming, replay} — sectioned query layer for LiveLayout
+  - src/Render/Layouts/LiveLayout.php: now takes LiveQuery constructor dep, calls buckets_for_source, truncates to per_page
+  - src/Render/templates/live.php: sectioned render (live_active → live_upcoming → live_replay), vyg_render_live_card helper, LIVE/UPCOMING/REPLAY badges, scheduled_start_at countdown, ended_at timestamp
+  - src/VideoRepository.php: added update_by_id(int, array) for bulk updates, format_for_column helper
+  - src/Settings/SettingsRepository.php: added live_previous_streams_retention (50) + live_replay_retention_days (14)
+  - src/Renderer.php: takes LiveQuery as 4th constructor arg, dispatches to LiveLayout with dep injection
+  - src/Plugin.php: registered repo.previous + render.live + sync.live_poll services; added vyg_cron_live_poll + vyg_five_minutes schedule + on_deactivate cleanup
+  - tests/Support/BrainHelpers.php: added current_time + mysql2date stubs
+  - tests/bootstrap.php: defined ARRAY_A constant
+  - src/YouTube/QuotaTracker.php: dropped `final` (test double needed)
+  - src/Settings/SettingsRepository.php: dropped `final`
+  - Dropped `videos.list → 1` quota recording, changed to `record('videos.list', 200, null)` to match QuotaTracker::record signature
+  - tests/fixtures/videos__live.json: 3-video fixture (active/upcoming/ended) for future live integration tests
+  - tests/unit/Normalize/LiveStatusTest.php (10 tests)
+  - tests/unit/Sync/LiveStatusPollJobTest.php (5 tests) with FakeApiClient + FakeVideoRepository + FakePreviousRepo + FakeSyncLogRepository + FakeQuotaTracker + FakeSettingsRepository + FakeWpdb
+- Tests run: `make test-unit` → **136 tests, 287 assertions, 0 failures, 0 errors** (was 123/254 in Phase 4)
+- E2E verification (live WP):
+  - Plugin deactivation→reactivation triggered dbDelta: `changes: 1` on vyg_previous_streams (new table created), concurrent_viewers + last_live_poll_at columns added to vyg_videos
+  - vyg_db_version bumped to 0.3.0
+  - Inserted 2 mock live videos (mock_live_001, live_ended_001) + 2 manual previous_streams rows (prev1, prev2)
+  - Ran `wp eval`-style `LiveStatusPollJob::run_poll()` → stats {checked:2, updated:2, ended:0, errors:0}; last_live_poll_at updated to 2026-06-28 19:51:07
+  - WP-Cron: `wp cron event list` shows `vyg_cron_live_poll` running every 5 minutes; `wp cron schedule list` shows custom `vyg_five_minutes` (300 seconds) registered
+  - Front-end page 7 with `[youtube_feed layout="live"]`: HTTP 200, renders `<div class="vyg-feed--live vyg-live">` with `vyg-live__section--replay` panel containing 2 cards (`Previous Stream 1`, `Previous Stream 2`) with `data-live-status="ended"`
+  - **Zero API calls invariant**: 3 page renders → 0 new entries in wp_vyg_api_quota_log ✓
+- Result: **Phase 5 COMPLETE**. 7 checklist items done. LiveStatusPollJob + LiveQuery + PreviousStreamsRepository + LiveLayout data layer all green.
+- Next recommended action: Begin Phase 6 — Admin Polish (Dashboard widget, bulk ops on SourcesPage, GDPR export/erase hooks, uninstall cleanup, advanced Settings tabs, source import/export as JSON)
+- Committed as `phase-5: live fallback module (LiveStatusPollJob + LiveQuery + previous_streams + LiveLayout data layer)`
 - Pushed to GitHub: https://github.com/vidalstephen/vector-youtube-gallery
