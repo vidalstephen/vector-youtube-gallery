@@ -2,16 +2,24 @@
 /**
  * Shortcode registrar — exposes [youtube_feed] to the front-end.
  *
+ * Two modes:
+ *  - source_uuid (legacy / direct):  [youtube_feed source_uuid="..." layout="grid"]
+ *  - feed_uuid (Phase 6 named feed): [youtube_feed feed_uuid="..."]
+ *
+ * The feed_uuid path loads the saved configuration from vyg_feeds and overlays
+ * any inline attributes the operator passed. Inline attributes take precedence.
+ *
  * Attributes (all sanitized via shortcode_atts):
- *   - source_uuid (required) — UUID of a vyg_sources row.
- *   - layout      — grid|list|featured|shorts|live. Default grid.
- *   - per_page    — int, 1..200. Default 12.
- *   - columns     — int, 1..6 (used by grid/featured/shorts). Default 3.
- *   - orderby     — published_at|view_count|duration_seconds. Default published_at.
- *   - order       — ASC|DESC. Default DESC.
+ *   - feed_uuid    — UUID of a vyg_feeds row (Phase 6).
+ *   - source_uuid  — UUID of a vyg_sources row (legacy; required if no feed_uuid).
+ *   - layout       — grid|list|featured|shorts|live. Default grid.
+ *   - per_page     — int, 1..200. Default 12.
+ *   - columns      — int, 1..6 (used by grid/featured/shorts). Default 3.
+ *   - orderby      — published_at|view_count|duration_seconds. Default published_at.
+ *   - order        — ASC|DESC. Default DESC.
  *   - content_type — comma-separated list of content_types to include.
- *   - pagination  — none|load_more. Default none.
- *   - offset      — int (used by load_more; normally set by JS).
+ *   - pagination   — none|load_more. Default none.
+ *   - offset       — int (used by load_more; normally set by JS).
  *
  * Security:
  *   - All attrs are sanitized.
@@ -25,6 +33,8 @@ declare(strict_types=1);
 
 namespace VectorYT\Gallery\Render;
 
+use VectorYT\Gallery\Repository\FeedRepository;
+
 defined( 'ABSPATH' ) || exit;
 
 final class ShortcodeRegistrar {
@@ -35,6 +45,7 @@ final class ShortcodeRegistrar {
         private readonly Renderer $renderer,
         private readonly FeedQuery $feed,
         private readonly AssetManager $assets,
+        private readonly FeedRepository $feeds_repo,
     ) {}
 
     public function register(): void {
@@ -49,6 +60,7 @@ final class ShortcodeRegistrar {
     public function render_shortcode( $atts, $content = null ): string {
         $atts = shortcode_atts(
             array(
+                'feed_uuid'    => '',
                 'source_uuid'  => '',
                 'layout'       => 'grid',
                 'per_page'     => 12,
@@ -65,8 +77,51 @@ final class ShortcodeRegistrar {
         );
 
         $source_uuid = sanitize_text_field( (string) $atts['source_uuid'] );
+        $feed_uuid   = sanitize_text_field( (string) $atts['feed_uuid'] );
+        $layout_slug = sanitize_key( (string) $atts['layout'] );
+
+        // If feed_uuid provided, overlay saved config onto inline attributes.
+        $inline_override = ''; // CSS wrapper id override
+        $feed_record = null;
+        if ( '' !== $feed_uuid ) {
+            $feed_record = $this->feeds_repo->find_by_uuid( $feed_uuid );
+            if ( ! $feed_record ) {
+                return '<p>' . esc_html__( 'Vector YouTube Gallery: feed not found.', 'vector-youtube-gallery' ) . '</p>';
+            }
+            if ( 'archived' === (string) ( $feed_record['status'] ?? '' ) ) {
+                return '<p>' . esc_html__( 'Vector YouTube Gallery: this feed is archived.', 'vector-youtube-gallery' ) . '</p>';
+            }
+            $config = FeedRepository::decode_config( $feed_record );
+            if ( '' === $source_uuid && ! empty( $config['source']['source_uuid'] ) ) {
+                $source_uuid = (string) $config['source']['source_uuid'];
+            }
+            // Inline attributes override saved config.
+            if ( 'grid' === $layout_slug && ! empty( $feed_record['layout'] ) ) {
+                $layout_slug = sanitize_key( (string) $feed_record['layout'] );
+            }
+            if ( 12 === (int) $atts['per_page'] && ! empty( $config['display']['per_page'] ) ) {
+                $atts['per_page'] = (int) $config['display']['per_page'];
+            }
+            if ( 3 === (int) $atts['columns'] && ! empty( $config['display']['columns'] ) ) {
+                $atts['columns'] = (int) $config['display']['columns'];
+            }
+            if ( 'published_at' === (string) $atts['orderby'] && ! empty( $config['sort']['orderby'] ) ) {
+                $atts['orderby'] = (string) $config['sort']['orderby'];
+            }
+            if ( 'DESC' === (string) $atts['order'] && ! empty( $config['sort']['order'] ) ) {
+                $atts['order'] = (string) $config['sort']['order'];
+            }
+            if ( '' === (string) $atts['content_type'] && ! empty( $config['filter']['content_type'] ) ) {
+                $atts['content_type'] = (string) $config['filter']['content_type'];
+            }
+            if ( 'none' === (string) $atts['pagination'] && ! empty( $config['display']['load_more'] ) ) {
+                $atts['pagination'] = 'load_more';
+            }
+            $inline_override = (string) ( $feed_record['custom_css'] ?? '' );
+        }
+
         if ( '' === $source_uuid ) {
-            return '<p>' . esc_html__( 'Vector YouTube Gallery: missing source_uuid attribute.', 'vector-youtube-gallery' ) . '</p>';
+            return '<p>' . esc_html__( 'Vector YouTube Gallery: missing source_uuid/feed_uuid attribute.', 'vector-youtube-gallery' ) . '</p>';
         }
 
         // Confirm source exists and is active.
@@ -79,10 +134,15 @@ final class ShortcodeRegistrar {
         }
 
         // Enqueue assets (lightbox + CSS).
-        $layout_slug = sanitize_key( (string) $atts['layout'] );
         $this->assets->enqueue_for_layout( $layout_slug );
         if ( 'load_more' === (string) $atts['pagination'] ) {
             $this->assets->enqueue_load_more();
+        }
+
+        // Resolve wrapper_id: feed_uuid if no override provided.
+        $wrapper_id = sanitize_text_field( (string) $atts['wrapper_id'] );
+        if ( '' === $wrapper_id && $feed_record ) {
+            $wrapper_id = 'vyg-feed-' . (string) ( $feed_record['feed_uuid'] ?? '' );
         }
 
         return $this->renderer->render( array(
@@ -95,7 +155,9 @@ final class ShortcodeRegistrar {
             'offset'       => max( 0, (int) $atts['offset'] ),
             'pagination'   => sanitize_key( (string) $atts['pagination'] ),
             'columns'      => max( 1, (int) $atts['columns'] ),
-            'wrapper_id'   => sanitize_text_field( (string) $atts['wrapper_id'] ),
+            'wrapper_id'   => $wrapper_id,
+            'custom_css'   => $inline_override,
+            'feed_uuid'    => $feed_uuid,
         ) );
     }
 }

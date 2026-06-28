@@ -68,7 +68,55 @@ final class SourcesPage {
             $this->handle_delete();
         } elseif ( 'sync' === $op ) {
             $this->handle_sync();
+        } elseif ( 'bulk' === $op ) {
+            $this->handle_bulk();
         }
+    }
+
+    /**
+     * Bulk action handler. Operates on all checked source_ids.
+     */
+    private function handle_bulk(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
+        }
+        $action = isset( $_POST['vyg_bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['vyg_bulk_action'] ) ) : '';
+        if ( ! in_array( $action, array( 'pause', 'resume', 'sync', 'delete' ), true ) ) {
+            $this->redirect_with_notice( 'bulk_invalid' );
+        }
+        $ids = isset( $_POST['vyg_source_ids'] ) && is_array( $_POST['vyg_source_ids'] )
+            ? array_map( 'intval', (array) $_POST['vyg_source_ids'] )
+            : array();
+        $ids = array_values( array_filter( $ids, static fn( $id ) => $id > 0 ) );
+        if ( empty( $ids ) ) {
+            $this->redirect_with_notice( 'bulk_none' );
+        }
+        $count = 0;
+        foreach ( $ids as $id ) {
+            switch ( $action ) {
+                case 'pause':
+                    $this->sources->update( $id, array( 'status' => 'paused' ) );
+                    ++$count;
+                    break;
+                case 'resume':
+                    $this->sources->update( $id, array( 'status' => 'active' ) );
+                    ++$count;
+                    break;
+                case 'sync':
+                    $job_id = $this->logs->create_job( 'initial', $id );
+                    wp_schedule_single_event( time() + 5, 'vyg_sync_source_initial', array(
+                        'vyg_job_id' => $job_id,
+                        'source_id'  => $id,
+                    ) );
+                    ++$count;
+                    break;
+                case 'delete':
+                    $this->sources->delete( $id );
+                    ++$count;
+                    break;
+            }
+        }
+        $this->redirect_with_notice( sprintf( 'bulk_%s:%d', $action, $count ) );
     }
 
     private function handle_add(): void {
@@ -307,52 +355,125 @@ final class SourcesPage {
             <?php if ( 0 === count( $sources ) ) : ?>
                 <p><?php echo esc_html__( 'No sources yet. Add one above.', 'vector-youtube-gallery' ); ?></p>
             <?php else : ?>
-                <table class="widefat striped">
-                    <thead>
-                        <tr>
-                            <th><?php echo esc_html__( 'Type', 'vector-youtube-gallery' ); ?></th>
-                            <th><?php echo esc_html__( 'Title', 'vector-youtube-gallery' ); ?></th>
-                            <th><?php echo esc_html__( 'YouTube ID', 'vector-youtube-gallery' ); ?></th>
-                            <th><?php echo esc_html__( 'Status', 'vector-youtube-gallery' ); ?></th>
-                            <th><?php echo esc_html__( 'Last Sync', 'vector-youtube-gallery' ); ?></th>
-                            <th><?php echo esc_html__( 'Actions', 'vector-youtube-gallery' ); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ( $sources as $s ) : ?>
+                <form method="post" id="vyg-sources-bulk-form">
+                    <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_sources_nonce' ); ?>
+                    <input type="hidden" name="vyg_op" value="bulk" />
+                    <div class="tablenav top">
+                        <div class="alignleft actions bulkactions">
+                            <label for="vyg-bulk-action" class="screen-reader-text"><?php esc_html_e( 'Select bulk action', 'vector-youtube-gallery' ); ?></label>
+                            <select name="vyg_bulk_action" id="vyg-bulk-action">
+                                <option value=""><?php esc_html_e( 'Bulk actions', 'vector-youtube-gallery' ); ?></option>
+                                <option value="pause"><?php esc_html_e( 'Pause', 'vector-youtube-gallery' ); ?></option>
+                                <option value="resume"><?php esc_html_e( 'Resume', 'vector-youtube-gallery' ); ?></option>
+                                <option value="sync"><?php esc_html_e( 'Sync now', 'vector-youtube-gallery' ); ?></option>
+                                <option value="delete"><?php esc_html_e( 'Delete', 'vector-youtube-gallery' ); ?></option>
+                            </select>
+                            <button type="submit" class="button action" id="vyg-bulk-apply">
+                                <?php esc_html_e( 'Apply', 'vector-youtube-gallery' ); ?>
+                            </button>
+                        </div>
+                        <div class="alignright">
+                            <span class="displaying-num"><?php
+                                /* translators: %s: source count */
+                                echo esc_html( sprintf( _n( '%s source', '%s sources', count( $sources ), 'vector-youtube-gallery' ), number_format_i18n( count( $sources ) ) ) );
+                            ?></span>
+                        </div>
+                        <br class="clear">
+                    </div>
+
+                    <table class="widefat striped">
+                        <thead>
                             <tr>
-                                <td><?php echo esc_html( (string) ( $s['source_type'] ?? '' ) ); ?></td>
-                                <td><?php echo esc_html( (string) ( $s['title'] ?? '' ) ); ?></td>
-                                <td><code><?php echo esc_html( (string) ( $s['youtube_channel_id'] ?? $s['youtube_playlist_id'] ?? $s['youtube_video_id'] ?? '' ) ); ?></code></td>
-                                <td><?php echo esc_html( (string) ( $s['status'] ?? 'unknown' ) ); ?></td>
-                                <td>
-                                    <?php
-                                    $last = $s['last_success_at'] ?? null;
-                                    echo $last ? esc_html( $last ) : '<em>' . esc_html__( 'never', 'vector-youtube-gallery' ) . '</em>';
-                                    ?>
+                                <td class="manage-column column-cb check-column">
+                                    <input type="checkbox" id="vyg-bulk-select-all" />
                                 </td>
-                                <td>
-                                    <form method="post" style="display:inline">
-                                        <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_sources_nonce' ); ?>
-                                        <input type="hidden" name="vyg_op" value="sync" />
-                                        <input type="hidden" name="source_id" value="<?php echo esc_attr( (string) ( $s['id'] ?? '' ) ); ?>" />
-                                        <button type="submit" class="button button-small">
-                                            <?php echo esc_html__( 'Sync now', 'vector-youtube-gallery' ); ?>
-                                        </button>
-                                    </form>
-                                    <form method="post" style="display:inline">
-                                        <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_sources_nonce' ); ?>
-                                        <input type="hidden" name="vyg_op" value="delete" />
-                                        <input type="hidden" name="source_id" value="<?php echo esc_attr( (string) ( $s['id'] ?? '' ) ); ?>" />
-                                        <button type="submit" class="button button-link-delete" onclick="return confirm('<?php echo esc_js( __( 'Delete this source?', 'vector-youtube-gallery' ) ); ?>');">
-                                            <?php echo esc_html__( 'Delete', 'vector-youtube-gallery' ); ?>
-                                        </button>
-                                    </form>
-                                </td>
+                                <th><?php echo esc_html__( 'Type', 'vector-youtube-gallery' ); ?></th>
+                                <th><?php echo esc_html__( 'Title', 'vector-youtube-gallery' ); ?></th>
+                                <th><?php echo esc_html__( 'YouTube ID', 'vector-youtube-gallery' ); ?></th>
+                                <th><?php echo esc_html__( 'Status', 'vector-youtube-gallery' ); ?></th>
+                                <th><?php echo esc_html__( 'Last Sync', 'vector-youtube-gallery' ); ?></th>
+                                <th><?php echo esc_html__( 'Actions', 'vector-youtube-gallery' ); ?></th>
                             </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <?php foreach ( $sources as $s ) : ?>
+                                <tr>
+                                    <th scope="row" class="check-column">
+                                        <input type="checkbox" class="vyg-bulk-cb" name="vyg_source_ids[]" value="<?php echo esc_attr( (string) ( $s['id'] ?? '' ) ); ?>" />
+                                    </th>
+                                    <td><?php echo esc_html( (string) ( $s['source_type'] ?? '' ) ); ?></td>
+                                    <td><?php echo esc_html( (string) ( $s['title'] ?? '' ) ); ?></td>
+                                    <td><code><?php echo esc_html( (string) ( $s['youtube_channel_id'] ?? $s['youtube_playlist_id'] ?? $s['youtube_video_id'] ?? '' ) ); ?></code></td>
+                                    <td>
+                                        <span class="vyg-status-badge vyg-status-badge--<?php echo esc_attr( (string) ( $s['status'] ?? 'unknown' ) ); ?>">
+                                            <?php echo esc_html( (string) ( $s['status'] ?? 'unknown' ) ); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php
+                                        $last = $s['last_success_at'] ?? null;
+                                        echo $last ? esc_html( $last ) : '<em>' . esc_html__( 'never', 'vector-youtube-gallery' ) . '</em>';
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <form method="post" style="display:inline">
+                                            <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_sources_nonce' ); ?>
+                                            <input type="hidden" name="vyg_op" value="sync" />
+                                            <input type="hidden" name="source_id" value="<?php echo esc_attr( (string) ( $s['id'] ?? '' ) ); ?>" />
+                                            <button type="submit" class="button button-small">
+                                                <?php echo esc_html__( 'Sync now', 'vector-youtube-gallery' ); ?>
+                                            </button>
+                                        </form>
+                                        <form method="post" style="display:inline">
+                                            <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_sources_nonce' ); ?>
+                                            <input type="hidden" name="vyg_op" value="delete" />
+                                            <input type="hidden" name="source_id" value="<?php echo esc_attr( (string) ( $s['id'] ?? '' ) ); ?>" />
+                                            <button type="submit" class="button button-link-delete" onclick="return confirm('<?php echo esc_js( __( 'Delete this source?', 'vector-youtube-gallery' ) ); ?>');">
+                                                <?php echo esc_html__( 'Delete', 'vector-youtube-gallery' ); ?>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </form>
+
+                <script>
+                (function() {
+                    var selectAll = document.getElementById('vyg-bulk-select-all');
+                    if (selectAll) {
+                        selectAll.addEventListener('change', function() {
+                            var boxes = document.querySelectorAll('.vyg-bulk-cb');
+                            for (var i = 0; i < boxes.length; i++) {
+                                boxes[i].checked = selectAll.checked;
+                            }
+                        });
+                    }
+                    var apply = document.getElementById('vyg-bulk-apply');
+                    if (apply) {
+                        apply.addEventListener('click', function(e) {
+                            var sel = document.getElementById('vyg-bulk-action');
+                            if (!sel.value) {
+                                e.preventDefault();
+                                alert('<?php echo esc_js( __( 'Please select a bulk action.', 'vector-youtube-gallery' ) ); ?>');
+                                return;
+                            }
+                            var any = document.querySelectorAll('.vyg-bulk-cb:checked').length > 0;
+                            if (!any) {
+                                e.preventDefault();
+                                alert('<?php echo esc_js( __( 'Please select at least one source.', 'vector-youtube-gallery' ) ); ?>');
+                                return;
+                            }
+                            if (sel.value === 'delete') {
+                                if (!confirm('<?php echo esc_js( __( 'Delete the selected sources? This cannot be undone.', 'vector-youtube-gallery' ) ); ?>')) {
+                                    e.preventDefault();
+                                }
+                            }
+                        });
+                    }
+                })();
+                </script>
             <?php endif; ?>
         </div>
         <?php
@@ -369,7 +490,25 @@ final class SourcesPage {
             'duplicate'       => array( __( 'A source with that YouTube ID already exists.', 'vector-youtube-gallery' ), 'warning' ),
             'rate_limited'    => array( __( 'Sync was queued too recently. Wait a few seconds.', 'vector-youtube-gallery' ), 'warning' ),
             'sync_invalid'    => array( __( 'Invalid sync request.', 'vector-youtube-gallery' ), 'error' ),
+            'bulk_invalid'    => array( __( 'Invalid bulk action.', 'vector-youtube-gallery' ), 'error' ),
+            'bulk_none'       => array( __( 'No sources selected for bulk action.', 'vector-youtube-gallery' ), 'warning' ),
         );
+
+        // Handle bulk_<action>:<count> notices.
+        if ( str_starts_with( $notice, 'bulk_' ) && str_contains( $notice, ':' ) && ! str_starts_with( $notice, 'bulk_invalid' ) && ! str_starts_with( $notice, 'bulk_none' ) ) {
+            [ $verb, $count ] = explode( ':', substr( $notice, 5 ), 2 ) + array( '', '0' );
+            $verb_labels = array(
+                'pause'  => __( 'paused', 'vector-youtube-gallery' ),
+                'resume' => __( 'resumed', 'vector-youtube-gallery' ),
+                'sync'   => __( 'queued for sync', 'vector-youtube-gallery' ),
+                'delete' => __( 'deleted', 'vector-youtube-gallery' ),
+            );
+            $verb_label = $verb_labels[ $verb ] ?? $verb;
+            /* translators: 1: count, 2: verb label */
+            $msg = sprintf( _n( '%1$d source %2$s.', '%1$d sources %2$s.', (int) $count, 'vector-youtube-gallery' ), (int) $count, $verb_label );
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
+            return;
+        }
 
         if ( str_starts_with( $notice, 'invalid:' ) ) {
             $kind = substr( $notice, strlen( 'invalid:' ) );

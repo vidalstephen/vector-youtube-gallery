@@ -10,10 +10,20 @@ declare(strict_types=1);
 namespace VectorYT\Gallery;
 
 use VectorYT\Gallery\Admin\AdminMenu;
+use VectorYT\Gallery\Admin\DashboardStats;
+use VectorYT\Gallery\Admin\DashboardWidget;
 use VectorYT\Gallery\Admin\DiagnosticsPage;
+use VectorYT\Gallery\Admin\FeedsPage;
+use VectorYT\Gallery\Admin\GdprHooks;
+use VectorYT\Gallery\Admin\ImporterExporter;
+use VectorYT\Gallery\Admin\PrivacyPage;
 use VectorYT\Gallery\Admin\SettingsPage;
 use VectorYT\Gallery\Admin\SourcesPage;
+use VectorYT\Gallery\Admin\SystemInfoPage;
 use VectorYT\Gallery\Admin\VideosPage;
+use VectorYT\Gallery\Compliance\DataRetentionManager;
+use VectorYT\Gallery\Compliance\DisconnectManager;
+use VectorYT\Gallery\Compliance\PrivacyPolicyGenerator;
 use VectorYT\Gallery\Database\Installer;
 use VectorYT\Gallery\Database\Migrator;
 use VectorYT\Gallery\Logging\Logger;
@@ -26,10 +36,12 @@ use VectorYT\Gallery\Render\ShortcodeRegistrar;
 use VectorYT\Gallery\Render\TemplateLoader;
 use VectorYT\Gallery\Render\VideoRenderer;
 use VectorYT\Gallery\Repository\PlaylistRepository;
+use VectorYT\Gallery\Repository\FeedRepository;
 use VectorYT\Gallery\Repository\PreviousStreamsRepository;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Repository\SyncLogRepository;
 use VectorYT\Gallery\Repository\VideoRepository;
+use VectorYT\Gallery\REST\AdminRestController;
 use VectorYT\Gallery\REST\FeedController;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
@@ -58,9 +70,7 @@ final class Plugin {
         if ( self::$container !== null ) {
             return;
         }
-
         if ( ! self::meets_requirements() ) {
-            add_action( 'admin_notices', array( self::class, 'maybe_render_requirements_notice' ) );
             return;
         }
 
@@ -106,6 +116,10 @@ final class Plugin {
         if ( ! wp_next_scheduled( 'vyg_cron_live_poll' ) ) {
             wp_schedule_event( time() + MINUTE_IN_SECONDS, 'vyg_five_minutes', 'vyg_cron_live_poll' );
         }
+        // Phase 6 — daily retention sweep.
+        if ( ! wp_next_scheduled( 'vyg_cron_data_retention' ) ) {
+            wp_schedule_event( time() + DAY_IN_SECONDS, 'daily', 'vyg_cron_data_retention' );
+        }
     }
 
     public static function on_deactivate(): void {
@@ -113,6 +127,7 @@ final class Plugin {
         wp_clear_scheduled_hook( 'vyg_cron_incremental_all' );
         wp_clear_scheduled_hook( 'vyg_cron_metadata_refresh' );
         wp_clear_scheduled_hook( 'vyg_cron_live_poll' );
+        wp_clear_scheduled_hook( 'vyg_cron_data_retention' );
     }
 
     private static function meets_requirements(): bool {
@@ -157,6 +172,7 @@ final class Plugin {
         $c->set( 'repo.playlists',static fn(): PlaylistRepository => new PlaylistRepository() );
         $c->set( 'repo.logs',     static fn(): SyncLogRepository => new SyncLogRepository() );
         $c->set( 'repo.previous', static fn(): PreviousStreamsRepository => new PreviousStreamsRepository() );
+        $c->set( 'repo.feeds',    static fn(): FeedRepository => new FeedRepository() );
 
         // --- YouTube API client (mock when VYG_USE_MOCK=1) ---
         $c->set(
@@ -278,7 +294,42 @@ final class Plugin {
                 $c->get( 'admin.settings' ),
                 $c->get( 'admin.sources' ),
                 $c->get( 'admin.diagnostics' ),
-                $c->get( 'admin.videos' )
+                $c->get( 'admin.videos' ),
+                $c->get( 'admin.system_info' ),
+                $c->get( 'admin.feeds' ),
+                $c->get( 'admin.privacy' ),
+                $c->get( 'logger' )
+            )
+        );
+
+        $c->set( 'admin.dashboard_stats', static fn(): DashboardStats => new DashboardStats() );
+        $c->set(
+            'admin.dashboard_widget',
+            static fn( Container $c ): DashboardWidget => new DashboardWidget( $c->get( 'admin.dashboard_stats' ) )
+        );
+        $c->set( 'admin.importer_exporter', static fn( Container $c ): ImporterExporter => new ImporterExporter( $c->get( 'settings' ) ) );
+        $c->set( 'admin.gdpr', static fn(): GdprHooks => new GdprHooks() );
+        $c->set( 'admin.system_info', static fn( Container $c ): SystemInfoPage => new SystemInfoPage( $c->get( 'admin.dashboard_stats' ) ) );
+        $c->set(
+            'admin.feeds',
+            static fn( Container $c ): FeedsPage => new FeedsPage(
+                $c->get( 'repo.feeds' ),
+                $c->get( 'repo.sources' ),
+                $c->get( 'logger' )
+            )
+        );
+        $c->set( 'compliance.retention', static fn( Container $c ): DataRetentionManager => new DataRetentionManager( $c->get( 'settings' ), $c->get( 'logger' ) ) );
+        $c->set( 'compliance.disconnect', static fn( Container $c ): DisconnectManager => new DisconnectManager( $c->get( 'secrets' ), $c->get( 'youtube.api' ), $c->get( 'logger' ) ) );
+        $c->set( 'compliance.policy', static fn(): PrivacyPolicyGenerator => new PrivacyPolicyGenerator() );
+        $c->set(
+            'admin.privacy',
+            static fn( Container $c ): PrivacyPage => new PrivacyPage(
+                $c->get( 'settings' ),
+                $c->get( 'compliance.retention' ),
+                $c->get( 'compliance.disconnect' ),
+                $c->get( 'compliance.policy' ),
+                $c->get( 'admin.importer_exporter' ),
+                $c->get( 'logger' )
             )
         );
 
@@ -302,7 +353,8 @@ final class Plugin {
             static fn( Container $c ): ShortcodeRegistrar => new ShortcodeRegistrar(
                 $c->get( 'render.renderer' ),
                 $c->get( 'render.feed' ),
-                $c->get( 'render.assets' )
+                $c->get( 'render.assets' ),
+                $c->get( 'repo.feeds' )
             )
         );
         $c->set(
@@ -313,6 +365,17 @@ final class Plugin {
             'rest.feed',
             static fn( Container $c ): FeedController => new FeedController(
                 $c->get( 'render.renderer' )
+            )
+        );
+        $c->set(
+            'rest.admin',
+            static fn( Container $c ): AdminRestController => new AdminRestController(
+                $c->get( 'repo.feeds' ),
+                $c->get( 'repo.sources' ),
+                $c->get( 'compliance.retention' ),
+                $c->get( 'compliance.disconnect' ),
+                $c->get( 'admin.importer_exporter' ),
+                $c->get( 'admin.dashboard_stats' )
             )
         );
     }
@@ -328,6 +391,18 @@ final class Plugin {
         $c = self::$container;
 
         add_action( 'admin_menu', static fn() => $c->get( 'admin.menu' )->register() );
+        add_action( 'wp_dashboard_setup', static function () use ( $c ): void {
+            if ( ! current_user_can( 'manage_options' ) ) {
+                return;
+            }
+            wp_add_dashboard_widget(
+                'vyg_dashboard_widget',
+                __( 'Vector YouTube Gallery — Status', 'vector-youtube-gallery' ),
+                array( $c->get( 'admin.dashboard_widget' ), 'render' )
+            );
+        } );
+        add_filter( 'wp_privacy_personal_data_exporters', static fn( array $exporters ) => $c->get( 'admin.gdpr' )->register_exporter( $exporters ) );
+        add_filter( 'wp_privacy_personal_data_erasers',   static fn( array $erasers )   => $c->get( 'admin.gdpr' )->register_eraser( $erasers ) );
 
         // Sync job hooks (called by WP-Cron).
         add_action( 'vyg_sync_source_initial',     static fn( $args ) => $c->get( 'sync.initial' )->handle( $args ) );
@@ -339,6 +414,29 @@ final class Plugin {
         $c->get( 'render.shortcode' )->register();
         $c->get( 'render.block' )->register();
         $c->get( 'rest.feed' )->register_routes();
+        $c->get( 'rest.admin' )->register_routes();
+
+        // Phase 6: settings export admin-post handler.
+        add_action( 'admin_post_vyg_export_settings', static function () use ( $c ): void {
+            if ( ! current_user_can( 'manage_options' ) ) {
+                wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
+            }
+            $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+            if ( ! wp_verify_nonce( $nonce, 'vyg_export_settings' ) ) {
+                wp_die( esc_html__( 'Nonce check failed.', 'vector-youtube-gallery' ) );
+            }
+            $json = $c->get( 'admin.importer_exporter' )->export_settings();
+            nocache_headers();
+            header( 'Content-Type: application/json; charset=utf-8' );
+            header( 'Content-Disposition: attachment; filename="vyg-settings-' . gmdate( 'Ymd-His' ) . '.json"' );
+            echo $json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON export
+            exit;
+        } );
+
+        // Phase 6: daily retention sweep via WP-Cron.
+        add_action( 'vyg_cron_data_retention', static function () use ( $c ): void {
+            $c->get( 'compliance.retention' )->run_sweep();
+        } );
 
         // Cron tick: queue incremental syncs for every active source.
         add_action( 'vyg_cron_incremental_all', static function () use ( $c ): void {

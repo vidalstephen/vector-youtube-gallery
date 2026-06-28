@@ -104,15 +104,25 @@ final class Renderer {
             'content_type' => (string) ( $args['content_type'] ?? '' ),
         ) );
 
-        // Layout context.
+        $wrapper_id = sanitize_text_field( (string) ( $args['wrapper_id'] ?? '' ) );
+        if ( '' === $wrapper_id ) {
+            $wrapper_id = 'vyg-feed-' . substr( md5( $source_uuid . '|' . $layout_slug ), 0, 8 );
+        }
+        $feed_uuid  = sanitize_text_field( (string) ( $args['feed_uuid'] ?? '' ) );
+        $custom_css = (string) ( $args['custom_css'] ?? '' );
+
         $ctx = array(
-            'source'   => $source,
-            'videos'   => $videos,
-            'renderer' => $this->video_renderer,
-            'attrs'    => array_merge( $args, array(
-                'layout'   => $layout_slug,
-                'offset'   => $offset,
-                'total'    => $total,
+            'source'     => $source,
+            'videos'     => $videos,
+            'renderer'   => $this->video_renderer,
+            'wrapper_id' => $wrapper_id,
+            'feed_uuid'  => $feed_uuid,
+            'attrs'      => array_merge( $args, array(
+                'layout'     => $layout_slug,
+                'offset'     => $offset,
+                'total'      => $total,
+                'wrapper_id' => $wrapper_id,
+                'feed_uuid'  => $feed_uuid,
             ) ),
         );
 
@@ -123,6 +133,63 @@ final class Renderer {
         } else {
             $layout = new $layout_class();
         }
-        return $layout->render( $ctx );
+        $layout_html = $layout->render( $ctx );
+
+        // Emit scoped custom CSS (Phase 6.3). The CSS is validated upstream
+        // (FeedRepository::sanitize) to strip tags; we additionally scope it
+        // to the wrapper_id selector so a feed cannot bleed styles into other
+        // galleries on the page.
+        $css_block = '';
+        if ( '' !== $custom_css ) {
+            // Defense in depth: even if upstream sanitization missed something,
+            // strip any remaining < / > characters before emitting into a
+            // <style> block. This prevents a stored XSS via custom CSS that
+            // somehow retained an HTML tag (e.g. via direct DB write).
+            $safe_css = str_replace( array( '<', '>' ), '', $custom_css );
+            $css_block = "<style id=\"vyg-custom-css-{$wrapper_id}\">\n"
+                . self::scope_css( $safe_css, "#{$wrapper_id}" )
+                . "\n</style>\n";
+        }
+
+        return $css_block . $layout_html;
+    }
+
+    /**
+     * Scope every selector in a CSS string to a parent selector prefix.
+     * Strategy: rewrite top-level selectors (those starting the rule, before
+     * the first "{") so they're prefixed with "#wrapper_id ". Media queries
+     * and @keyframes are passed through verbatim.
+     */
+    public static function scope_css( string $css, string $parent_selector ): string {
+        // Strip CDATA / comments defensively.
+        $css = preg_replace( '/\/\*.*?\*\//s', '', $css ) ?? $css;
+        // Tokenize: rules + at-rules.
+        $tokens = preg_split( '/([}{])/', $css, -1, PREG_SPLIT_DELIM_CAPTURE );
+        $out = '';
+        $depth = 0;
+        $buffer_selector = '';
+        foreach ( $tokens as $tok ) {
+            if ( '{' === $tok ) {
+                $selector = trim( $buffer_selector );
+                if ( str_starts_with( $selector, '@' ) ) {
+                    // @media, @supports, @keyframes — pass through unchanged.
+                    $out .= $selector . '{';
+                } else {
+                    $out .= $parent_selector . ' ' . $selector . ' {';
+                }
+                $buffer_selector = '';
+                ++$depth;
+            } elseif ( '}' === $tok ) {
+                $out .= '}';
+                --$depth;
+            } else {
+                if ( 0 === $depth ) {
+                    $buffer_selector .= $tok;
+                } else {
+                    $out .= $tok;
+                }
+            }
+        }
+        return trim( $out );
     }
 }

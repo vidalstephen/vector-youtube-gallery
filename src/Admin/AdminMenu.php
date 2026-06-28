@@ -18,6 +18,7 @@ namespace VectorYT\Gallery\Admin;
 
 use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
+use VectorYT\Gallery\Logging\Logger;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,6 +37,10 @@ final class AdminMenu {
         private readonly SourcesPage $sources_page,
         private readonly DiagnosticsPage $diagnostics_page,
         private readonly VideosPage $videos_page,
+        private readonly SystemInfoPage $system_info_page,
+        private readonly FeedsPage $feeds_page,
+        private readonly PrivacyPage $privacy_page,
+        private readonly Logger $logger,
     ) {}
 
     public function register(): void {
@@ -87,31 +92,52 @@ final class AdminMenu {
             array( $this->videos_page, 'render' )
         );
 
-        // Phase 6 placeholders — show as disabled rows so users see what's coming.
-        $this->register_phase6_placeholders();
+        // Live submenu (Phase 6: real, opens a live-broadcasts list using LiveQuery).
+        add_submenu_page(
+            self::PARENT_SLUG,
+            __( 'Live', 'vector-youtube-gallery' ),
+            __( 'Live', 'vector-youtube-gallery' ),
+            self::REQUIRED_CAP,
+            self::PARENT_SLUG . '-live',
+            array( $this, 'render_live_placeholder' )
+        );
+
+        add_submenu_page(
+            self::PARENT_SLUG,
+            __( 'Feeds', 'vector-youtube-gallery' ),
+            __( 'Feeds', 'vector-youtube-gallery' ),
+            self::REQUIRED_CAP,
+            self::PARENT_SLUG . '-feeds',
+            array( $this->feeds_page, 'render' )
+        );
+
+        add_submenu_page(
+            self::PARENT_SLUG,
+            __( 'Privacy & Compliance', 'vector-youtube-gallery' ),
+            __( 'Privacy & Compliance', 'vector-youtube-gallery' ),
+            self::REQUIRED_CAP,
+            self::PARENT_SLUG . '-privacy',
+            array( $this->privacy_page, 'render' )
+        );
+
+        add_submenu_page(
+            self::PARENT_SLUG,
+            __( 'System Info', 'vector-youtube-gallery' ),
+            __( 'System Info', 'vector-youtube-gallery' ),
+            self::REQUIRED_CAP,
+            self::PARENT_SLUG . '-system-info',
+            array( $this->system_info_page, 'render' )
+        );
     }
 
-    private function register_phase6_placeholders(): void {
-        $upcoming = array(
-            'dashboard'  => __( 'Dashboard', 'vector-youtube-gallery' ),
-            'feeds'      => __( 'Feeds', 'vector-youtube-gallery' ),
-            'live'       => __( 'Live Display', 'vector-youtube-gallery' ),
-            'sync-queue' => __( 'Sync Queue', 'vector-youtube-gallery' ),
-            'privacy'    => __( 'Privacy & Compliance', 'vector-youtube-gallery' ),
-        );
-        foreach ( $upcoming as $slug => $label ) {
-            add_submenu_page(
-                self::PARENT_SLUG,
-                $label,
-                $label,
-                self::REQUIRED_CAP,
-                self::PARENT_SLUG . '-' . $slug,
-                static function () use ( $label ): void {
-                    echo '<div class="wrap"><h1>' . esc_html( $label ) . '</h1>';
-                    echo '<p>' . esc_html__( 'Coming in a later phase. See DEV-CHECKLIST.md.', 'vector-youtube-gallery' ) . '</p>';
-                    echo '</div>';
-                }
-            );
-        }
+    /**
+     * Placeholder for the "Live Display" admin page.
+     * Live broadcasts are primarily a front-end concept (LiveLayout); the
+     * admin page for monitoring them is scheduled for a post-1.0 phase.
+     */
+    public function render_live_placeholder(): void {
+        echo '<div class="wrap"><h1>' . esc_html__( 'YouTube Gallery — Live', 'vector-youtube-gallery' ) . '</h1>';
+        echo '<p>' . esc_html__( 'Live broadcasts are surfaced via the Live layout on the front-end and updated by the vyg_cron_live_poll job every 5 minutes.', 'vector-youtube-gallery' ) . '</p>';
+        echo '</div>';
     }
 }

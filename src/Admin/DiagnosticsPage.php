@@ -1,9 +1,16 @@
 <?php
 /**
- * Diagnostics page — show API health, recent errors, quota usage.
+ * Diagnostics page — Phase 6 enriched.
  *
- * Phase 1: read-only view of SecretsRepository + QuotaTracker state.
- * Phase 2 will add sync_logs, sync_jobs status, last-sync timestamps.
+ * Sections:
+ *  1. API Status (mode, masked key, validated_at, last error)
+ *  2. Quota usage (24h + recent entries)
+ *  3. Sync job health (recent jobs, failures)
+ *  4. Source health (per-source last_success_at, status, staleness)
+ *  5. Stale-data warnings (videos not refreshed in >N days)
+ *  6. Recent errors from sync_logs (last 24h, deduped by message)
+ *
+ * Pure read — no side effects.
  *
  * @package VectorYT\Gallery\Admin
  */
@@ -20,6 +27,9 @@ defined( 'ABSPATH' ) || exit;
 
 final class DiagnosticsPage {
 
+    /** Days since last successful sync = "stale". */
+    private const STALE_DAYS = 7;
+
     public function __construct(
         private readonly SecretsRepository $secrets,
         private readonly ApiClientInterface $api,
@@ -31,29 +41,34 @@ final class DiagnosticsPage {
             wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
         }
 
-        $has_key       = $this->secrets->has_api_key();
+        $api_mode      = $this->api->mode();
         $masked        = SecretsRepository::mask( $this->secrets->get_api_key() );
         $validated_at  = $this->secrets->get_api_key_validated_at();
         $last_error    = $this->secrets->get_api_key_last_error();
-        $api_mode      = $this->api->mode();
         $used_24h      = $this->quota->last_24h_units();
         $remaining     = $this->quota->remaining_estimate();
         $entries       = array_slice( array_reverse( $this->quota->entries() ), 0, 20 );
+
+        $sync_jobs     = $this->recent_sync_jobs();
+        $source_health = $this->source_health();
+        $stale_videos  = $this->stale_videos();
+        $recent_errors = $this->recent_errors();
+
         ?>
         <div class="wrap">
             <h1><?php echo esc_html__( 'YouTube Gallery — Diagnostics', 'vector-youtube-gallery' ); ?></h1>
 
             <h2><?php echo esc_html__( 'API Status', 'vector-youtube-gallery' ); ?></h2>
-            <table class="widefat striped">
+            <table class="widefat striped" style="max-width: 900px;">
                 <tbody>
                     <tr>
-                        <th><?php echo esc_html__( 'Client mode', 'vector-youtube-gallery' ); ?></th>
+                        <th style="width: 220px;"><?php echo esc_html__( 'Client mode', 'vector-youtube-gallery' ); ?></th>
                         <td><code><?php echo esc_html( $api_mode ); ?></code></td>
                     </tr>
                     <tr>
                         <th><?php echo esc_html__( 'API key stored', 'vector-youtube-gallery' ); ?></th>
                         <td>
-                            <?php if ( $has_key ) : ?>
+                            <?php if ( $this->secrets->has_api_key() ) : ?>
                                 <code><?php echo esc_html( $masked ); ?></code>
                             <?php else : ?>
                                 <em><?php echo esc_html__( 'Not set', 'vector-youtube-gallery' ); ?></em>
@@ -69,7 +84,7 @@ final class DiagnosticsPage {
                         </td>
                     </tr>
                     <tr>
-                        <th><?php echo esc_html__( 'Last error', 'vector-youtube-gallery' ); ?></th>
+                        <th><?php echo esc_html__( 'Last API error', 'vector-youtube-gallery' ); ?></th>
                         <td>
                             <?php if ( null === $last_error ) : ?>
                                 <em><?php echo esc_html__( 'None', 'vector-youtube-gallery' ); ?></em>
@@ -83,13 +98,13 @@ final class DiagnosticsPage {
                 </tbody>
             </table>
 
-            <h2><?php echo esc_html__( 'Quota Usage (estimated)', 'vector-youtube-gallery' ); ?></h2>
+            <h2><?php echo esc_html__( 'Quota Usage (last 24h)', 'vector-youtube-gallery' ); ?></h2>
             <p>
                 <?php
                 echo esc_html(
                     sprintf(
                         /* translators: 1: used units, 2: remaining units */
-                        __( 'Used in last 24h: %1$d units. Remaining estimate: %2$d units (against default 10,000/day).', 'vector-youtube-gallery' ),
+                        __( 'Used: %1$d units. Remaining estimate: %2$d units (against default 10,000/day).', 'vector-youtube-gallery' ),
                         $used_24h,
                         $remaining
                     )
@@ -97,7 +112,7 @@ final class DiagnosticsPage {
                 ?>
             </p>
             <?php if ( count( $entries ) > 0 ) : ?>
-                <table class="widefat striped">
+                <table class="widefat striped" style="max-width: 900px;">
                     <thead>
                         <tr>
                             <th><?php echo esc_html__( 'Time', 'vector-youtube-gallery' ); ?></th>
@@ -119,10 +134,191 @@ final class DiagnosticsPage {
                 </table>
             <?php endif; ?>
 
-            <p class="description" style="margin-top:1em">
-                <?php echo esc_html__( 'Phase 1 diagnostics. Phase 2 will add sync job state, last-sync timestamps, and detailed per-source health.', 'vector-youtube-gallery' ); ?>
-            </p>
+            <h2><?php echo esc_html__( 'Sync job health', 'vector-youtube-gallery' ); ?></h2>
+            <?php if ( empty( $sync_jobs ) ) : ?>
+                <p><em><?php echo esc_html__( 'No sync jobs yet.', 'vector-youtube-gallery' ); ?></em></p>
+            <?php else : ?>
+                <table class="widefat striped" style="max-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th><?php echo esc_html__( 'ID', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Type', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Source', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Status', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Attempts', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Last update', 'vector-youtube-gallery' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( $sync_jobs as $job ) :
+                            $status  = (string) ( $job['status'] ?? '' );
+                            $color   = 'done' === $status ? '#0a0' : ( 'failed' === $status ? '#d00' : ( 'running' === $status ? '#f0a020' : '#777' ) );
+                            $updated = $job['completed_at'] ?? $job['started_at'] ?? '';
+                        ?>
+                            <tr>
+                                <td>#<?php echo (int) $job['id']; ?></td>
+                                <td><?php echo esc_html( (string) ( $job['job_type'] ?? '' ) ); ?></td>
+                                <td><?php echo ! empty( $job['source_id'] ) ? '#' . (int) $job['source_id'] : '—'; ?></td>
+                                <td><span style="color: <?php echo esc_attr( $color ); ?>; font-weight: 600;"><?php echo esc_html( $status ); ?></span></td>
+                                <td><?php echo (int) ( $job['attempts'] ?? 0 ); ?></td>
+                                <td><?php echo $updated ? esc_html( (string) $updated ) : '—'; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
+            <h2><?php echo esc_html__( 'Source health', 'vector-youtube-gallery' ); ?></h2>
+            <?php if ( empty( $source_health ) ) : ?>
+                <p><em><?php echo esc_html__( 'No sources configured.', 'vector-youtube-gallery' ); ?></em></p>
+            <?php else : ?>
+                <table class="widefat striped" style="max-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th><?php echo esc_html__( 'Source', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Status', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Last success', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Last error', 'vector-youtube-gallery' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( $source_health as $s ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( (string) ( $s['title'] ?? '(untitled)' ) ); ?> <code style="color:#777;"><?php echo esc_html( (string) ( $s['source_type'] ?? '' ) ); ?></code></td>
+                                <td><span class="vyg-status-badge vyg-status-badge--<?php echo esc_attr( (string) ( $s['status'] ?? 'unknown' ) ); ?>"><?php echo esc_html( (string) ( $s['status'] ?? 'unknown' ) ); ?></span></td>
+                                <td>
+                                    <?php
+                                    $last = $s['last_success_at'] ?? null;
+                                    if ( $last ) {
+                                        $ago = human_time_diff( strtotime( (string) $last ) );
+                                        echo esc_html( (string) $last ) . ' <span style="color:#777;">(' . esc_html( $ago ) . ' ago)</span>';
+                                    } else {
+                                        echo '<em style="color:#d00;">' . esc_html__( 'never', 'vector-youtube-gallery' ) . '</em>';
+                                    }
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php if ( ! empty( $s['last_error'] ) ) : ?>
+                                        <code><?php echo esc_html( wp_json_encode( $s['last_error'] ) ); ?></code>
+                                    <?php else : ?>
+                                        <span style="color:#0a0;">✓</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
+            <h2><?php echo esc_html__( 'Stale videos (>' . (string) self::STALE_DAYS . ' days since refresh)', 'vector-youtube-gallery' ); ?></h2>
+            <?php if ( $stale_videos === 0 ) : ?>
+                <p><span style="color:#0a0;">✓</span> <?php echo esc_html__( 'No stale data.', 'vector-youtube-gallery' ); ?></p>
+            <?php else : ?>
+                <p style="color:#f0a020;">⚠ <?php
+                    echo esc_html(
+                        sprintf(
+                            /* translators: %d: count */
+                            _n( '%d video has not been refreshed in over %d days.', '%d videos have not been refreshed in over %d days.', $stale_videos, 'vector-youtube-gallery' ),
+                            $stale_videos,
+                            self::STALE_DAYS
+                        )
+                    );
+                ?></p>
+            <?php endif; ?>
+
+            <h2><?php echo esc_html__( 'Recent errors (24h)', 'vector-youtube-gallery' ); ?></h2>
+            <?php if ( empty( $recent_errors ) ) : ?>
+                <p><span style="color:#0a0;">✓</span> <?php echo esc_html__( 'No errors logged in the last 24 hours.', 'vector-youtube-gallery' ); ?></p>
+            <?php else : ?>
+                <table class="widefat striped" style="max-width: 900px;">
+                    <thead>
+                        <tr>
+                            <th><?php echo esc_html__( 'Time', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Source', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Message', 'vector-youtube-gallery' ); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( $recent_errors as $err ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( (string) ( $err['created_at'] ?? '' ) ); ?></td>
+                                <td><?php echo ! empty( $err['source_id'] ) ? '#' . (int) $err['source_id'] : '—'; ?></td>
+                                <td><code><?php echo esc_html( (string) ( $err['message'] ?? '' ) ); ?></code></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         </div>
         <?php
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    private function recent_sync_jobs(): array {
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            "SELECT id, job_type, source_id, status, attempts, started_at, completed_at
+             FROM {$wpdb->prefix}vyg_sync_jobs
+             ORDER BY id DESC LIMIT 10",
+            ARRAY_A
+        );
+        return is_array( $rows ) ? $rows : array();
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    private function source_health(): array {
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            "SELECT id, source_type, title, status, last_success_at, last_error
+             FROM {$wpdb->prefix}vyg_sources
+             ORDER BY id DESC",
+            ARRAY_A
+        );
+        if ( ! is_array( $rows ) ) {
+            return array();
+        }
+        return array_map( static function ( array $row ): array {
+            $err = $row['last_error'] ?? null;
+            if ( is_string( $err ) && $err !== '' ) {
+                $decoded = json_decode( $err, true );
+                if ( is_array( $decoded ) ) {
+                    $row['last_error'] = $decoded;
+                }
+            } elseif ( $err === '' || $err === null ) {
+                $row['last_error'] = null;
+            }
+            return $row;
+        }, $rows );
+    }
+
+    private function stale_videos(): int {
+        global $wpdb;
+        $threshold = gmdate( 'Y-m-d H:i:s', time() - ( self::STALE_DAYS * DAY_IN_SECONDS ) );
+        return (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->prefix}vyg_videos
+             WHERE availability_status='available'
+               AND ( last_refreshed_at IS NULL OR last_refreshed_at < %s )",
+            $threshold
+        ) );
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    private function recent_errors(): array {
+        global $wpdb;
+        $threshold = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS );
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT created_at, source_id, message
+             FROM {$wpdb->prefix}vyg_sync_logs
+             WHERE level='error' AND created_at >= %s
+             ORDER BY id DESC LIMIT 20",
+            $threshold
+        ), ARRAY_A );
+        return is_array( $rows ) ? $rows : array();
     }
 }

@@ -125,9 +125,31 @@ final class SettingsPage {
     ): void {
         $notice = isset( $_GET['vyg_notice'] ) ? sanitize_key( wp_unslash( $_GET['vyg_notice'] ) ) : '';
         $s = $this->settings->all();
+        $current_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'api';
+        $valid_tabs = array( 'api', 'classification', 'sync', 'live', 'privacy' );
+        if ( ! in_array( $current_tab, $valid_tabs, true ) ) {
+            $current_tab = 'api';
+        }
         ?>
         <div class="wrap">
             <h1><?php echo esc_html__( 'YouTube Gallery — Settings', 'vector-youtube-gallery' ); ?></h1>
+
+            <nav class="nav-tab-wrapper">
+                <?php
+                $tab_labels = array(
+                    'api'           => __( 'API', 'vector-youtube-gallery' ),
+                    'classification'=> __( 'Classification', 'vector-youtube-gallery' ),
+                    'sync'          => __( 'Sync', 'vector-youtube-gallery' ),
+                    'live'          => __( 'Live', 'vector-youtube-gallery' ),
+                    'privacy'       => __( 'Privacy & Data', 'vector-youtube-gallery' ),
+                );
+                foreach ( $tab_labels as $slug => $label ) :
+                    $url = add_query_arg( array( 'page' => AdminMenu::PARENT_SLUG . '-settings', 'tab' => $slug ), admin_url( 'admin.php' ) );
+                    $cls = $slug === $current_tab ? 'nav-tab nav-tab-active' : 'nav-tab';
+                    ?>
+                    <a href="<?php echo esc_url( $url ); ?>" class="<?php echo esc_attr( $cls ); ?>"><?php echo esc_html( $label ); ?></a>
+                <?php endforeach; ?>
+            </nav>
 
             <?php if ( 'settings_saved' === $notice ) : ?>
                 <div class="notice notice-success is-dismissible">
@@ -157,6 +179,7 @@ final class SettingsPage {
                 ?>
             </p>
 
+            <?php if ( 'api' === $current_tab ) : ?>
             <form method="post" action="">
                 <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_settings_nonce' ); ?>
 
@@ -250,78 +273,105 @@ final class SettingsPage {
                     </tbody>
                 </table>
             </form>
+            <?php endif; // end api tab ?>
 
-            <hr style="margin: 2em 0;" />
-
-            <h2><?php echo esc_html__( 'Classification & Sync Settings', 'vector-youtube-gallery' ); ?></h2>
+            <?php if ( 'classification' === $current_tab || 'sync' === $current_tab || 'live' === $current_tab || 'privacy' === $current_tab ) : ?>
             <form method="post" action="">
                 <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_settings_nonce' ); ?>
                 <input type="hidden" name="vyg_op" value="save_settings" />
+                <input type="hidden" name="vyg_settings_tab" value="<?php echo esc_attr( $current_tab ); ?>" />
+
+                <?php if ( 'classification' === $current_tab ) : ?>
+                <h2><?php echo esc_html__( 'Classification Thresholds', 'vector-youtube-gallery' ); ?></h2>
+                <p class="description"><?php esc_html_e( 'Adjust how videos are categorized. Manual overrides take precedence over auto-classification.', 'vector-youtube-gallery' ); ?></p>
                 <table class="form-table" role="presentation">
                     <tr>
-                        <th scope="row">
-                            <label for="shorts_max_duration_seconds"><?php echo esc_html__( 'Shorts max duration (seconds)', 'vector-youtube-gallery' ); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" min="1" max="300" id="shorts_max_duration_seconds" name="shorts_max_duration_seconds" value="<?php echo esc_attr( (string) $s['shorts_max_duration_seconds'] ); ?>" class="small-text" />
-                            <p class="description"><?php echo esc_html__( 'YouTube policy is 60s. Anything at or below this duration is automatically promoted to short_confirmed if vertical.', 'vector-youtube-gallery' ); ?></p>
-                        </td>
+                        <th scope="row"><label for="shorts_max_duration_seconds"><?php echo esc_html__( 'Shorts max duration (seconds)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="shorts_max_duration_seconds" id="shorts_max_duration_seconds" type="number" min="30" max="180" value="<?php echo (int) $s['shorts_max_duration_seconds']; ?>" class="small-text" /></td>
                     </tr>
                     <tr>
-                        <th scope="row">
-                            <label for="short_candidate_max_duration"><?php echo esc_html__( 'Short candidate max duration (seconds)', 'vector-youtube-gallery' ); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" min="60" max="600" id="short_candidate_max_duration" name="short_candidate_max_duration" value="<?php echo esc_attr( (string) $s['short_candidate_max_duration'] ); ?>" class="small-text" />
-                            <p class="description"><?php echo esc_html__( 'Upper bound for ambiguous short videos (default 180s = 3 min).', 'vector-youtube-gallery' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="live_poll_interval_seconds"><?php echo esc_html__( 'Live active poll interval (seconds)', 'vector-youtube-gallery' ); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" min="60" max="3600" id="live_poll_interval_seconds" name="live_poll_interval_seconds" value="<?php echo esc_attr( (string) $s['live_poll_interval_seconds'] ); ?>" class="small-text" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="data_refresh_interval_days"><?php echo esc_html__( 'Data refresh interval (days)', 'vector-youtube-gallery' ); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" min="1" max="90" id="data_refresh_interval_days" name="data_refresh_interval_days" value="<?php echo esc_attr( (string) $s['data_refresh_interval_days'] ); ?>" class="small-text" />
-                            <p class="description"><?php echo esc_html__( 'YouTube API Services policy recommends refreshing at least every 30 days.', 'vector-youtube-gallery' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="data_ttl_days"><?php echo esc_html__( 'Data TTL (days)', 'vector-youtube-gallery' ); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" min="30" max="365" id="data_ttl_days" name="data_ttl_days" value="<?php echo esc_attr( (string) $s['data_ttl_days'] ); ?>" class="small-text" />
-                            <p class="description"><?php echo esc_html__( 'Stop serving stale data after this many days without successful refresh.', 'vector-youtube-gallery' ); ?></p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="data_hard_delete_after_days"><?php echo esc_html__( 'Hard delete after (days)', 'vector-youtube-gallery' ); ?></label>
-                        </th>
-                        <td>
-                            <input type="number" min="180" max="730" id="data_hard_delete_after_days" name="data_hard_delete_after_days" value="<?php echo esc_attr( (string) $s['data_hard_delete_after_days'] ); ?>" class="small-text" />
-                            <p class="description"><?php echo esc_html__( 'YouTube policy recommends permanently deleting data 365 days after the source video is deleted.', 'vector-youtube-gallery' ); ?></p>
-                        </td>
+                        <th scope="row"><label for="short_candidate_max_duration"><?php echo esc_html__( 'Short candidate max duration (seconds)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="short_candidate_max_duration" id="short_candidate_max_duration" type="number" min="60" max="600" value="<?php echo (int) $s['short_candidate_max_duration']; ?>" class="small-text" /></td>
                     </tr>
                     <tr>
                         <th scope="row"><?php echo esc_html__( 'Auto-classify', 'vector-youtube-gallery' ); ?></th>
                         <td>
-                            <label><input type="checkbox" name="auto_classify_shorts" value="1" <?php checked( $s['auto_classify_shorts'] ); ?> /> <?php echo esc_html__( 'Shorts (duration + tag)', 'vector-youtube-gallery' ); ?></label><br>
-                            <label><input type="checkbox" name="auto_classify_live" value="1" <?php checked( $s['auto_classify_live'] ); ?> /> <?php echo esc_html__( 'Live (liveBroadcastContent + liveStreamingDetails)', 'vector-youtube-gallery' ); ?></label><br>
-                            <label><input type="checkbox" name="respect_manual_overrides" value="1" <?php checked( $s['respect_manual_overrides'] ); ?> /> <?php echo esc_html__( 'Respect manual overrides', 'vector-youtube-gallery' ); ?></label>
+                            <label><input type="checkbox" name="auto_classify_shorts" value="1" <?php checked( ! empty( $s['auto_classify_shorts'] ) ); ?> /> <?php esc_html_e( 'Shorts', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="auto_classify_live" value="1" <?php checked( ! empty( $s['auto_classify_live'] ) ); ?> /> <?php esc_html_e( 'Live broadcasts', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="respect_manual_overrides" value="1" <?php checked( ! empty( $s['respect_manual_overrides'] ) ); ?> /> <?php esc_html_e( 'Respect manual operator overrides', 'vector-youtube-gallery' ); ?></label>
                         </td>
                     </tr>
                 </table>
-                <?php submit_button( __( 'Save Settings', 'vector-youtube-gallery' ) ); ?>
+                <?php elseif ( 'sync' === $current_tab ) : ?>
+                <h2><?php echo esc_html__( 'Sync Intervals & Retention', 'vector-youtube-gallery' ); ?></h2>
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row"><label for="default_sync_interval_seconds"><?php echo esc_html__( 'Default source sync interval (seconds)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="default_sync_interval_seconds" id="default_sync_interval_seconds" type="number" min="3600" max="2592000" value="<?php echo (int) $s['default_sync_interval_seconds']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="metadata_refresh_batch_size"><?php echo esc_html__( 'Metadata refresh batch size', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="metadata_refresh_batch_size" id="metadata_refresh_batch_size" type="number" min="10" max="500" value="<?php echo (int) $s['metadata_refresh_batch_size']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="data_refresh_interval_days"><?php echo esc_html__( 'Data refresh interval (days)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="data_refresh_interval_days" id="data_refresh_interval_days" type="number" min="1" max="90" value="<?php echo (int) $s['data_refresh_interval_days']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="data_ttl_days"><?php echo esc_html__( 'Data TTL (days)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="data_ttl_days" id="data_ttl_days" type="number" min="30" max="365" value="<?php echo (int) $s['data_ttl_days']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="data_hard_delete_after_days"><?php echo esc_html__( 'Hard-delete data after (days)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="data_hard_delete_after_days" id="data_hard_delete_after_days" type="number" min="90" max="1825" value="<?php echo (int) $s['data_hard_delete_after_days']; ?>" /></td>
+                    </tr>
+                </table>
+                <?php elseif ( 'live' === $current_tab ) : ?>
+                <h2><?php echo esc_html__( 'Live Broadcast Polling', 'vector-youtube-gallery' ); ?></h2>
+                <p class="description"><?php esc_html_e( 'Live broadcasts require frequent metadata refresh. YouTube quota usage scales with these intervals.', 'vector-youtube-gallery' ); ?></p>
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row"><label for="live_poll_interval_seconds"><?php echo esc_html__( 'Active live poll interval (seconds)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="live_poll_interval_seconds" id="live_poll_interval_seconds" type="number" min="60" max="3600" value="<?php echo (int) $s['live_poll_interval_seconds']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="live_upcoming_poll_seconds"><?php echo esc_html_e( $s['live_upcoming_poll_seconds'] ); ?></label></th>
+                        <td><input name="live_upcoming_poll_seconds" id="live_upcoming_poll_seconds" type="number" min="300" max="7200" value="<?php echo (int) $s['live_upcoming_poll_seconds']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="live_recently_ended_seconds"><?php echo esc_html__( 'Recently-ended poll interval (seconds)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="live_recently_ended_seconds" id="live_recently_ended_seconds" type="number" min="300" max="7200" value="<?php echo (int) $s['live_recently_ended_seconds']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="live_previous_streams_retention"><?php echo esc_html__( 'Previous streams kept per source', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="live_previous_streams_retention" id="live_previous_streams_retention" type="number" min="5" max="500" value="<?php echo (int) $s['live_previous_streams_retention']; ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="live_replay_retention_days"><?php echo esc_html__( 'Replay data retention (days)', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="live_replay_retention_days" id="live_replay_retention_days" type="number" min="1" max="365" value="<?php echo (int) $s['live_replay_retention_days']; ?>" /></td>
+                    </tr>
+                </table>
+                <?php elseif ( 'privacy' === $current_tab ) : ?>
+                <h2><?php echo esc_html__( 'Privacy & Data Export', 'vector-youtube-gallery' ); ?></h2>
+                <p><?php esc_html_e( 'YouTube IDs and metadata stored by this plugin are public information from the YouTube Data API. No personal data is collected unless you associate videos with user accounts.', 'vector-youtube-gallery' ); ?></p>
+                <h3><?php esc_html_e( 'GDPR Tools', 'vector-youtube-gallery' ); ?></h3>
+                <p><?php esc_html_e( 'WordPress exposes per-user "Export Personal Data" and "Erase Personal Data" tools under Tools → Export/Privacy. The plugin registers filters that scan vyg_* tables for any rows containing a WP user ID. Use WP\'s built-in tools to invoke them.', 'vector-youtube-gallery' ); ?></p>
+                <p>
+                    <a href="<?php echo esc_url( admin_url( 'tools.php?page=export_personal_data' ) ); ?>" class="button"><?php esc_html_e( 'WP Export Personal Data', 'vector-youtube-gallery' ); ?></a>
+                    <a href="<?php echo esc_url( admin_url( 'tools.php?page=remove_personal_data' ) ); ?>" class="button"><?php esc_html_e( 'WP Erase Personal Data', 'vector-youtube-gallery' ); ?></a>
+                </p>
+                <h3><?php esc_html_e( 'Settings import/export', 'vector-youtube-gallery' ); ?></h3>
+                <p>
+                    <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'page' => AdminMenu::PARENT_SLUG . '-settings', 'vyg_op' => 'export_settings' ), admin_url( 'admin.php' ) ), 'vyg_export_settings' ) ); ?>" class="button"><?php esc_html_e( 'Download settings (JSON)', 'vector-youtube-gallery' ); ?></a>
+                    <a href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'page' => AdminMenu::PARENT_SLUG . '-settings', 'vyg_op' => 'export_sources' ), admin_url( 'admin.php' ) ), 'vyg_export_sources' ) ); ?>" class="button"><?php esc_html_e( 'Download sources (JSON)', 'vector-youtube-gallery' ); ?></a>
+                </p>
+                <?php endif; ?>
+
+                <?php if ( 'privacy' !== $current_tab ) : ?>
+                    <?php submit_button( __( 'Save changes', 'vector-youtube-gallery' ) ); ?>
+                <?php endif; ?>
             </form>
+            <?php endif; ?>
         </div>
         <?php
     }
