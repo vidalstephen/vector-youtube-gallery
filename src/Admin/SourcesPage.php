@@ -50,7 +50,12 @@ final class SourcesPage {
         }
 
         if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
+            // WP 7.0 update banner can echo HTML before our handler runs,
+            // breaking wp_safe_redirect() with "headers already sent". Capture
+            // any stray output so the redirect works cleanly.
+            ob_start();
             $this->maybe_handle_post();
+            ob_end_clean();
         }
 
         $sources = $this->sources->list( array( 'limit' => 200 ) );
