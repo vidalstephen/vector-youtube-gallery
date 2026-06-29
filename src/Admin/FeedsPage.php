@@ -34,6 +34,7 @@ final class FeedsPage {
         private readonly FeedRepository $feeds,
         private readonly SourceRepository $sources,
         private readonly Logger $logger,
+        private readonly ?\VectorYT\Gallery\Repository\ImportLogRepository $import_log = null,
     ) {}
 
     public function render(): void {
@@ -397,6 +398,7 @@ final class FeedsPage {
                 <div id="vyg-import-feeds-result" style="display:none; margin-top:1em;"></div>
             </div>
         </div>
+        <?php $this->render_recent_audit(); ?>
         <script>
         (function () {
             var restRoot = <?php echo wp_json_encode( $rest_root ); ?>;
@@ -492,6 +494,72 @@ final class FeedsPage {
             }
         })();
         </script>
+        <?php
+    }
+
+    /**
+     * Phase 8.6: render the recent import/export audit table beneath the
+     * import/export form. Pulls the latest 25 rows from the audit log.
+     */
+    private function render_recent_audit(): void {
+        if ( null === $this->import_log ) {
+            return;
+        }
+        $rows = $this->import_log->list_recent( array(
+            'per_page' => 25,
+            'kind'     => 'feeds',
+        ) );
+        if ( empty( $rows ) ) {
+            return;
+        }
+        ?>
+        <h3 style="margin-top:1.5em;"><?php esc_html_e( 'Recent imports / exports', 'vector-youtube-gallery' ); ?></h3>
+        <table class="widefat striped" id="vyg-import-audit">
+            <thead>
+                <tr>
+                    <th><?php esc_html_e( 'When', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Op', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'User', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Bytes', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Conflict', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'OK', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Imported', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Replaced', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Duplicated', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Skipped', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Errors', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Warnings', 'vector-youtube-gallery' ); ?></th>
+                    <th><?php esc_html_e( 'Duration', 'vector-youtube-gallery' ); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ( $rows as $row ) :
+                $ok_class = ! empty( $row['ok'] ) ? 'vyg-audit-ok' : 'vyg-audit-fail';
+                $bytes    = (int) ( $row['payload_bytes'] ?? 0 );
+                $user     = (string) ( $row['user_login'] ?? '' );
+                if ( '' === $user ) {
+                    $user = '—';
+                }
+                $when     = (string) ( $row['created_at'] ?? '' );
+            ?>
+                <tr class="<?php echo esc_attr( $ok_class ); ?>">
+                    <td><?php echo esc_html( $when ); ?></td>
+                    <td><?php echo esc_html( (string) ( $row['op'] ?? '' ) ); ?></td>
+                    <td><?php echo esc_html( $user ); ?></td>
+                    <td><?php echo esc_html( (string) number_format_i18n( $bytes ) ); ?></td>
+                    <td><?php echo esc_html( (string) ( $row['conflict_mode'] ?? '—' ) ); ?></td>
+                    <td><?php echo ! empty( $row['ok'] ) ? '✓' : '✗'; ?></td>
+                    <td><?php echo (int) ( $row['imported_count'] ?? 0 ); ?></td>
+                    <td><?php echo (int) ( $row['replaced_count'] ?? 0 ); ?></td>
+                    <td><?php echo (int) ( $row['duplicated_count'] ?? 0 ); ?></td>
+                    <td><?php echo (int) ( $row['skipped_count'] ?? 0 ); ?></td>
+                    <td><?php echo (int) ( $row['errors_count'] ?? 0 ); ?></td>
+                    <td><?php echo (int) ( $row['warnings_count'] ?? 0 ); ?></td>
+                    <td><?php echo esc_html( (string) ( $row['duration_ms'] ?? 0 ) . ' ms' ); ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
         <?php
     }
 

@@ -14,6 +14,7 @@ namespace VectorYT\Gallery\Tests\Unit\Admin;
 use PHPUnit\Framework\TestCase;
 use VectorYT\Gallery\Admin\ImporterExporter;
 use VectorYT\Gallery\Repository\FeedRepository;
+use VectorYT\Gallery\Repository\ImportLogRepository;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 
@@ -351,6 +352,117 @@ final class ImporterExporterTest extends TestCase {
         $this->assertNotEmpty( $result['warnings'] );
         $this->assertStringContainsString( 'orphaned-uuid', $result['warnings'][0] );
     }
+
+    // ----- Phase 8.6: large-payload + audit + malformed-JSON hardening -----
+
+    public function test_import_feeds_rejects_oversized_payload(): void {
+        $big = str_repeat( 'x', ImporterExporter::DEFAULT_IMPORT_SIZE_CAP_BYTES + 1 );
+        $result = $this->ie->import_feeds( $big );
+        $this->assertFalse( $result['ok'] );
+        $this->assertNotEmpty( $result['errors'] );
+        $this->assertStringContainsString( 'too large', $result['errors'][0] );
+    }
+
+    public function test_import_feeds_rejects_empty_payload(): void {
+        $result = $this->ie->import_feeds( '' );
+        $this->assertFalse( $result['ok'] );
+        $this->assertStringContainsString( 'Empty', $result['errors'][0] );
+    }
+
+    public function test_import_feeds_reports_specific_json_error(): void {
+        // Truncated JSON: closing brace missing.
+        $result = $this->ie->import_feeds( '{"kind":"feeds","version":"0.2.0","feeds":[' );
+        $this->assertFalse( $result['ok'] );
+        $this->assertStringContainsString( 'Invalid JSON', $result['errors'][0] );
+        // Should not just be a generic 'Invalid JSON.' — should mention the specific error.
+        $this->assertStringNotContainsString( 'Invalid JSON.', $result['errors'][0] );
+    }
+
+    public function test_import_feeds_rejects_top_level_non_object(): void {
+        // JSON string at top level (not an object/array).
+        $result = $this->ie->import_feeds( '"hello"' );
+        $this->assertFalse( $result['ok'] );
+        $this->assertStringContainsString( 'not an object', $result['errors'][0] );
+    }
+
+    public function test_audit_emits_row_on_success(): void {
+        $log    = new FakeImportLogRepository();
+        $ie     = new ImporterExporter(
+            new SettingsRepository(),
+            new FakeFeedRepository(),
+            new FakeSourceRepository(),
+            $log
+        );
+        $json = wp_json_encode( array(
+            'version' => '0.2.0',
+            'kind'    => 'feeds',
+            'feeds'   => array(
+                array(
+                    'feed_uuid'           => 'audited-feed-uuid',
+                    'name'                => 'Audited Feed',
+                    'layout'              => 'grid',
+                    'status'              => 'published',
+                    'source_config_json'  => array(),
+                    'display_config_json' => array(),
+                    'filter_config_json'  => array(),
+                    'sort_config_json'    => array(),
+                    'custom_css'          => '',
+                ),
+            ),
+        ) );
+        $result = $ie->import_feeds( $json, array( 'conflict' => 'skip' ) );
+        $this->assertTrue( $result['ok'] );
+        $this->assertCount( 1, $log->rows );
+        $row = $log->rows[0];
+        $this->assertSame( 'import', $row['op'] );
+        $this->assertSame( 'feeds', $row['kind'] );
+        $this->assertSame( 'skip', $row['conflict_mode'] );
+        $this->assertSame( 1, $row['imported_count'] );
+        $this->assertNotEmpty( $row['payload_hash'] );
+        $this->assertSame( strlen( $json ), $row['payload_bytes'] );
+        $this->assertGreaterThanOrEqual( 0, $row['duration_ms'] );
+    }
+
+    public function test_audit_emits_row_on_error(): void {
+        $log = new FakeImportLogRepository();
+        $ie  = new ImporterExporter(
+            new SettingsRepository(),
+            new FakeFeedRepository(),
+            new FakeSourceRepository(),
+            $log
+        );
+        $ie->import_feeds( 'not json' );
+        $this->assertCount( 1, $log->rows );
+        $this->assertSame( 0, $log->rows[0]['ok'] );
+        $this->assertSame( 1, $log->rows[0]['errors_count'] );
+    }
+
+    public function test_audit_emits_row_on_export(): void {
+        $log = new FakeImportLogRepository();
+        $ie  = new ImporterExporter(
+            new SettingsRepository(),
+            new FakeFeedRepository(),
+            new FakeSourceRepository(),
+            $log
+        );
+        $ie->export_feeds( array(
+            array(
+                'feed_uuid'           => 'exported-feed',
+                'name'                => 'Exported',
+                'feed_type'           => 'source',
+                'layout'              => 'grid',
+                'status'              => 'published',
+                'source_config_json'  => '{}',
+                'display_config_json' => '{}',
+                'filter_config_json'  => '{}',
+                'sort_config_json'    => '{}',
+                'custom_css'          => '',
+            ),
+        ) );
+        $this->assertCount( 1, $log->rows );
+        $this->assertSame( 'export', $log->rows[0]['op'] );
+        $this->assertSame( 1, $log->rows[0]['ok'] );
+    }
 }
 
 /**
@@ -390,6 +502,165 @@ final class FakeFeedRepository extends FeedRepository {
             }
         }
         return false;
+    }
+
+    // ----- Phase 8.6: large-payload + audit + malformed-JSON hardening -----
+
+    public function test_import_feeds_rejects_oversized_payload(): void {
+        $big = str_repeat( 'x', ImporterExporter::DEFAULT_IMPORT_SIZE_CAP_BYTES + 1 );
+        $result = $this->ie->import_feeds( $big );
+        $this->assertFalse( $result['ok'] );
+        $this->assertNotEmpty( $result['errors'] );
+        $this->assertStringContainsString( 'too large', $result['errors'][0] );
+    }
+
+    public function test_import_feeds_rejects_empty_payload(): void {
+        $result = $this->ie->import_feeds( '' );
+        $this->assertFalse( $result['ok'] );
+        $this->assertStringContainsString( 'Empty', $result['errors'][0] );
+    }
+
+    public function test_import_feeds_reports_specific_json_error(): void {
+        // Truncated JSON: closing brace missing.
+        $result = $this->ie->import_feeds( '{"kind":"feeds","version":"0.2.0","feeds":[' );
+        $this->assertFalse( $result['ok'] );
+        $this->assertStringContainsString( 'Invalid JSON', $result['errors'][0] );
+        // Should not just be a generic 'Invalid JSON.' — should mention the specific error.
+        $this->assertStringNotContainsString( 'Invalid JSON.', $result['errors'][0] );
+    }
+
+    public function test_import_feeds_rejects_top_level_non_object(): void {
+        // JSON string at top level (not an object/array).
+        $result = $this->ie->import_feeds( '"hello"' );
+        $this->assertFalse( $result['ok'] );
+        $this->assertStringContainsString( 'not an object', $result['errors'][0] );
+    }
+
+    public function test_audit_emits_row_on_success(): void {
+        $log    = new FakeImportLogRepository();
+        $ie     = new ImporterExporter(
+            new SettingsRepository(),
+            new FakeFeedRepository(),
+            new FakeSourceRepository(),
+            $log
+        );
+        $json = wp_json_encode( array(
+            'version' => '0.2.0',
+            'kind'    => 'feeds',
+            'feeds'   => array(
+                array(
+                    'feed_uuid'           => 'audited-feed-uuid',
+                    'name'                => 'Audited Feed',
+                    'layout'              => 'grid',
+                    'status'              => 'published',
+                    'source_config_json'  => array(),
+                    'display_config_json' => array(),
+                    'filter_config_json'  => array(),
+                    'sort_config_json'    => array(),
+                    'custom_css'          => '',
+                ),
+            ),
+        ) );
+        $result = $ie->import_feeds( $json, array( 'conflict' => 'skip' ) );
+        $this->assertTrue( $result['ok'] );
+        $this->assertCount( 1, $log->rows );
+        $row = $log->rows[0];
+        $this->assertSame( 'import', $row['op'] );
+        $this->assertSame( 'feeds', $row['kind'] );
+        $this->assertSame( 'skip', $row['conflict_mode'] );
+        $this->assertSame( 1, $row['imported_count'] );
+        $this->assertNotEmpty( $row['payload_hash'] );
+        $this->assertSame( strlen( $json ), $row['payload_bytes'] );
+        $this->assertGreaterThanOrEqual( 0, $row['duration_ms'] );
+    }
+
+    public function test_audit_emits_row_on_error(): void {
+        $log = new FakeImportLogRepository();
+        $ie  = new ImporterExporter(
+            new SettingsRepository(),
+            new FakeFeedRepository(),
+            new FakeSourceRepository(),
+            $log
+        );
+        $ie->import_feeds( 'not json' );
+        $this->assertCount( 1, $log->rows );
+        $this->assertSame( 0, $log->rows[0]['ok'] );
+        $this->assertSame( 1, $log->rows[0]['errors_count'] );
+    }
+
+    public function test_audit_emits_row_on_export(): void {
+        $log = new FakeImportLogRepository();
+        $ie  = new ImporterExporter(
+            new SettingsRepository(),
+            new FakeFeedRepository(),
+            new FakeSourceRepository(),
+            $log
+        );
+        $ie->export_feeds( array(
+            array(
+                'feed_uuid'           => 'exported-feed',
+                'name'                => 'Exported',
+                'feed_type'           => 'source',
+                'layout'              => 'grid',
+                'status'              => 'published',
+                'source_config_json'  => '{}',
+                'display_config_json' => '{}',
+                'filter_config_json'  => '{}',
+                'sort_config_json'    => '{}',
+                'custom_css'          => '',
+            ),
+        ) );
+        $this->assertCount( 1, $log->rows );
+        $this->assertSame( 'export', $log->rows[0]['op'] );
+        $this->assertSame( 1, $log->rows[0]['ok'] );
+    }
+}
+
+/**
+ * Stub ImportLogRepository — in-memory replacement for tests.
+ */
+final class FakeImportLogRepository extends ImportLogRepository {
+    /** @var array<int,array<string,mixed>> */
+    public array $rows = array();
+    private int $next_id = 0;
+
+    public function record( array $data ): int {
+        $this->next_id++;
+        // Mirror the format coercion the real repository performs on insert.
+        $data['id']                = $this->next_id;
+        $data['ok']                = ! empty( $data['ok'] ) ? 1 : 0;
+        $data['force']             = ! empty( $data['force'] ) ? 1 : 0;
+        $data['payload_bytes']     = (int) ( $data['payload_bytes'] ?? 0 );
+        $data['imported_count']    = (int) ( $data['imported_count'] ?? 0 );
+        $data['replaced_count']    = (int) ( $data['replaced_count'] ?? 0 );
+        $data['duplicated_count']  = (int) ( $data['duplicated_count'] ?? 0 );
+        $data['skipped_count']     = (int) ( $data['skipped_count'] ?? 0 );
+        $data['errors_count']      = count( (array) ( $data['errors'] ?? array() ) );
+        $data['warnings_count']    = count( (array) ( $data['warnings'] ?? array() ) );
+        $data['duration_ms']       = (int) ( $data['duration_ms'] ?? 0 );
+        $this->rows[] = $data;
+        return $this->next_id;
+    }
+
+    public function find( int $id ): ?array {
+        foreach ( $this->rows as $row ) {
+            if ( (int) ( $row['id'] ?? 0 ) === $id ) {
+                return $row;
+            }
+        }
+        return null;
+    }
+
+    public function list_recent( array $filters = array() ): array {
+        return array_reverse( $this->rows );
+    }
+
+    public function count( array $filters = array() ): int {
+        return count( $this->rows );
+    }
+
+    public function prune_older_than( int $retention_days ): int {
+        return 0;
     }
 }
 

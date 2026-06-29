@@ -73,6 +73,7 @@ final class BrainHelpers {
         Functions\when( 'is_readable' )->alias( static fn( string $path ): bool => file_exists( $path ) );
         Functions\when( 'wp_create_nonce' )->alias( static fn( string $action ): string => 'nonce-' . md5( $action ) );
         Functions\when( 'current_time' )->alias( static fn( string $type = 'mysql', ?int $gmt = null ): string => gmdate( 'Y-m-d H:i:s' ) );
+        Functions\when( 'wp_get_current_user' )->alias( static fn() => (object) array( 'ID' => 0, 'user_login' => '' ) );
         Functions\when( 'wp_generate_uuid4' )->alias( static fn(): string => sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
             random_int( 0, 0xffff ), random_int( 0, 0xffff ),

@@ -49,6 +49,7 @@ final class AdminRestController {
         private readonly DisconnectManager $disconnector,
         private readonly ImporterExporter $importer_exporter,
         private readonly DashboardStats $stats,
+        private readonly ?\VectorYT\Gallery\Repository\ImportLogRepository $import_log = null,
     ) {}
 
     public function register_routes(): void {
@@ -117,6 +118,18 @@ final class AdminRestController {
         register_rest_route( self::NAMESPACE_V1, '/admin/feeds/import', array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array( $this, 'import_feeds' ),
+            'permission_callback' => $this->cap_and_nonce( $cap ),
+        ) );
+
+        // Phase 8.6: list recent import/export audit rows.
+        register_rest_route( self::NAMESPACE_V1, '/admin/import-log', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'list_import_log' ),
+            'permission_callback' => $this->cap_and_nonce( $cap ),
+        ) );
+        register_rest_route( self::NAMESPACE_V1, '/admin/import-log/(?P<id>\d+)', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'get_import_log' ),
             'permission_callback' => $this->cap_and_nonce( $cap ),
         ) );
     }
@@ -267,12 +280,90 @@ final class AdminRestController {
             $conflict = 'skip';
         }
 
+        // Phase 8.6: enforce size cap with HTTP 413 before we touch the parser.
+        $size_cap = (int) apply_filters(
+            'vyg_import_size_cap_bytes',
+            ImporterExporter::DEFAULT_IMPORT_SIZE_CAP_BYTES
+        );
+        if ( strlen( $json ) > $size_cap ) {
+            return new WP_REST_Response( array(
+                'ok'      => false,
+                'errors'  => array( sprintf(
+                    'Payload too large: %d bytes (cap %d bytes).',
+                    strlen( $json ),
+                    $size_cap
+                ) ),
+                'warnings'=> array(),
+            ), 413 );
+        }
+
         $result = $this->importer_exporter->import_feeds( $json, array(
-            'conflict' => $conflict,
-            'force'    => $force,
+            'conflict'       => $conflict,
+            'force'          => $force,
+            'size_cap_bytes' => $size_cap,
         ) );
         $status = empty( $result['errors'] ) ? 200 : 400;
         return new WP_REST_Response( $result, $status );
+    }
+
+    /**
+     * Phase 8.6: list recent import/export audit rows.
+     *
+     * Query params: per_page (default 25, max 200), page (default 1),
+     *               op (import|export), kind (feeds).
+     *
+     * Returns: { items: [...], page, per_page, total }.
+     */
+    public function list_import_log( WP_REST_Request $request ): WP_REST_Response {
+        if ( null === $this->import_log ) {
+            return new WP_REST_Response( array(
+                'items'    => array(),
+                'page'     => 1,
+                'per_page' => 25,
+                'total'    => 0,
+            ), 200 );
+        }
+
+        $per_page = (int) $request->get_param( 'per_page' );
+        if ( $per_page < 1 ) {
+            $per_page = 25;
+        }
+        $page = max( 1, (int) $request->get_param( 'page' ) );
+        $op   = (string) $request->get_param( 'op' );
+
+        $items = $this->import_log->list_recent( array(
+            'per_page' => $per_page,
+            'page'     => $page,
+            'op'       => $op,
+            'kind'     => 'feeds',
+        ) );
+        $total = $this->import_log->count( array( 'op' => $op, 'kind' => 'feeds' ) );
+
+        return new WP_REST_Response( array(
+            'items'    => $items,
+            'page'     => $page,
+            'per_page' => $per_page,
+            'total'    => $total,
+        ), 200 );
+    }
+
+    /**
+     * Phase 8.6: get a single audit row by id.
+     */
+    public function get_import_log( WP_REST_Request $request ): WP_REST_Response {
+        if ( null === $this->import_log ) {
+            return new WP_REST_Response( array( 'error' => 'ImportLogRepository unavailable.' ), 503 );
+        }
+        $id  = (int) $request->get_param( 'id' );
+        $row = $this->import_log->find( $id );
+        if ( null === $row ) {
+            return new WP_REST_Response( array( 'error' => 'Audit row not found.' ), 404 );
+        }
+        // Decode stored errors/warnings JSON for human-readable response.
+        $row['errors_list']   = json_decode( (string) ( $row['errors_json']   ?? '[]' ), true ) ?: array();
+        $row['warnings_list'] = json_decode( (string) ( $row['warnings_json'] ?? '[]' ), true ) ?: array();
+        unset( $row['errors_json'], $row['warnings_json'] );
+        return new WP_REST_Response( $row, 200 );
     }
 
     /**

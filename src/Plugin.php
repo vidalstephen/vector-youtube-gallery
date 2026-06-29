@@ -177,6 +177,7 @@ final class Plugin {
         $c->set( 'repo.logs',     static fn(): SyncLogRepository => new SyncLogRepository() );
         $c->set( 'repo.previous', static fn(): PreviousStreamsRepository => new PreviousStreamsRepository() );
         $c->set( 'repo.feeds',    static fn(): FeedRepository => new FeedRepository() );
+        $c->set( 'repo.import_log', static fn(): \VectorYT\Gallery\Repository\ImportLogRepository => new \VectorYT\Gallery\Repository\ImportLogRepository() );
 
         // --- YouTube API client (mock when VYG_USE_MOCK=1) ---
         $c->set( 'youtube.oauth_api', static fn( Container $c ): OAuthClient => new OAuthClient( $c->get( 'oauth.tokens' ), $c->get( 'logger' ) ) );
@@ -333,7 +334,8 @@ final class Plugin {
         $c->set( 'admin.importer_exporter', static fn( Container $c ): ImporterExporter => new ImporterExporter(
             $c->get( 'settings' ),
             $c->get( 'repo.feeds' ),
-            $c->get( 'repo.sources' )
+            $c->get( 'repo.sources' ),
+            $c->get( 'repo.import_log' )
         ) );
         $c->set( 'admin.gdpr', static fn(): GdprHooks => new GdprHooks() );
         $c->set( 'admin.system_info', static fn( Container $c ): SystemInfoPage => new SystemInfoPage( $c->get( 'admin.dashboard_stats' ) ) );
@@ -342,7 +344,8 @@ final class Plugin {
             static fn( Container $c ): FeedsPage => new FeedsPage(
                 $c->get( 'repo.feeds' ),
                 $c->get( 'repo.sources' ),
-                $c->get( 'logger' )
+                $c->get( 'logger' ),
+                $c->get( 'repo.import_log' )
             )
         );
         $c->set( 'compliance.retention', static fn( Container $c ): DataRetentionManager => new DataRetentionManager( $c->get( 'settings' ), $c->get( 'logger' ) ) );
@@ -402,7 +405,8 @@ final class Plugin {
                 $c->get( 'compliance.retention' ),
                 $c->get( 'compliance.disconnect' ),
                 $c->get( 'admin.importer_exporter' ),
-                $c->get( 'admin.dashboard_stats' )
+                $c->get( 'admin.dashboard_stats' ),
+                $c->get( 'repo.import_log' )
             )
         );
     }

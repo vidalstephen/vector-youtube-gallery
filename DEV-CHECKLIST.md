@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.5 (feed import/export JSON with conflict handling)
-- Last completed item: 8.5 — added `POST /wp-json/vyg/v1/admin/feeds/export` and `POST /wp-json/vyg/v1/admin/feeds/import` REST routes; `ImporterExporter::export_feeds()` produces JSON with `{version: 0.2.0, kind: feeds, plugin_version, exported_at, feeds: [...], source_refs: { uuid → {channel_id, playlist_id, video_id, title} }}`; `ImporterExporter::import_feeds()` parses JSON, validates kind/version, runs source remap by YouTube ID, and resolves collisions with `replace`/`duplicate`/`skip` modes; new FeedsPage import/export UI section ("Export all feeds" → JSON download; "Import" form with paste-JSON textarea + conflict dropdown + force-version checkbox + result notice); export endpoint returns `{json, count, kind, version}`; import endpoint returns `{ok, imported, replaced, duplicated, skipped, errors, warnings}`; 400 on error, 200 on success; 403 for non-admin (cap_and_nonce); unit tests cover all 9 export/import paths (round-trip, version, conflict, source remap, malformed JSON, wrong kind, invalid conflict); live verification: export returns 2 feeds with 2 source_refs; re-import with skip → 2 skipped, 0 imported; re-import with duplicate → 2 duplicated, 0 warnings (sources matched by YouTube ID); re-import with replace + name tweak → feed name correctly overwritten; garbage JSON → 400 + "Invalid JSON"; 210 tests / 569 assertions / 0 failures
-- Next actionable item: Phase 8.6 — admin REST endpoints for feed import/export with nonce + capability checks (already implemented as part of 8.5; the remaining work is large-payload and malformed-JSON hardening, plus audit log of import operations)
+- Current sub-phase: 8.6 (admin REST hardening: size cap + audit log + malformed-JSON tolerance)
+- Last completed item: 8.6 — added `vyg_import_log` table (22 cols, audit of every import/export operation), `ImportLogRepository` (record/list/find/count/prune), audit emission on both `export_feeds()` and `import_feeds()` paths with payload SHA-256 + size + duration + user identity; `ImporterExporter::DEFAULT_IMPORT_SIZE_CAP_BYTES = 5 MB` enforced both inside the importer (defensive) and at the REST boundary (HTTP 413); new `GET /admin/import-log` paginated list endpoint and `GET /admin/import-log/<id>` single-record endpoint; `ImporterExporter::import_feeds` now distinguishes empty payload / top-level-non-object / truncated JSON with specific error messages via `json_error_message()` helper; renamed reserved-word columns `force`/`ok` to `force_flag`/`ok_flag`; `ImportLogRepository` un-finaled for test stubbing; 7 new unit tests covering oversized payload rejection, empty payload rejection, specific JSON error reporting, top-level-non-object rejection, audit emission on success/error/export; live verified end-to-end: 3 audit rows written (export 200, re-import-skip 200, garbage 400), list endpoint returns total=3 with correct counts, get-by-id endpoint decodes errors/warnings JSON, oversized payload returns 413; 217 tests / 595 assertions / 0 failures
+- Next actionable item: Phase 8.7 — Unit tests for mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (most are already covered by 8.1/8.5/8.6 tests; remaining: large round-trip integration test + FeedRepository::decode_config coverage + per-feed source-remap tests)
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -201,8 +201,8 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 - [x] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
 - [x] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
 - [x] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
-- [ ] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling
-- [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration + import/export round-trip covered)
+- [x] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling; audit log of import operations
+- [~] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration + import/export round-trip + 8.6 hardening covered; remaining: large round-trip integration test + FeedRepository::decode_config coverage + per-feed source-remap tests)
 - [ ] 8.8 E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render
 
 ### Phase 9 — Advanced Layouts + Front-end Polish
@@ -1098,3 +1098,48 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Routes listed in `wp-json/vyg/v1/` index.
 - Result:
   - Phase 8.5 complete. Feeds can be exported as JSON and imported on another site with conflict handling and source remap. Live verified end-to-end on the dev instance.
+
+### 2026-06-29 — Phase 8.6 admin REST hardening: size cap + audit log + malformed-JSON tolerance
+
+- Trigger: "next phase"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Current phase: Phase 8
+- Selected task: 8.6 — admin REST endpoints hardening (large payloads, malformed-JSON tolerance, audit log of import operations)
+- Work completed:
+  - **Schema:** added `vyg_import_log` table with 22 columns: id, op (import|export), kind (feeds), user_id, user_login, payload_bytes, payload_hash (truncated SHA-256), conflict_mode, force_flag, ok_flag, imported_count, replaced_count, duplicated_count, skipped_count, errors_count, warnings_count, errors_json, warnings_json, duration_ms, ip, user_agent, created_at. Renamed reserved-word columns (`force` → `force_flag`, `ok` → `ok_flag`) to avoid MySQL syntax conflicts during dbDelta.
+  - **Repository:** new `src/Repository/ImportLogRepository.php` with `record(array)`, `find(int)`, `list_recent(array)`, `count(array)`, `prune_older_than(int)` methods.
+  - **Audit emission:** `ImporterExporter::export_feeds()` and `import_feeds()` both emit one audit row per call. Audit captures: user identity (id + login), payload bytes, payload SHA-256 hash, conflict mode, force flag, ok flag, all four counts, error/warning counts, duration_ms, IP, user-agent, created_at. Audit failures are caught and swallowed (never break the operation).
+  - **Size cap:** `ImporterExporter::DEFAULT_IMPORT_SIZE_CAP_BYTES = 5 MB`. Enforced both inside `import_feeds()` (defensive, returns "Payload too large" error) AND at the REST boundary (HTTP 413). Operators can override the cap with `apply_filters('vyg_import_size_cap_bytes', $cap)`.
+  - **Malformed-JSON tolerance:** added `ImporterExporter::json_error_message(int $code)` translating all JSON error codes to friendly messages. `import_feeds()` now distinguishes:
+    - empty payload → "Empty payload."
+    - top-level non-object → "Invalid JSON: top-level value is not an object."
+    - truncated/syntactically broken → "Invalid JSON: <specific error>."
+    - oversized → "Payload too large: X bytes (cap Y bytes)."
+  - **Empty-feeds-array** is now a valid no-op (was an error in 8.5).
+  - **Audit log REST endpoints:**
+    - `GET /admin/import-log` — paginated list (per_page, page, op, kind filters); returns `{items, page, per_page, total}`.
+    - `GET /admin/import-log/<id>` — single record with errors_list/warnings_list decoded from JSON.
+    - Both gated by `manage_options` + `wp_rest` nonce.
+  - **FeedsPage UI:** new "Recent imports / exports" table beneath the import/export form, listing the latest 25 audit rows with formatted columns (when, op, user, bytes, conflict, ok, imported/replaced/duplicated/skipped counts, errors/warnings counts, duration_ms).
+- Files changed:
+  - `src/Database/Schema.php` (+50 lines: import_log() method + table registration)
+  - `src/Repository/ImportLogRepository.php` (new, 175 lines)
+  - `src/Admin/ImporterExporter.php` (+130 lines: size cap enforcement, defensive JSON decode, audit() + audit_export() + json_error_message() helpers, integration of audit at every early-return branch)
+  - `src/REST/AdminRestController.php` (+75 lines: 413 size check, list_import_log(), get_import_log() endpoints)
+  - `src/Admin/FeedsPage.php` (+70 lines: render_recent_audit() method)
+  - `src/Plugin.php` (+5 lines: container binding for repo.import_log + pass-through to importer/exporter/rest/feeds)
+  - `tests/Support/BrainHelpers.php` (+2 lines: wp_get_current_user stub)
+  - `tests/unit/Admin/ImporterExporterTest.php` (+160 lines: 7 new tests + FakeImportLogRepository stub)
+- Tests run:
+  - `php -l` on all touched files inside `vyg-wp` → no syntax errors
+  - `make test-unit` → **217 tests, 595 assertions, 0 failures, 0 errors** (up from 210/569)
+- Live verification:
+  - Migration ran via `Installer::install()` → `dbDelta: vyg_import_log changes=1`, table_exists=yes, column_count=22.
+  - Export 200 → audit row written (op=export, ok_flag=1, bytes=1399, hash=ca9689efda0cad67).
+  - Re-import with skip → 200 → audit row (op=import, ok_flag=1, imported=0, bytes=3428, hash=4bf53ff0dba78746).
+  - Garbage import → 400 → audit row (op=import, ok_flag=0, errors=1, bytes=8, hash=7ccfa1fbf3940e6f).
+  - `GET /admin/import-log` → 200, total=3, items=3.
+  - `GET /admin/import-log/<id>` → 200, errors_list=1 (the garbage import's "Invalid JSON" message).
+  - 6 MB payload → 413 with "Payload too large: 6000016 bytes (cap 5242880 bytes)."
+- Result:
+  - Phase 8.6 complete. Admin REST endpoints now have hard size caps, malformed-JSON tolerance with specific error messages, and a full audit trail of every operation. Operators can audit past imports/exports via REST or the FeedsPage "Recent imports" table.

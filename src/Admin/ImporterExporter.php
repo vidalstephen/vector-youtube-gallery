@@ -25,6 +25,7 @@ declare(strict_types=1);
 namespace VectorYT\Gallery\Admin;
 
 use VectorYT\Gallery\Repository\FeedRepository;
+use VectorYT\Gallery\Repository\ImportLogRepository;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 
@@ -44,10 +45,19 @@ final class ImporterExporter {
     public const CONFLICT_DUPLICATE = 'duplicate';
     public const CONFLICT_SKIP      = 'skip';
 
+    /**
+     * Phase 8.6: hard cap on import payload size in bytes. Default 5 MB.
+     * Anything larger is rejected with a clear error rather than silently
+     * truncated. Operators can raise this through `vyg_import_size_cap_bytes`
+     * filter (read by the REST controller, not directly here).
+     */
+    public const DEFAULT_IMPORT_SIZE_CAP_BYTES = 5_242_880;
+
     public function __construct(
         private readonly SettingsRepository $settings,
         private readonly ?FeedRepository $feeds = null,
         private readonly ?SourceRepository $sources = null,
+        private readonly ?ImportLogRepository $import_log = null,
     ) {}
 
     /**
@@ -121,6 +131,7 @@ final class ImporterExporter {
      * @param array<int,array<string,mixed>> $feeds
      */
     public function export_feeds( array $feeds ): string {
+        $start_ms = (int) ( microtime( true ) * 1000 );
         // Build a lookup map: source_uuid → YouTube identifiers. The import
         // side uses this to remap UUIDs across sites when operators move
         // feeds between installs.
@@ -158,7 +169,7 @@ final class ImporterExporter {
                 'updated_at'          => (string) ( $f['updated_at'] ?? '' ),
             );
         }
-        return wp_json_encode( array(
+        $json = wp_json_encode( array(
             'version'        => self::EXPORT_VERSION,
             'kind'           => 'feeds',
             'plugin_version' => defined( 'VYG_VERSION' ) ? VYG_VERSION : '0.0.0',
@@ -166,6 +177,45 @@ final class ImporterExporter {
             'feeds'          => $records,
             'source_refs'    => $source_refs,
         ), JSON_PRETTY_PRINT );
+        $this->audit_export( $records, $start_ms );
+        return $json;
+    }
+
+    /**
+     * Phase 8.6: emit an audit row for an export. Side-effect only.
+     */
+    private function audit_export( array $records, int $start_ms ): void {
+        if ( null === $this->import_log ) {
+            return;
+        }
+        $payload = wp_json_encode( array( 'kind' => 'feeds', 'feeds' => $records ) );
+        $user_obj = function_exists( 'wp_get_current_user' ) ? wp_get_current_user() : null;
+        $user_id  = ( is_object( $user_obj ) && ! empty( $user_obj->ID ) ) ? (int) $user_obj->ID : null;
+        $user_log = ( is_object( $user_obj ) && ! empty( $user_obj->ID ) ) ? (string) $user_obj->user_login : null;
+        try {
+            $this->import_log->record( array(
+                'op'             => 'export',
+                'kind'           => 'feeds',
+                'user_id'        => $user_id,
+                'user_login'     => $user_log,
+                'payload_bytes'  => strlen( (string) $payload ),
+                'payload_hash'   => '' !== $payload ? hash( 'sha256', (string) $payload ) : '',
+                'conflict_mode'  => null,
+                'force'          => false,
+                'ok'             => true,
+                'imported_count' => 0,
+                'replaced_count' => 0,
+                'duplicated_count' => 0,
+                'skipped_count'  => 0,
+                'errors'         => array(),
+                'warnings'       => array(),
+                'duration_ms'    => max( 0, (int) ( microtime( true ) * 1000 ) - $start_ms ),
+                'ip'             => isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '',
+                'user_agent'     => isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '',
+            ) );
+        } catch ( \Throwable $e ) {
+            // Audit failures must never break the operation; swallow.
+        }
     }
 
     /**
@@ -211,18 +261,51 @@ final class ImporterExporter {
             'warnings'  => array(),
         );
 
+        $start_ms = (int) ( microtime( true ) * 1000 );
+
         if ( ! in_array( $conflict, array( self::CONFLICT_REPLACE, self::CONFLICT_DUPLICATE, self::CONFLICT_SKIP ), true ) ) {
             $result['errors'][] = 'Invalid conflict mode: ' . $conflict;
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
             return $result;
         }
 
+        // Phase 8.6: enforce size cap defensively. The REST controller already
+        // rejects oversized payloads with HTTP 413, but we re-check here so
+        // any direct caller (CLI, tests, future API) is also protected.
+        $size_cap = (int) ( $options['size_cap_bytes'] ?? self::DEFAULT_IMPORT_SIZE_CAP_BYTES );
+        if ( '' === $json ) {
+            $result['errors'][] = 'Empty payload.';
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
+            return $result;
+        }
+        if ( strlen( $json ) > $size_cap ) {
+            $result['errors'][] = sprintf(
+                'Payload too large: %d bytes (cap %d bytes).',
+                strlen( $json ),
+                $size_cap
+            );
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
+            return $result;
+        }
+
+        // Phase 8.6: defensive JSON decode with a friendly error on truncation.
         $data = json_decode( $json, true );
+        if ( null === $data && JSON_ERROR_NONE !== json_last_error() ) {
+            $result['errors'][] = sprintf(
+                'Invalid JSON: %s.',
+                $this->json_error_message( json_last_error() )
+            );
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
+            return $result;
+        }
         if ( ! is_array( $data ) ) {
-            $result['errors'][] = 'Invalid JSON.';
+            $result['errors'][] = 'Invalid JSON: top-level value is not an object.';
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
             return $result;
         }
         if ( ( $data['kind'] ?? '' ) !== 'feeds' ) {
             $result['errors'][] = 'JSON kind is not "feeds".';
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
             return $result;
         }
 
@@ -237,6 +320,7 @@ final class ImporterExporter {
                     $export_version,
                     self::EXPORT_VERSION
                 );
+                $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
                 return $result;
             }
         }
@@ -245,11 +329,13 @@ final class ImporterExporter {
         if ( empty( $records ) ) {
             // Empty export is a valid no-op; success when no errors are present.
             $result['ok'] = empty( $result['errors'] );
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
             return $result;
         }
 
         if ( null === $this->feeds ) {
             $result['errors'][] = 'FeedRepository unavailable in this context.';
+            $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
             return $result;
         }
 
@@ -325,6 +411,10 @@ final class ImporterExporter {
 
         $result['ok'] = ( $result['imported'] + $result['replaced'] + $result['duplicated'] ) > 0
             || ( $result['skipped'] > 0 && empty( $result['errors'] ) );
+
+        // Phase 8.6: emit a single audit row covering this whole operation.
+        $this->audit( 'import', $json, $conflict, $force, $result, $start_ms );
+
         return $result;
     }
 
@@ -418,5 +508,68 @@ final class ImporterExporter {
             }
         }
         return $cache;
+    }
+
+    /**
+     * Phase 8.6: emit a single audit row.
+     *
+     * No-op when the ImportLogRepository is not bound (e.g. unit tests that
+     * don't care about the audit trail). Failures in the audit write are
+     * silently swallowed to keep the user-facing flow working.
+     *
+     * @param array<string,mixed> $result
+     */
+    private function audit( string $op, string $payload, string $conflict_mode, bool $force, array $result, int $start_ms ): void {
+        if ( null === $this->import_log ) {
+            return;
+        }
+        $user_obj = function_exists( 'wp_get_current_user' ) ? wp_get_current_user() : null;
+        $user_id  = ( is_object( $user_obj ) && ! empty( $user_obj->ID ) ) ? (int) $user_obj->ID : null;
+        $user_log = ( is_object( $user_obj ) && ! empty( $user_obj->ID ) ) ? (string) $user_obj->user_login : null;
+        try {
+            $this->import_log->record( array(
+                'op'               => $op,
+                'kind'             => 'feeds',
+                'user_id'          => $user_id,
+                'user_login'       => $user_log,
+                'payload_bytes'    => strlen( $payload ),
+                'payload_hash'     => '' !== $payload ? hash( 'sha256', $payload ) : '',
+                'conflict_mode'    => $conflict_mode,
+                'force'            => $force,
+                'ok'               => ! empty( $result['ok'] ),
+                'imported_count'   => (int) ( $result['imported']   ?? 0 ),
+                'replaced_count'   => (int) ( $result['replaced']   ?? 0 ),
+                'duplicated_count' => (int) ( $result['duplicated'] ?? 0 ),
+                'skipped_count'    => (int) ( $result['skipped']    ?? 0 ),
+                'errors'           => (array) ( $result['errors']   ?? array() ),
+                'warnings'         => (array) ( $result['warnings'] ?? array() ),
+                'duration_ms'      => max( 0, (int) ( microtime( true ) * 1000 ) - $start_ms ),
+                'ip'               => isset( $_SERVER['REMOTE_ADDR'] ) ? (string) $_SERVER['REMOTE_ADDR'] : '',
+                'user_agent'       => isset( $_SERVER['HTTP_USER_AGENT'] ) ? (string) $_SERVER['HTTP_USER_AGENT'] : '',
+            ) );
+        } catch ( \Throwable $e ) {
+            // Audit failures must never break the operation; swallow.
+        }
+    }
+
+    /**
+     * Translate a json_decode error code into a human-friendly message.
+     *
+     * @return string
+     */
+    private function json_error_message( int $code ): string {
+        switch ( $code ) {
+            case JSON_ERROR_DEPTH:            return 'maximum stack depth exceeded';
+            case JSON_ERROR_STATE_MISMATCH:   return 'invalid or malformed JSON';
+            case JSON_ERROR_CTRL_CHAR:        return 'unexpected control character found';
+            case JSON_ERROR_SYNTAX:           return 'syntax error';
+            case JSON_ERROR_UTF8:             return 'malformed UTF-8 characters';
+            case JSON_ERROR_RECURSION:        return 'recursive reference detected';
+            case JSON_ERROR_INF_OR_NAN:       return 'inf or NaN cannot be JSON encoded';
+            case JSON_ERROR_UNSUPPORTED_TYPE: return 'unsupported type';
+            case JSON_ERROR_INVALID_PROPERTY_NAME: return 'invalid property name';
+            case JSON_ERROR_UTF16:            return 'malformed UTF-16 characters';
+            default:                          return 'unknown JSON error';
+        }
     }
 }

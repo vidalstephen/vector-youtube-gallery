@@ -36,6 +36,7 @@ final class Schema {
             'vyg_sync_logs'            => self::sync_logs(),
             'vyg_api_quota_log'        => self::api_quota_log(),
             'vyg_previous_streams'     => self::previous_streams(),
+            'vyg_import_log'           => self::import_log(),
         );
     }
 
@@ -333,6 +334,50 @@ final class Schema {
             PRIMARY KEY  (id),
             UNIQUE KEY uniq_source_video (source_id, youtube_video_id),
             KEY source_ended (source_id, ended_at)
+        ) {$c};";
+    }
+
+    /**
+     * Phase 8.6: audit log of import/export operations.
+     *
+     * One row per call to /admin/feeds/export or /admin/feeds/import. Captures
+     * user identity, payload size, payload hash (SHA-256 truncated), counts,
+     * and the first few errors/warnings so an operator can audit past runs.
+     * The full error/warning lists stay in JSON form for replay.
+     */
+    public static function import_log(): string {
+        global $wpdb;
+        $t = self::table( 'vyg_import_log' );
+        $c = $wpdb->get_charset_collate();
+        return "CREATE TABLE {$t} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            op varchar(16) NOT NULL DEFAULT 'import',
+            kind varchar(32) NOT NULL DEFAULT 'feeds',
+            user_id bigint(20) unsigned DEFAULT NULL,
+            user_login varchar(64) DEFAULT NULL,
+            payload_bytes int(11) NOT NULL DEFAULT 0,
+            payload_hash char(16) DEFAULT NULL,
+            conflict_mode varchar(16) DEFAULT NULL,
+            force_flag tinyint(1) NOT NULL DEFAULT 0,
+            ok_flag tinyint(1) NOT NULL DEFAULT 0,
+            imported_count int(11) NOT NULL DEFAULT 0,
+            replaced_count int(11) NOT NULL DEFAULT 0,
+            duplicated_count int(11) NOT NULL DEFAULT 0,
+            skipped_count int(11) NOT NULL DEFAULT 0,
+            errors_count int(11) NOT NULL DEFAULT 0,
+            warnings_count int(11) NOT NULL DEFAULT 0,
+            errors_json longtext DEFAULT NULL,
+            warnings_json longtext DEFAULT NULL,
+            duration_ms int(11) NOT NULL DEFAULT 0,
+            ip varchar(64) DEFAULT NULL,
+            user_agent varchar(255) DEFAULT NULL,
+            created_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            KEY op (op),
+            KEY kind (kind),
+            KEY user_id (user_id),
+            KEY ok_flag (ok_flag),
+            KEY created_at (created_at)
         ) {$c};";
     }
 
