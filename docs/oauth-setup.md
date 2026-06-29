@@ -59,6 +59,15 @@ Do not request upload, write, or account-management scopes unless a later phase 
 - Camofox screenshots may temporarily set `siteurl/home=http://vyg-wp` for browser routing; restore them before testing real OAuth redirects.
 - Live OAuth E2E is blocked until the operator provisions client ID/secret out-of-band.
 
+## Test credentials and quota-safe development
+
+- Google/YouTube does not provide shared public OAuth client credentials for general plugin testing. Create a site/project-specific OAuth client in Google Cloud Console.
+- Do not use credentials found in examples, blog posts, screenshots, repositories, or support threads. Treat those as leaked or invalid.
+- OAuth authorization and token exchange do not consume YouTube Data API quota by themselves; quota is consumed when the plugin calls YouTube Data API endpoints after connection.
+- Most development should use mocked token/API responses and stored local fixtures. Real OAuth should be reserved for a final smoke test after callback, disconnect, and diagnostics tests pass locally.
+- When using real OAuth during development, keep calls bounded: avoid `search.list`, use known channel/playlist/video IDs, batch `videos.list` IDs, and cache responses with conservative TTLs.
+- Front-end rendering must use local database rows only. Rendering a gallery page should make zero YouTube API calls.
+
 ## Phase 7 implementation order
 
 1. Document prerequisites and exact redirect URI.

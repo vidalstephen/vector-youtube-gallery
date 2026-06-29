@@ -140,11 +140,30 @@ final class OAuthTokenRepositoryTest extends TestCase {
     }
 
     public function test_delete_tokens_removes_tokens_and_state(): void {
-        $this->repo->store_tokens( 'access', 'refresh', 60 );
+        $this->repo->store_tokens( 'access-secret', 'refresh-secret', 3600 );
         $this->repo->set_state( 'state-secret' );
 
-        $this->assertTrue( $this->repo->delete_tokens() );
-        $this->assertNull( $this->repo->get_tokens() );
+        $this->repo->delete_tokens();
+
+        $this->assertNull( OptionsBag::get( 'vyg_oauth_tokens', null ) );
         $this->assertNull( OptionsBag::get( 'vyg_oauth_state', null ) );
+    }
+
+    public function test_update_connected_account_preserves_token_material(): void {
+        $this->repo->store_tokens( 'access-secret', 'refresh-secret', 3600 );
+
+        $this->assertTrue( $this->repo->update_connected_account( array(
+            'channel_id'    => 'UC_CONNECTED',
+            'channel_title' => '<b>Connected Channel</b>',
+            'ignored'       => 'drop-me',
+        ) ) );
+
+        $tokens = $this->repo->get_tokens();
+        $this->assertNotNull( $tokens );
+        $this->assertSame( 'access-secret', $tokens['access_token'] );
+        $this->assertSame( 'refresh-secret', $tokens['refresh_token'] );
+        $this->assertSame( 'UC_CONNECTED', $tokens['connected_account']['channel_id'] );
+        $this->assertSame( 'Connected Channel', $tokens['connected_account']['channel_title'] );
+        $this->assertArrayNotHasKey( 'ignored', $tokens['connected_account'] );
     }
 }

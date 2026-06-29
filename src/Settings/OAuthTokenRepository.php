@@ -157,6 +157,21 @@ final class OAuthTokenRepository {
     }
 
     /**
+     * Update connected-account metadata without touching sealed token material.
+     *
+     * @param array<string,mixed> $account
+     */
+    public function update_connected_account( array $account ): bool {
+        $stored = get_option( self::OPTION_TOKENS, null );
+        if ( ! is_array( $stored ) ) {
+            return false;
+        }
+        $stored['connected_account'] = $this->sanitize_account( $account );
+        $stored['updated_at'] = gmdate( 'c' );
+        return (bool) update_option( self::OPTION_TOKENS, $stored, false );
+    }
+
+    /**
      * Safe status for admin UI/diagnostics. Never includes token material.
      *
      * @return array{client_configured:bool,connected:bool,client_id_masked:string,redirect_uri:string|null,expires_at:string|null,scopes:array<int,string>,connected_account:array<string,string>,last_refresh_error:?array{code:string,message:string,at:string}}

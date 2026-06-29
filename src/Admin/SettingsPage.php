@@ -234,6 +234,10 @@ final class SettingsPage {
                 <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'OAuth client configuration and local tokens deleted.', 'vector-youtube-gallery' ); ?></p></div>
             <?php elseif ( 'oauth_disconnected' === $notice ) : ?>
                 <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'Local OAuth token state deleted. Google revocation is handled by the disconnect flow in the next Phase 7 step.', 'vector-youtube-gallery' ); ?></p></div>
+            <?php elseif ( 'oauth_connected' === $notice ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'YouTube OAuth account connected.', 'vector-youtube-gallery' ); ?></p></div>
+            <?php elseif ( 'oauth_error' === $notice ) : ?>
+                <div class="notice notice-error is-dismissible"><p><?php echo esc_html__( 'OAuth connection failed. Check the error code below and verify your Google OAuth client settings.', 'vector-youtube-gallery' ); ?></p></div>
             <?php endif; ?>
 
             <?php if ( 'saved' === $notice ) : ?>
@@ -356,7 +360,7 @@ final class SettingsPage {
 
             <?php if ( 'oauth' === $current_tab ) : ?>
             <h2><?php echo esc_html__( 'OAuth Account Connection', 'vector-youtube-gallery' ); ?></h2>
-            <p class="description"><?php echo esc_html__( 'OAuth mode lets a site operator connect a YouTube account instead of relying on a public API key. Live Google authorization is completed by the callback handler in the next Phase 7 step.', 'vector-youtube-gallery' ); ?></p>
+            <p class="description"><?php echo esc_html__( 'OAuth mode lets a site operator connect a YouTube account instead of relying on a public API key. The callback handler validates state, exchanges the authorization code, stores sealed tokens, and returns here with connection status.', 'vector-youtube-gallery' ); ?></p>
 
             <table class="widefat striped" style="max-width: 960px; margin: 1em 0;">
                 <tbody>
@@ -382,6 +386,12 @@ final class SettingsPage {
                     <tr>
                         <th scope="row"><?php echo esc_html__( 'Last refresh error', 'vector-youtube-gallery' ); ?></th>
                         <td><code><?php echo esc_html( $oauth_status['last_refresh_error']['code'] ); ?></code> <?php echo esc_html( $oauth_status['last_refresh_error']['message'] ); ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if ( 'oauth_error' === $notice && ! empty( $_GET['vyg_oauth_error'] ) ) : ?>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Connection error', 'vector-youtube-gallery' ); ?></th>
+                        <td><code><?php echo esc_html( sanitize_key( wp_unslash( $_GET['vyg_oauth_error'] ) ) ); ?></code></td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
@@ -423,7 +433,7 @@ final class SettingsPage {
                 <p>
                     <button type="submit" name="vyg_oauth_action" value="save" class="button button-primary"><?php echo esc_html__( 'Save OAuth Settings', 'vector-youtube-gallery' ); ?></button>
                     <?php if ( $oauth_status['client_configured'] ) : ?>
-                        <button type="button" class="button" disabled title="<?php echo esc_attr__( 'Enabled when the OAuth callback handler lands in Phase 7.5.', 'vector-youtube-gallery' ); ?>"><?php echo esc_html__( 'Connect / Reconnect YouTube', 'vector-youtube-gallery' ); ?></button>
+                        <a class="button" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'action' => 'vyg_oauth_connect' ), admin_url( 'admin-post.php' ) ), 'vyg_oauth_connect' ) ); ?>"><?php echo esc_html__( 'Connect / Reconnect YouTube', 'vector-youtube-gallery' ); ?></a>
                         <button type="submit" name="vyg_oauth_action" value="delete_config" class="button button-link-delete" onclick="return confirm('<?php echo esc_js( __( 'Delete OAuth client configuration and local OAuth tokens?', 'vector-youtube-gallery' ) ); ?>');"><?php echo esc_html__( 'Delete OAuth Config', 'vector-youtube-gallery' ); ?></button>
                     <?php endif; ?>
                     <?php if ( $oauth_status['connected'] ) : ?>

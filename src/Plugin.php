@@ -16,6 +16,7 @@ use VectorYT\Gallery\Admin\DiagnosticsPage;
 use VectorYT\Gallery\Admin\FeedsPage;
 use VectorYT\Gallery\Admin\GdprHooks;
 use VectorYT\Gallery\Admin\ImporterExporter;
+use VectorYT\Gallery\Admin\OAuthController;
 use VectorYT\Gallery\Admin\PrivacyPage;
 use VectorYT\Gallery\Admin\SettingsPage;
 use VectorYT\Gallery\Admin\SourcesPage;
@@ -269,6 +270,15 @@ final class Plugin {
             )
         );
         $c->set(
+            'admin.oauth',
+            static fn( Container $c ): OAuthController => new OAuthController(
+                $c->get( 'youtube.oauth_api' ),
+                $c->get( 'oauth.tokens' ),
+                $c->get( 'settings' ),
+                $c->get( 'logger' )
+            )
+        );
+        $c->set(
             'admin.sources',
             static fn( Container $c ): SourcesPage => new SourcesPage(
                 $c->get( 'youtube.channels' ),
@@ -441,6 +451,10 @@ final class Plugin {
             echo $json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON export
             exit;
         } );
+
+        // Phase 7: OAuth connect/callback admin-post handlers.
+        add_action( 'admin_post_vyg_oauth_connect', static fn() => $c->get( 'admin.oauth' )->handle_connect() );
+        add_action( 'admin_post_vyg_oauth_callback', static fn() => $c->get( 'admin.oauth' )->handle_callback() );
 
         // Phase 6: daily retention sweep via WP-Cron.
         add_action( 'vyg_cron_data_retention', static function () use ( $c ): void {
