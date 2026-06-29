@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
-- Current sub-phase: 7.7 (OAuth-mode source add/resolution)
-- Last completed item: 7.6 — OAuth disconnect/revoke flow with best-effort Google revoke, guaranteed local token cleanup, API-key fallback mode, Privacy disconnect integration, and Camofox connected-state screenshot
-- Next actionable item: Begin Phase 7.7 — ensure source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
+- Current sub-phase: 7.8 (OAuth diagnostics health)
+- Last completed item: 7.7 — Sources add/resolution is credential-mode aware: new sources persist `auth_mode=oauth` when OAuth mode is selected, OAuth mode requires connected tokens outside mock tests, and Sources UI shows credential mode/`Auth Mode` column
+- Next actionable item: Begin Phase 7.8 — add OAuth health to Diagnostics: connected account, token age/expiry, next refresh/error, revoked/expired state, and redacted token metadata only
 - Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -162,7 +162,7 @@ Preferred capture path is now `scripts/capture-camofox-screenshots.py`: real Cam
 | Page | Live Camofox screenshot | Approx size |
 | --- | --- | --- |
 | WordPress dashboard with Vector YouTube Gallery widget visible | ![](screenshots/camofox/01-dashboard.png) | 293 KB |
-| Sources page with status badges + Sync-now + Disconnect | ![](screenshots/camofox/02-sources.png) | 173 KB |
+| Sources page with status badges + Sync-now + Disconnect + Auth Mode column | ![](screenshots/camofox/02-sources.png) | 232 KB |
 | Feeds list view (saved feeds table + shortcode display) | ![](screenshots/camofox/03-feeds-list.png) | 144 KB |
 | Feeds edit form (name/status/source/layout/display/filter/sort/custom CSS) | ![](screenshots/camofox/04-feeds-edit.png) | 219 KB |
 | Privacy & Compliance (stored data, retention, clean uninstall, disconnect, export/import) | ![](screenshots/camofox/05-privacy.png) | 338 KB |
@@ -187,7 +187,7 @@ Goal: add first-class OAuth support for operators who prefer channel-owner autho
 - [x] 7.4 Settings UI adds OAuth tab: client ID/secret status, callback URL, save/delete config, local disconnect, enabled connect/reconnect link, and API-key/OAuth mode selector; Camofox screenshot captured at `screenshots/camofox/10-settings-oauth.png`
 - [x] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page; live smoke verifies authorization URL/state hashing without calling Google token/API endpoints
 - [x] 7.6 Disconnect flow revokes OAuth token via Google endpoint where possible, always deletes local OAuth tokens, flips global disconnect back to API-key mode, preserves local metadata unless clean-uninstall is enabled, and keeps all-source disconnection behavior in Privacy/Compliance
-- [ ] 7.7 Source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
+- [x] 7.7 Source add/resolution can use OAuth mode for connected-account/private access cases while retaining public API-key behavior; new source rows persist `auth_mode=oauth` when OAuth mode is selected, access gating requires connected OAuth tokens outside mock mode, and the Sources UI exposes the current credential mode plus an `Auth Mode` column
 - [ ] 7.8 Diagnostics page shows OAuth health: connected account, token age, next refresh, last refresh error, revoked/expired state, and redacted token metadata only
 - [~] 7.9 Unit tests: token repository + OAuth client refresh behavior + callback state validation + disconnect revoke/failure cleanup complete; diagnostics redaction tests remain with 7.8
 - [~] 7.10 E2E/browser verification: connect/disconnect-mode UI renders through Camofox and no-real-Google-call authorization/disconnect smoke works locally; live OAuth flow remains blocked unless real Google client creds are supplied
@@ -877,3 +877,35 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 7.6 is complete locally and safely without real OAuth credentials. Google revoke is best-effort; local token cleanup is guaranteed.
 - Next recommended action:
   - Begin Phase 7.7: make source add/resolution explicitly use OAuth mode for connected-account/private access cases while preserving public API-key behavior.
+
+### 2026-06-29 — Phase 7.7 OAuth-mode source add/resolution
+
+- Trigger: "Next phase"
+- Mode: Development Execution Mode (Phase 7 — OAuth Account Connection)
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: 7.7 Source add/resolution can use OAuth mode while preserving API-key behavior.
+- Work completed:
+  - `SourcesPage` now receives `SecretsRepository`, `OAuthTokenRepository`, and `SettingsRepository` through the container instead of constructing a new secrets repository internally.
+  - New sources persist `auth_mode` based on the configured credential mode: `api_key` or `oauth`.
+  - Mock mode remains a test/dev API-client override, but is not persisted as a source credential mode.
+  - Source add access gating now accepts API-key mode with an API key or OAuth mode with connected OAuth tokens; mock mode still satisfies access during unit/dev tests.
+  - Sources UI now displays the active credential mode notice and an `Auth Mode` column in the sources table.
+  - Added `SourcesPageTest` coverage for API-key/OAuth mode selection and access behavior under the test mock environment.
+  - Live WP smoke seeded dummy sealed OAuth tokens and a dummy OAuth source, verified `auth_mode=oauth`, captured the Sources page, then removed all dummy OAuth/source state.
+- Files changed:
+  - `src/Admin/SourcesPage.php`
+  - `src/Plugin.php`
+  - `tests/unit/Admin/SourcesPageTest.php`
+  - `screenshots/camofox/02-sources.png`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` inside `vyg-wp` for touched PHP files → no syntax errors
+  - `make test-unit` → **195 tests, 501 assertions, 0 failures, 0 errors**
+  - Live WP smoke via `wp eval-file`: source created with `auth_mode=oauth`, dummy OAuth token storage did not leak raw tokens, Camofox Sources screenshot captured, then cleanup removed dummy source and OAuth options.
+  - Cleanup verification: `vyg_oauth_%` options `[]`, `api_mode=api_key`, smoke source count `0`, `siteurl/home=http://localhost:8000`.
+- Screenshot evidence:
+  - `screenshots/camofox/02-sources.png` shows OAuth credential mode notice and Auth Mode column with `oauth` and `api_key` rows.
+- Result:
+  - Phase 7.7 is complete locally without real OAuth credentials or live YouTube API calls.
+- Next recommended action:
+  - Begin Phase 7.8: add OAuth health to Diagnostics with connected account, token age/expiry, refresh errors, revoked/expired state, and redacted token metadata only.

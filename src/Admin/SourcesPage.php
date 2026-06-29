@@ -15,7 +15,9 @@ namespace VectorYT\Gallery\Admin;
 use VectorYT\Gallery\Logging\Logger;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Repository\SyncLogRepository;
+use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
+use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Sync\InitialImportJob;
 use VectorYT\Gallery\YouTube\ApiException;
 use VectorYT\Gallery\YouTube\ChannelResolver;
@@ -37,6 +39,9 @@ final class SourcesPage {
         private readonly SyncLogRepository $logs,
         private readonly InitialImportJob $initial_import,
         private readonly Logger $logger,
+        private readonly SecretsRepository $secrets,
+        private readonly OAuthTokenRepository $oauth_tokens,
+        private readonly SettingsRepository $settings,
     ) {}
 
     public function render(): void {
@@ -181,7 +186,7 @@ final class SourcesPage {
 
         $source_id = $this->sources->create( array(
             'source_type'         => $type,
-            'auth_mode'           => 'api_key',
+            'auth_mode'           => $this->current_auth_mode(),
             'youtube_channel_id'  => $channel_youtube_id,
             'youtube_playlist_id' => $playlist_youtube_id,
             'youtube_video_id'    => $video_youtube_id,
@@ -205,6 +210,7 @@ final class SourcesPage {
         $this->logger->info( 'Source created + initial import scheduled', array(
             'source_id' => $source_id,
             'type'      => $type,
+            'auth_mode' => $this->current_auth_mode(),
             'job_id'    => $job_id,
             'uploads_pl_id' => $uploads_playlist_id,
         ) );
@@ -271,8 +277,19 @@ final class SourcesPage {
         return (string) ( $resource['snippet']['thumbnails']['default']['url'] ?? '' );
     }
 
+    private function current_auth_mode(): string {
+        $mode = (string) $this->settings->get( 'api_mode', 'api_key' );
+        return 'oauth' === $mode ? 'oauth' : 'api_key';
+    }
+
     private function has_api_access(): bool {
-        return ( defined( 'VYG_USE_MOCK' ) && VYG_USE_MOCK ) || ( new SecretsRepository() )->has_api_key();
+        if ( defined( 'VYG_USE_MOCK' ) && VYG_USE_MOCK ) {
+            return true;
+        }
+        if ( 'oauth' === $this->current_auth_mode() ) {
+            return $this->oauth_tokens->status()['connected'];
+        }
+        return $this->secrets->has_api_key();
     }
 
     private function redirect_with_notice( string $notice ): void {
@@ -299,15 +316,17 @@ final class SourcesPage {
                 <div class="notice notice-warning">
                     <p>
                         <?php
-                        echo wp_kses_post(
-                            sprintf(
-                                /* translators: %s: settings page URL */
-                                __( 'No API key configured. Add one on the <a href="%s">Settings page</a> first.', 'vector-youtube-gallery' ),
-                                esc_url( admin_url( 'admin.php?page=' . AdminMenu::PARENT_SLUG . '-settings' ) )
-                            )
-                        );
+                        $settings_url = admin_url( 'admin.php?page=' . AdminMenu::PARENT_SLUG . '-settings' . ( 'oauth' === $this->current_auth_mode() ? '&tab=oauth' : '' ) );
+                        $message = 'oauth' === $this->current_auth_mode()
+                            ? __( 'OAuth mode is selected, but no connected OAuth account is available. Connect YouTube on the <a href="%s">OAuth settings tab</a> first.', 'vector-youtube-gallery' )
+                            : __( 'No API key configured. Add one on the <a href="%s">Settings page</a> first.', 'vector-youtube-gallery' );
+                        echo wp_kses_post( sprintf( $message, esc_url( $settings_url ) ) );
                         ?>
                     </p>
+                </div>
+            <?php else : ?>
+                <div class="notice notice-info inline">
+                    <p><?php echo esc_html( sprintf( __( 'New sources will use %s credential mode.', 'vector-youtube-gallery' ), $this->current_auth_mode() ) ); ?></p>
                 </div>
             <?php endif; ?>
 
@@ -391,6 +410,7 @@ final class SourcesPage {
                                 <th><?php echo esc_html__( 'Title', 'vector-youtube-gallery' ); ?></th>
                                 <th><?php echo esc_html__( 'YouTube ID', 'vector-youtube-gallery' ); ?></th>
                                 <th><?php echo esc_html__( 'Status', 'vector-youtube-gallery' ); ?></th>
+                                <th><?php echo esc_html__( 'Auth Mode', 'vector-youtube-gallery' ); ?></th>
                                 <th><?php echo esc_html__( 'Last Sync', 'vector-youtube-gallery' ); ?></th>
                                 <th><?php echo esc_html__( 'Actions', 'vector-youtube-gallery' ); ?></th>
                             </tr>
@@ -409,6 +429,7 @@ final class SourcesPage {
                                             <?php echo esc_html( (string) ( $s['status'] ?? 'unknown' ) ); ?>
                                         </span>
                                     </td>
+                                    <td><code><?php echo esc_html( (string) ( $s['auth_mode'] ?? 'api_key' ) ); ?></code></td>
                                     <td>
                                         <?php
                                         $last = $s['last_success_at'] ?? null;

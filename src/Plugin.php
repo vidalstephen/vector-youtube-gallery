@@ -287,7 +287,10 @@ final class Plugin {
                 $c->get( 'repo.sources' ),
                 $c->get( 'repo.logs' ),
                 $c->get( 'sync.initial' ),
-                $c->get( 'logger' )
+                $c->get( 'logger' ),
+                $c->get( 'secrets' ),
+                $c->get( 'oauth.tokens' ),
+                $c->get( 'settings' )
             )
         );
         $c->set(
