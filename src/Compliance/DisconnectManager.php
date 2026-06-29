@@ -17,7 +17,9 @@ declare(strict_types=1);
 
 namespace VectorYT\Gallery\Compliance;
 
+use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
+use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\YouTube\ApiClientInterface;
 use VectorYT\Gallery\Logging\Logger;
 
@@ -29,12 +31,14 @@ final class DisconnectManager {
         private readonly SecretsRepository $secrets,
         private readonly ApiClientInterface $api,
         private readonly Logger $logger,
+        private readonly OAuthTokenRepository $oauth_tokens,
+        private readonly SettingsRepository $settings,
     ) {}
 
     /**
      * Disconnect: revoke API key + flip all sources to disconnected.
      *
-     * @return array{revoked:bool, sources_disconnected:int}
+     * @return array{revoked:bool, oauth_tokens_deleted:bool, sources_disconnected:int}
      */
     public function disconnect_all(): array {
         global $wpdb;
@@ -47,8 +51,12 @@ final class DisconnectManager {
             $this->logger->warning( 'DisconnectManager: revoke_token threw', array( 'error' => $e->getMessage() ) );
         }
 
-        // 2. Delete the stored API key from options.
+        // 2. Delete locally-stored credentials. OAuth revoke is best-effort;
+        // local disconnect must still clear token material if the remote revoke
+        // endpoint is unavailable or returns an error.
         $this->secrets->delete_api_key();
+        $oauth_tokens_deleted = $this->oauth_tokens->delete_tokens();
+        $this->settings->set( 'api_mode', 'api_key' );
 
         // 3. Mark every source as disconnected.
         $error_payload = wp_json_encode( array(
@@ -65,10 +73,15 @@ final class DisconnectManager {
             gmdate( 'Y-m-d H:i:s' )
         ) );
 
-        $this->logger->warning( 'DisconnectManager: disconnected', array( 'revoked' => $revoked, 'sources' => $count ) );
+        $this->logger->warning( 'DisconnectManager: disconnected', array(
+            'revoked' => $revoked,
+            'oauth_tokens_deleted' => $oauth_tokens_deleted,
+            'sources' => $count,
+        ) );
 
         return array(
             'revoked'              => $revoked,
+            'oauth_tokens_deleted' => $oauth_tokens_deleted,
             'sources_disconnected' => $count,
         );
     }

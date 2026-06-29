@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
-- Current sub-phase: 7.6 (OAuth disconnect/revoke flow)
-- Last completed item: 7.5 — OAuth connect/callback handler with state validation, auth-code exchange, connected channel identity capture, safe admin redirects, and no-real-Google-call smoke validation
-- Next actionable item: Begin Phase 7.6 — implement disconnect flow that revokes the Google token, deletes local OAuth tokens, preserves local metadata, and reports status safely
+- Current sub-phase: 7.7 (OAuth-mode source add/resolution)
+- Last completed item: 7.6 — OAuth disconnect/revoke flow with best-effort Google revoke, guaranteed local token cleanup, API-key fallback mode, Privacy disconnect integration, and Camofox connected-state screenshot
+- Next actionable item: Begin Phase 7.7 — ensure source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
 - Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -170,7 +170,7 @@ Preferred capture path is now `scripts/capture-camofox-screenshots.py`: real Cam
 | Videos moderation (search, filter, hide/pin/reclassify) | ![](screenshots/camofox/07-videos.png) | 216 KB |
 | System Info (copy-to-clipboard, table counts, cron events) | ![](screenshots/camofox/08-system-info.png) | 259 KB |
 | Front-end gallery — feed-by-uuid shortcode rendering 2 videos with real thumbnails | ![](screenshots/camofox/09-frontend-feed.png) | 252 KB |
-| Settings OAuth tab — mode selector, sealed client config status, callback URL, enabled connect/reconnect, delete controls | ![](screenshots/camofox/10-settings-oauth.png) | 275 KB |
+| Settings OAuth tab — mode selector, sealed client config status, callback URL, enabled connect/reconnect, disconnect/delete controls | ![](screenshots/camofox/10-settings-oauth.png) | 283 KB |
 
 Notes from the live browser review:
 - Camofox had to be attached to `vyg_net`; otherwise `browser_navigate`/Camofox cannot reach `vyg-wp`.
@@ -186,11 +186,11 @@ Goal: add first-class OAuth support for operators who prefer channel-owner autho
 - [x] 7.3 `src/Settings/OAuthTokenRepository.php` stores refresh/access tokens encrypted/sealed; never autoload; never logs token material; `oauth.tokens` service registered in `Plugin.php`
 - [x] 7.4 Settings UI adds OAuth tab: client ID/secret status, callback URL, save/delete config, local disconnect, enabled connect/reconnect link, and API-key/OAuth mode selector; Camofox screenshot captured at `screenshots/camofox/10-settings-oauth.png`
 - [x] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page; live smoke verifies authorization URL/state hashing without calling Google token/API endpoints
-- [ ] 7.6 Disconnect flow revokes OAuth token via Google endpoint, deletes stored tokens, flips sources to disconnected where appropriate, and preserves local metadata unless clean-uninstall is enabled
+- [x] 7.6 Disconnect flow revokes OAuth token via Google endpoint where possible, always deletes local OAuth tokens, flips global disconnect back to API-key mode, preserves local metadata unless clean-uninstall is enabled, and keeps all-source disconnection behavior in Privacy/Compliance
 - [ ] 7.7 Source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
 - [ ] 7.8 Diagnostics page shows OAuth health: connected account, token age, next refresh, last refresh error, revoked/expired state, and redacted token metadata only
-- [~] 7.9 Unit tests: token repository + OAuth client refresh behavior + callback state validation complete; disconnect revocation integration and diagnostics redaction tests remain with 7.6–7.8
-- [~] 7.10 E2E/browser verification: connect-mode UI renders through Camofox and no-real-Google-call authorization smoke works locally; live OAuth flow remains blocked unless real Google client creds are supplied
+- [~] 7.9 Unit tests: token repository + OAuth client refresh behavior + callback state validation + disconnect revoke/failure cleanup complete; diagnostics redaction tests remain with 7.8
+- [~] 7.10 E2E/browser verification: connect/disconnect-mode UI renders through Camofox and no-real-Google-call authorization/disconnect smoke works locally; live OAuth flow remains blocked unless real Google client creds are supplied
 
 ### Phase 8 — Multi-source Feeds + Feed Portability
 
@@ -844,3 +844,36 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 7.5 is complete locally and safely without real OAuth credentials. Live Google OAuth E2E remains blocked until the operator supplies real client credentials through the admin UI.
 - Next recommended action:
   - Begin Phase 7.6: implement token revocation/disconnect flow using `OAuthClient::revoke_token()`, delete local OAuth tokens, preserve cached metadata, and add mocked revoke integration tests.
+
+### 2026-06-29 — Phase 7.6 OAuth disconnect/revoke flow
+
+- Trigger: "Continue"
+- Mode: Development Execution Mode (Phase 7 — OAuth Account Connection)
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: 7.6 OAuth disconnect/revoke flow.
+- Work completed:
+  - Added `OAuthController::disconnect_url()`, `disconnect_redirect_url()`, and `handle_disconnect()`.
+  - Registered `admin_post_vyg_oauth_disconnect` in `Plugin.php`.
+  - Settings OAuth tab now shows `Disconnect OAuth Account` when connected; it attempts Google revoke and always deletes local OAuth token state.
+  - `DisconnectManager` now clears local OAuth tokens and resets `api_mode=api_key` during the global Privacy/Compliance disconnect path while preserving local metadata and retaining all-source status disconnection.
+  - Privacy/Compliance copy now describes API-key + OAuth credential removal and local metadata preservation.
+  - Added unit tests for successful OAuth revoke and failed-revoke local cleanup.
+  - Captured updated Camofox OAuth settings screenshot showing connected status plus Connect/Reconnect, Delete Config, and Disconnect OAuth Account controls.
+- Files changed:
+  - `src/Admin/OAuthController.php`
+  - `src/Admin/SettingsPage.php`
+  - `src/Admin/PrivacyPage.php`
+  - `src/Compliance/DisconnectManager.php`
+  - `src/Plugin.php`
+  - `tests/unit/Admin/OAuthControllerTest.php`
+  - `screenshots/camofox/10-settings-oauth.png`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` inside `vyg-wp` for touched PHP files → no syntax errors
+  - `make test-unit` → **193 tests, 495 assertions, 0 failures, 0 errors**
+  - Live WP smoke: seeded dummy sealed OAuth config/tokens, verified `admin.oauth` disconnect URL, verified raw token storage did not contain dummy tokens, captured Camofox screenshot, then cleaned all dummy OAuth state without calling Google.
+  - Cleanup verification: `vyg_oauth_%` options `[]`, `api_mode=api_key`, `siteurl/home=http://localhost:8000`.
+- Result:
+  - Phase 7.6 is complete locally and safely without real OAuth credentials. Google revoke is best-effort; local token cleanup is guaranteed.
+- Next recommended action:
+  - Begin Phase 7.7: make source add/resolution explicitly use OAuth mode for connected-account/private access cases while preserving public API-key behavior.

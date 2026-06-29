@@ -31,6 +31,7 @@ defined( 'ABSPATH' ) || exit;
 final class OAuthController {
 
     public const NONCE_ACTION_CONNECT = 'vyg_oauth_connect';
+    public const NONCE_ACTION_DISCONNECT = 'vyg_oauth_disconnect';
 
     public function __construct(
         private readonly OAuthClient $oauth,
@@ -46,6 +47,16 @@ final class OAuthController {
                 admin_url( 'admin-post.php' )
             ),
             self::NONCE_ACTION_CONNECT
+        );
+    }
+
+    public function disconnect_url(): string {
+        return wp_nonce_url(
+            add_query_arg(
+                array( 'action' => 'vyg_oauth_disconnect' ),
+                admin_url( 'admin-post.php' )
+            ),
+            self::NONCE_ACTION_DISCONNECT
         );
     }
 
@@ -116,6 +127,28 @@ final class OAuthController {
         }
     }
 
+
+    /**
+     * Revoke the Google token if possible, then always remove local token state.
+     */
+    public function disconnect_redirect_url(): string {
+        $revoked = false;
+        try {
+            $revoked = $this->oauth->revoke_token( '' );
+        } catch ( ApiException $e ) {
+            $this->logger->warning( 'OAuth disconnect revoke failed; deleting local token state anyway', array(
+                'api_error_code' => $e->api_error_code(),
+                'message'        => $e->getMessage(),
+            ) );
+        }
+
+        $this->tokens->delete_tokens();
+        $this->settings->set( 'api_mode', 'api_key' );
+        $this->logger->info( 'OAuth disconnected via admin', array( 'revoked' => $revoked ) );
+
+        return $this->settings_url( $revoked ? 'oauth_revoked' : 'oauth_disconnected' );
+    }
+
     public function handle_connect(): void {
         if ( ! current_user_can( AdminMenu::REQUIRED_CAP ) ) {
             wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
@@ -142,6 +175,18 @@ final class OAuthController {
             wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
         }
         wp_safe_redirect( $this->callback_redirect_url( wp_unslash( $_GET ) ) );
+        exit;
+    }
+
+    public function handle_disconnect(): void {
+        if ( ! current_user_can( AdminMenu::REQUIRED_CAP ) ) {
+            wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
+        }
+        $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, self::NONCE_ACTION_DISCONNECT ) ) {
+            wp_die( esc_html__( 'Nonce check failed.', 'vector-youtube-gallery' ) );
+        }
+        wp_safe_redirect( $this->disconnect_redirect_url() );
         exit;
     }
 

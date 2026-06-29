@@ -205,7 +205,7 @@ final class PrivacyPage {
             </form>
 
             <h2><?php echo esc_html__( 'Disconnect from YouTube', 'vector-youtube-gallery' ); ?></h2>
-            <p><?php echo esc_html__( 'Removes the stored API key and marks all sources as disconnected. Video metadata stays in the database but will not be refreshed.', 'vector-youtube-gallery' ); ?></p>
+            <p><?php echo esc_html__( 'Revokes the connected OAuth token when present, removes stored API/OAuth credentials, marks all sources as disconnected, and keeps local video metadata in the database.', 'vector-youtube-gallery' ); ?></p>
             <form method="post" onsubmit="return confirm('<?php echo esc_js( __( 'Disconnect from YouTube?', 'vector-youtube-gallery' ) ); ?>');">
                 <?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD ); ?>
                 <input type="hidden" name="vyg_privacy_op" value="disconnect" />

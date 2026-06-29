@@ -114,6 +114,34 @@ final class OAuthControllerTest extends TestCase {
         $this->assertSame( 'Connected Test Channel', $stored['connected_account']['channel_title'] );
         $this->assertSame( 'oauth', $this->settings->get( 'api_mode' ) );
     }
+
+    public function test_disconnect_revokes_refresh_token_deletes_local_tokens_and_returns_api_key_mode(): void {
+        $this->tokens->store_tokens( 'access-token', 'refresh-token', 3600 );
+        $this->settings->set( 'api_mode', 'oauth' );
+        $this->http->queuePost( 200, array() );
+
+        $redirect = $this->controller->disconnect_redirect_url();
+
+        $this->assertStringContainsString( 'vyg_notice=oauth_revoked', $redirect );
+        $this->assertCount( 1, $this->http->posts );
+        $this->assertSame( 'https://oauth2.googleapis.com/revoke', $this->http->posts[0]['url'] );
+        $this->assertSame( 'refresh-token', $this->http->posts[0]['args']['body']['token'] );
+        $this->assertNull( $this->tokens->get_tokens() );
+        $this->assertSame( 'api_key', $this->settings->get( 'api_mode' ) );
+    }
+
+    public function test_disconnect_deletes_local_tokens_even_when_revoke_fails(): void {
+        $this->tokens->store_tokens( 'access-token', 'refresh-token', 3600 );
+        $this->settings->set( 'api_mode', 'oauth' );
+        $this->http->queuePost( 500, array( 'error' => 'temporarily_unavailable' ) );
+
+        $redirect = $this->controller->disconnect_redirect_url();
+
+        $this->assertStringContainsString( 'vyg_notice=oauth_disconnected', $redirect );
+        $this->assertCount( 1, $this->http->posts );
+        $this->assertNull( $this->tokens->get_tokens() );
+        $this->assertSame( 'api_key', $this->settings->get( 'api_mode' ) );
+    }
 }
 
 final class CallbackFakeHttp {

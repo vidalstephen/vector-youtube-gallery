@@ -338,7 +338,7 @@ final class Plugin {
             )
         );
         $c->set( 'compliance.retention', static fn( Container $c ): DataRetentionManager => new DataRetentionManager( $c->get( 'settings' ), $c->get( 'logger' ) ) );
-        $c->set( 'compliance.disconnect', static fn( Container $c ): DisconnectManager => new DisconnectManager( $c->get( 'secrets' ), $c->get( 'youtube.api' ), $c->get( 'logger' ) ) );
+        $c->set( 'compliance.disconnect', static fn( Container $c ): DisconnectManager => new DisconnectManager( $c->get( 'secrets' ), $c->get( 'youtube.api' ), $c->get( 'logger' ), $c->get( 'oauth.tokens' ), $c->get( 'settings' ) ) );
         $c->set( 'compliance.policy', static fn(): PrivacyPolicyGenerator => new PrivacyPolicyGenerator() );
         $c->set(
             'admin.privacy',
@@ -455,6 +455,7 @@ final class Plugin {
         // Phase 7: OAuth connect/callback admin-post handlers.
         add_action( 'admin_post_vyg_oauth_connect', static fn() => $c->get( 'admin.oauth' )->handle_connect() );
         add_action( 'admin_post_vyg_oauth_callback', static fn() => $c->get( 'admin.oauth' )->handle_callback() );
+        add_action( 'admin_post_vyg_oauth_disconnect', static fn() => $c->get( 'admin.oauth' )->handle_disconnect() );
 
         // Phase 6: daily retention sweep via WP-Cron.
         add_action( 'vyg_cron_data_retention', static function () use ( $c ): void {

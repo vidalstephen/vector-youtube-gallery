@@ -233,7 +233,9 @@ final class SettingsPage {
             <?php elseif ( 'oauth_deleted' === $notice ) : ?>
                 <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'OAuth client configuration and local tokens deleted.', 'vector-youtube-gallery' ); ?></p></div>
             <?php elseif ( 'oauth_disconnected' === $notice ) : ?>
-                <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'Local OAuth token state deleted. Google revocation is handled by the disconnect flow in the next Phase 7 step.', 'vector-youtube-gallery' ); ?></p></div>
+                <div class="notice notice-warning is-dismissible"><p><?php echo esc_html__( 'Local OAuth token state deleted. Google token revocation was attempted but did not confirm success.', 'vector-youtube-gallery' ); ?></p></div>
+            <?php elseif ( 'oauth_revoked' === $notice ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'Google OAuth token revoked and local token state deleted.', 'vector-youtube-gallery' ); ?></p></div>
             <?php elseif ( 'oauth_connected' === $notice ) : ?>
                 <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'YouTube OAuth account connected.', 'vector-youtube-gallery' ); ?></p></div>
             <?php elseif ( 'oauth_error' === $notice ) : ?>
@@ -437,7 +439,7 @@ final class SettingsPage {
                         <button type="submit" name="vyg_oauth_action" value="delete_config" class="button button-link-delete" onclick="return confirm('<?php echo esc_js( __( 'Delete OAuth client configuration and local OAuth tokens?', 'vector-youtube-gallery' ) ); ?>');"><?php echo esc_html__( 'Delete OAuth Config', 'vector-youtube-gallery' ); ?></button>
                     <?php endif; ?>
                     <?php if ( $oauth_status['connected'] ) : ?>
-                        <button type="submit" name="vyg_oauth_action" value="disconnect_local" class="button"><?php echo esc_html__( 'Disconnect Local Token State', 'vector-youtube-gallery' ); ?></button>
+                        <a class="button" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'action' => 'vyg_oauth_disconnect' ), admin_url( 'admin-post.php' ) ), 'vyg_oauth_disconnect' ) ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Revoke the Google OAuth token and delete local OAuth token state?', 'vector-youtube-gallery' ) ); ?>');"><?php echo esc_html__( 'Disconnect OAuth Account', 'vector-youtube-gallery' ); ?></a>
                     <?php endif; ?>
                 </p>
             </form>
