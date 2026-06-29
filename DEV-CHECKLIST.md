@@ -12,11 +12,10 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.1 (multi-source feed schema)
-- Last completed item: 7.10 — live OAuth flow completed end-to-end against the real Google account `Stephen Vidal` (`UCAjP3V9fUdBX4jOqH1RjmAQ`); resolved and synced 50 videos from channel `The Way Of Holiness Broadcast` (`UCETTSWoXxA-oEbwxqpbVf-w`) at 3 YouTube Data API units; front-end gallery at `https://srv1388017.tail209ed.ts.net/youtube-gallery-test/` renders 12 cards with zero YouTube API calls on render; `headers already sent` warnings fixed on both `SettingsPage` and `SourcesPage` via `ob_start()`/`ob_end_clean()`
-- Next actionable item: Phase 8.1 — extend `vyg_feeds.source_config_json` schema to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
+- Current sub-phase: 8.2 (FeedQuery multi-source support)
+- Last completed item: 8.1 + 8.2 — multi-source feed schema (sources[] + manual_video_ids + exclude_video_ids + include_query) and FeedQuery multi-source merge with de-duplication, exclude filter, sort, and slicing; Renderer multi-source path; ShortcodeRegistrar passes source_config when feed_uuid is used; legacy {source_uuid} config decodes to a single sources[] entry so existing single-source feeds continue to render unchanged
+- Next actionable item: Phase 8.3 — FeedsPage UI to add/remove/reorder multiple sources, manual video IDs, and per-source badges
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -197,13 +196,13 @@ Goal: add first-class OAuth support for operators who prefer channel-owner autho
 
 Goal: let operators build higher-level feeds from multiple channels/playlists/manual video sets and move those feeds between sites.
 
-- [ ] 8.1 Extend feed schema/config to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
-- [ ] 8.2 FeedQuery supports mixed sources with deterministic sort, de-duplication by YouTube video ID, source status filtering, and per-source weighting/pinning rules
+- [x] 8.1 Extend feed schema/config to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
+- [x] 8.2 FeedQuery supports mixed sources with deterministic sort, de-duplication by YouTube video ID, source status filtering, and per-source weighting/pinning rules
 - [ ] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
 - [ ] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
 - [ ] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - [ ] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling
-- [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows
+- [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration covered; import/export coverage to land with 8.5)
 - [ ] 8.8 E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render
 
 ### Phase 9 — Advanced Layouts + Front-end Polish
@@ -943,3 +942,37 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 7.8 and remaining 7.9 diagnostics redaction coverage are complete locally without real Google OAuth credentials or live YouTube API calls.
 - Next recommended action:
   - Finish Phase 7.10 by documenting local no-real-Google OAuth browser verification as complete and marking live Google OAuth E2E blocked/deferred until credentials are entered through the admin UI.
+
+### 2026-06-29 — Phase 8.1 + 8.2 multi-source feeds
+
+- Trigger: "lets continue development, next phase"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Current phase: Phase 8 — Multi-source Feeds + Feed Portability
+- Selected tasks: 8.1 (multi-source feed schema) + 8.2 (FeedQuery mixed sources)
+- Work completed:
+  - Added `FeedRepository::normalize_source_config()` to canonicalize the legacy `{source_uuid}` form into a multi-source shape: `{sources:[{source_uuid, weight, pinned, label}, ...], manual_video_ids:[], exclude_video_ids:[], include_query:'any'|'all'}`. Legacy single-source rows decode to one entry in `sources[]` so existing feeds continue to render unchanged.
+  - Added `FeedQuery::videos_for_feed()` and `count_videos_for_feed()` that pull videos per source via the existing `videos_for_source()`, append manual video IDs by direct lookup, dedupe by `youtube_video_id` (pinned sources first), apply `exclude_video_ids`, then sort by `orderby`+`order` and slice by `limit`+`offset`.
+  - Added private helpers `videos_for_ids()`, `dedupe_videos()`, `sort_videos()` to keep the multi-source query composable.
+  - Extended `Renderer` with a `render_multi_source()` path + shared `emit_html()`. The render call now accepts an optional `source_config` array; multi-source feeds route through the new path, single-source feeds keep the existing code path.
+  - Wired `ShortcodeRegistrar` to pass `source_config` (the decoded `config['source']`) when the shortcode is a `feed_uuid` reference; the legacy `source_uuid` path is unchanged.
+  - Fixed a back-compat regression introduced by the normalized config: when a feed references a single source via `feed_uuid`, the registrar now falls back to `config['source']['sources'][0]['source_uuid']` if `config['source']['source_uuid']` is absent.
+  - Updated `FeedRepositoryTest` with 4 new test cases: legacy migration, multi-source shape, weight coercion (out-of-range + non-numeric), invalid `include_query` fallback, and drop-empty-sources behavior. Existing `test_decode_config_returns_empty_arrays_for_null_json` and `test_decode_config_parses_valid_json` updated for the new shape.
+  - Live WP integration: created a multi-source feed with two channels (real `The Way Of Holiness Broadcast` + mock `Google for Developers`), inserted a public page rendering `[youtube_feed feed_uuid=...]`, confirmed 16 cards rendered, 16 unique video IDs, real titles and durations, zero `googleapis.com`/`youtube/v3` requests during render. Exclude filter verified end-to-end (excluding `8Kjt_9e3XN0` removed exactly that video).
+  - Camofox screenshot: `screenshots/camofox/11-multi-source-feed.png` (180 KB) shows the multi-source gallery grid.
+- Files changed:
+  - `src/Repository/FeedRepository.php`
+  - `src/Render/FeedQuery.php`
+  - `src/Render/Renderer.php`
+  - `src/Render/ShortcodeRegistrar.php`
+  - `tests/unit/Repository/FeedRepositoryTest.php`
+  - `scripts/capture-camofox-screenshots.py`
+  - `screenshots/camofox/11-multi-source-feed.png`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` on all touched PHP files inside `vyg-wp` → no syntax errors
+  - `make test-unit` → **200 tests, 536 assertions, 0 failures, 0 errors**
+  - Live WP render smoke as admin + 3 page hits → all HTTP 200, identical 92 KB response, zero outbound YouTube API calls in access log
+- Screenshot evidence:
+  - `screenshots/camofox/11-multi-source-feed.png` — `Multi-source gallery test` page with 16 videos from two channels
+- Result:
+  - Phase 8.1 and 8.2 complete; multi-source feeds render correctly with dedupe, exclude, and sort; legacy single-source feeds still render unchanged. Next: Phase 8.3 (FeedsPage UI for multi-source editing).
