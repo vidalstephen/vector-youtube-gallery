@@ -298,7 +298,8 @@ final class Plugin {
             static fn( Container $c ): DiagnosticsPage => new DiagnosticsPage(
                 $c->get( 'secrets' ),
                 $c->get( 'youtube.api' ),
-                $c->get( 'quota' )
+                $c->get( 'quota' ),
+                $c->get( 'oauth.tokens' )
             )
         );
         $c->set(

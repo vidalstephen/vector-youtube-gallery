@@ -192,6 +192,52 @@ final class OAuthTokenRepository {
         );
     }
 
+
+
+    /**
+     * Safe OAuth diagnostics for admin UI. Never includes access or refresh token material.
+     *
+     * @return array{client_configured:bool,connected:bool,client_id_masked:string,redirect_uri:string|null,token_type:string|null,has_refresh_token:bool,expires_at:string|null,created_at:string|null,updated_at:string|null,token_age_seconds:?int,seconds_to_expiry:?int,expired:bool,scopes:array<int,string>,connected_account:array<string,string>,last_refresh_error:?array{code:string,message:string,at:string}}
+     */
+    public function diagnostics_status(): array {
+        $config = $this->get_client_config();
+        $tokens = $this->get_tokens();
+        $now    = time();
+
+        $created_ts = null;
+        $expires_ts = null;
+        if ( null !== $tokens && ! empty( $tokens['created_at'] ) ) {
+            $created_ts = strtotime( (string) $tokens['created_at'] );
+            if ( false === $created_ts ) {
+                $created_ts = null;
+            }
+        }
+        if ( null !== $tokens && ! empty( $tokens['expires_at'] ) ) {
+            $expires_ts = strtotime( (string) $tokens['expires_at'] );
+            if ( false === $expires_ts ) {
+                $expires_ts = null;
+            }
+        }
+
+        return array(
+            'client_configured'  => null !== $config,
+            'connected'          => null !== $tokens,
+            'client_id_masked'   => null === $config ? '' : self::mask( $config['client_id'] ),
+            'redirect_uri'       => null === $config ? null : $config['redirect_uri'],
+            'token_type'         => null === $tokens ? null : $tokens['token_type'],
+            'has_refresh_token'  => null !== $tokens && null !== $tokens['refresh_token'] && '' !== $tokens['refresh_token'],
+            'expires_at'         => null === $tokens ? null : $tokens['expires_at'],
+            'created_at'         => null === $tokens ? null : $tokens['created_at'],
+            'updated_at'         => null === $tokens ? null : $tokens['updated_at'],
+            'token_age_seconds'  => null === $created_ts ? null : max( 0, $now - $created_ts ),
+            'seconds_to_expiry'  => null === $expires_ts ? null : $expires_ts - $now,
+            'expired'            => null !== $expires_ts && $expires_ts <= $now,
+            'scopes'             => null === $tokens ? array() : $tokens['scope'],
+            'connected_account'  => null === $tokens ? array() : $tokens['connected_account'],
+            'last_refresh_error' => null === $tokens ? null : $tokens['last_refresh_error'],
+        );
+    }
+
     public function mark_refresh_error( string $code, string $message ): void {
         $stored = get_option( self::OPTION_TOKENS, null );
         if ( ! is_array( $stored ) ) {

@@ -110,6 +110,33 @@ final class OAuthTokenRepositoryTest extends TestCase {
         $this->assertSame( array( 'scope-a' ), $status['scopes'] );
     }
 
+    public function test_diagnostics_status_reports_safe_metadata_without_token_material(): void {
+        $this->repo->set_client_config( 'client-1234567890', 'super-secret', 'https://example.com/callback' );
+        $this->repo->store_tokens( 'access-secret', 'refresh-secret', 3600, array( 'scope-a', 'scope-b' ), 'Bearer', array(
+            'channel_id'    => 'UC123',
+            'channel_title' => 'Example Channel',
+        ) );
+        $this->repo->mark_refresh_error( 'invalid_grant', 'Refresh token revoked' );
+
+        $status = $this->repo->diagnostics_status();
+        $encoded = wp_json_encode( $status );
+
+        $this->assertTrue( $status['client_configured'] );
+        $this->assertTrue( $status['connected'] );
+        $this->assertSame( 'client***7890', $status['client_id_masked'] );
+        $this->assertSame( 'Bearer', $status['token_type'] );
+        $this->assertTrue( $status['has_refresh_token'] );
+        $this->assertFalse( $status['expired'] );
+        $this->assertIsInt( $status['token_age_seconds'] );
+        $this->assertIsInt( $status['seconds_to_expiry'] );
+        $this->assertSame( array( 'scope-a', 'scope-b' ), $status['scopes'] );
+        $this->assertSame( 'UC123', $status['connected_account']['channel_id'] );
+        $this->assertSame( 'invalid_grant', $status['last_refresh_error']['code'] );
+        $this->assertStringNotContainsString( 'super-secret', $encoded );
+        $this->assertStringNotContainsString( 'access-secret', $encoded );
+        $this->assertStringNotContainsString( 'refresh-secret', $encoded );
+    }
+
     public function test_refresh_error_can_be_marked_and_cleared(): void {
         $this->repo->store_tokens( 'access', 'refresh', 60 );
         $this->repo->mark_refresh_error( 'invalid_grant', 'Refresh token revoked' );

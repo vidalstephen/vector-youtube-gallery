@@ -19,6 +19,7 @@ declare(strict_types=1);
 
 namespace VectorYT\Gallery\Admin;
 
+use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\YouTube\ApiClientInterface;
 use VectorYT\Gallery\YouTube\QuotaTracker;
@@ -34,6 +35,7 @@ final class DiagnosticsPage {
         private readonly SecretsRepository $secrets,
         private readonly ApiClientInterface $api,
         private readonly QuotaTracker $quota,
+        private readonly OAuthTokenRepository $oauth_tokens,
     ) {}
 
     public function render(): void {
@@ -48,6 +50,7 @@ final class DiagnosticsPage {
         $used_24h      = $this->quota->last_24h_units();
         $remaining     = $this->quota->remaining_estimate();
         $entries       = array_slice( array_reverse( $this->quota->entries() ), 0, 20 );
+        $oauth_status  = $this->oauth_tokens->diagnostics_status();
 
         $sync_jobs     = $this->recent_sync_jobs();
         $source_health = $this->source_health();
@@ -92,6 +95,85 @@ final class DiagnosticsPage {
                                 <code>[<?php echo esc_html( $last_error['code'] ); ?>]</code>
                                 <?php echo esc_html( $last_error['message'] ); ?>
                                 <span class="description">(<?php echo esc_html( $last_error['at'] ); ?>)</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2><?php echo esc_html__( 'OAuth Health', 'vector-youtube-gallery' ); ?></h2>
+            <table class="widefat striped" style="max-width: 900px;">
+                <tbody>
+                    <tr>
+                        <th style="width: 220px;"><?php echo esc_html__( 'Client configured', 'vector-youtube-gallery' ); ?></th>
+                        <td><?php echo $oauth_status['client_configured'] ? '<span style="color:#0a0;">✓</span> ' . esc_html__( 'Yes', 'vector-youtube-gallery' ) : '<em>' . esc_html__( 'No', 'vector-youtube-gallery' ) . '</em>'; ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Client ID', 'vector-youtube-gallery' ); ?></th>
+                        <td><?php echo '' !== $oauth_status['client_id_masked'] ? '<code>' . esc_html( $oauth_status['client_id_masked'] ) . '</code>' : '<em>' . esc_html__( 'Not set', 'vector-youtube-gallery' ) . '</em>'; ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Connected', 'vector-youtube-gallery' ); ?></th>
+                        <td><?php echo $oauth_status['connected'] ? '<span style="color:#0a0;">✓</span> ' . esc_html__( 'Yes', 'vector-youtube-gallery' ) : '<em>' . esc_html__( 'No', 'vector-youtube-gallery' ) . '</em>'; ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Connected account', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <?php if ( ! empty( $oauth_status['connected_account'] ) ) : ?>
+                                <?php foreach ( $oauth_status['connected_account'] as $key => $value ) : ?>
+                                    <div><code><?php echo esc_html( (string) $key ); ?></code>: <?php echo esc_html( (string) $value ); ?></div>
+                                <?php endforeach; ?>
+                            <?php else : ?>
+                                <em><?php echo esc_html__( 'Not available', 'vector-youtube-gallery' ); ?></em>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Token metadata', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <div><?php echo esc_html__( 'Token type', 'vector-youtube-gallery' ); ?>: <code><?php echo esc_html( (string) ( $oauth_status['token_type'] ?? '—' ) ); ?></code></div>
+                            <div><?php echo esc_html__( 'Refresh token stored', 'vector-youtube-gallery' ); ?>: <?php echo $oauth_status['has_refresh_token'] ? esc_html__( 'Yes', 'vector-youtube-gallery' ) : esc_html__( 'No', 'vector-youtube-gallery' ); ?></div>
+                            <div><?php echo esc_html__( 'Created', 'vector-youtube-gallery' ); ?>: <?php echo $oauth_status['created_at'] ? esc_html( (string) $oauth_status['created_at'] ) : '—'; ?></div>
+                            <div><?php echo esc_html__( 'Updated', 'vector-youtube-gallery' ); ?>: <?php echo $oauth_status['updated_at'] ? esc_html( (string) $oauth_status['updated_at'] ) : '—'; ?></div>
+                            <div><?php echo esc_html__( 'Token age', 'vector-youtube-gallery' ); ?>: <?php echo null === $oauth_status['token_age_seconds'] ? '—' : esc_html( human_time_diff( time() - (int) $oauth_status['token_age_seconds'], time() ) ); ?></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Expiry', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <?php if ( $oauth_status['expires_at'] ) : ?>
+                                <?php echo esc_html( (string) $oauth_status['expires_at'] ); ?>
+                                <?php if ( $oauth_status['expired'] ) : ?>
+                                    <strong style="color:#d00;"> <?php echo esc_html__( 'Expired', 'vector-youtube-gallery' ); ?></strong>
+                                <?php else : ?>
+                                    <span style="color:#777;">(<?php echo esc_html( human_time_diff( time(), time() + (int) $oauth_status['seconds_to_expiry'] ) ); ?> <?php echo esc_html__( 'remaining', 'vector-youtube-gallery' ); ?>)</span>
+                                <?php endif; ?>
+                            <?php else : ?>
+                                <em><?php echo esc_html__( 'Unknown', 'vector-youtube-gallery' ); ?></em>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Scopes', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <?php if ( ! empty( $oauth_status['scopes'] ) ) : ?>
+                                <?php foreach ( $oauth_status['scopes'] as $scope ) : ?>
+                                    <code style="display:inline-block;margin:0 4px 4px 0;"><?php echo esc_html( (string) $scope ); ?></code>
+                                <?php endforeach; ?>
+                            <?php else : ?>
+                                <em><?php echo esc_html__( 'None recorded', 'vector-youtube-gallery' ); ?></em>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php echo esc_html__( 'Last refresh error', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <?php if ( ! empty( $oauth_status['last_refresh_error'] ) ) : ?>
+                                <code>[<?php echo esc_html( (string) $oauth_status['last_refresh_error']['code'] ); ?>]</code>
+                                <?php echo esc_html( (string) $oauth_status['last_refresh_error']['message'] ); ?>
+                                <span class="description">(<?php echo esc_html( (string) $oauth_status['last_refresh_error']['at'] ); ?>)</span>
+                            <?php else : ?>
+                                <em><?php echo esc_html__( 'None', 'vector-youtube-gallery' ); ?></em>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -273,7 +355,7 @@ final class DiagnosticsPage {
     private function source_health(): array {
         global $wpdb;
         $rows = $wpdb->get_results(
-            "SELECT id, source_type, title, status, last_success_at, last_error
+            "SELECT id, source_type, title, status, last_success_at, last_error_code, last_error_message
              FROM {$wpdb->prefix}vyg_sources
              ORDER BY id DESC",
             ARRAY_A
@@ -282,15 +364,12 @@ final class DiagnosticsPage {
             return array();
         }
         return array_map( static function ( array $row ): array {
-            $err = $row['last_error'] ?? null;
-            if ( is_string( $err ) && $err !== '' ) {
-                $decoded = json_decode( $err, true );
-                if ( is_array( $decoded ) ) {
-                    $row['last_error'] = $decoded;
-                }
-            } elseif ( $err === '' || $err === null ) {
-                $row['last_error'] = null;
-            }
+            $code = isset( $row['last_error_code'] ) ? (string) $row['last_error_code'] : '';
+            $message = isset( $row['last_error_message'] ) ? (string) $row['last_error_message'] : '';
+            $row['last_error'] = '' === $code && '' === $message ? null : array(
+                'code'    => $code,
+                'message' => $message,
+            );
             return $row;
         }, $rows );
     }
@@ -301,7 +380,7 @@ final class DiagnosticsPage {
         return (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->prefix}vyg_videos
              WHERE availability_status='available'
-               AND ( last_refreshed_at IS NULL OR last_refreshed_at < %s )",
+               AND ( last_success_at IS NULL OR last_success_at < %s )",
             $threshold
         ) );
     }

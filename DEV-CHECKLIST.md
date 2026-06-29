@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
-- Current sub-phase: 7.8 (OAuth diagnostics health)
-- Last completed item: 7.7 — Sources add/resolution is credential-mode aware: new sources persist `auth_mode=oauth` when OAuth mode is selected, OAuth mode requires connected tokens outside mock tests, and Sources UI shows credential mode/`Auth Mode` column
-- Next actionable item: Begin Phase 7.8 — add OAuth health to Diagnostics: connected account, token age/expiry, next refresh/error, revoked/expired state, and redacted token metadata only
+- Current sub-phase: 7.10 (OAuth E2E/browser verification)
+- Last completed item: 7.9 — OAuth unit coverage is complete, including token repository sealing, OAuth client refresh behavior, callback state validation, disconnect revoke/failure cleanup, source-mode gating, and diagnostics redaction
+- Next actionable item: Finish Phase 7.10 — mark local no-real-Google OAuth browser verification complete and explicitly block/defer live Google OAuth E2E until real credentials are entered through the admin UI
 - Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -166,7 +166,7 @@ Preferred capture path is now `scripts/capture-camofox-screenshots.py`: real Cam
 | Feeds list view (saved feeds table + shortcode display) | ![](screenshots/camofox/03-feeds-list.png) | 144 KB |
 | Feeds edit form (name/status/source/layout/display/filter/sort/custom CSS) | ![](screenshots/camofox/04-feeds-edit.png) | 219 KB |
 | Privacy & Compliance (stored data, retention, clean uninstall, disconnect, export/import) | ![](screenshots/camofox/05-privacy.png) | 338 KB |
-| Diagnostics (API status, quota, sync jobs, source health, stale, errors) | ![](screenshots/camofox/06-diagnostics.png) | 241 KB |
+| Diagnostics (API status, OAuth health, quota, sync jobs, source health, stale, errors) | ![](screenshots/camofox/06-diagnostics.png) | 340 KB |
 | Videos moderation (search, filter, hide/pin/reclassify) | ![](screenshots/camofox/07-videos.png) | 216 KB |
 | System Info (copy-to-clipboard, table counts, cron events) | ![](screenshots/camofox/08-system-info.png) | 259 KB |
 | Front-end gallery — feed-by-uuid shortcode rendering 2 videos with real thumbnails | ![](screenshots/camofox/09-frontend-feed.png) | 252 KB |
@@ -188,8 +188,8 @@ Goal: add first-class OAuth support for operators who prefer channel-owner autho
 - [x] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page; live smoke verifies authorization URL/state hashing without calling Google token/API endpoints
 - [x] 7.6 Disconnect flow revokes OAuth token via Google endpoint where possible, always deletes local OAuth tokens, flips global disconnect back to API-key mode, preserves local metadata unless clean-uninstall is enabled, and keeps all-source disconnection behavior in Privacy/Compliance
 - [x] 7.7 Source add/resolution can use OAuth mode for connected-account/private access cases while retaining public API-key behavior; new source rows persist `auth_mode=oauth` when OAuth mode is selected, access gating requires connected OAuth tokens outside mock mode, and the Sources UI exposes the current credential mode plus an `Auth Mode` column
-- [ ] 7.8 Diagnostics page shows OAuth health: connected account, token age, next refresh, last refresh error, revoked/expired state, and redacted token metadata only
-- [~] 7.9 Unit tests: token repository + OAuth client refresh behavior + callback state validation + disconnect revoke/failure cleanup complete; diagnostics redaction tests remain with 7.8
+- [x] 7.8 Diagnostics page shows OAuth health: connected account, masked client ID, token age, expiry/expired state, refresh-token presence, scopes, last refresh error, and redacted token metadata only; live smoke verified no raw client secret/access/refresh token leakage and fixed Diagnostics SQL column drift (`last_error_code`/`last_error_message`, `last_success_at`)
+- [x] 7.9 Unit tests: token repository + OAuth client refresh behavior + callback state validation + disconnect revoke/failure cleanup + source-mode gating + diagnostics redaction coverage complete
 - [~] 7.10 E2E/browser verification: connect/disconnect-mode UI renders through Camofox and no-real-Google-call authorization/disconnect smoke works locally; live OAuth flow remains blocked unless real Google client creds are supplied
 
 ### Phase 8 — Multi-source Feeds + Feed Portability
@@ -909,3 +909,36 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 7.7 is complete locally without real OAuth credentials or live YouTube API calls.
 - Next recommended action:
   - Begin Phase 7.8: add OAuth health to Diagnostics with connected account, token age/expiry, refresh errors, revoked/expired state, and redacted token metadata only.
+
+### 2026-06-29 — Phase 7.8 OAuth diagnostics health + 7.9 test completion
+
+- Trigger: "Continue"
+- Mode: Development Execution Mode (Phase 7 — OAuth Account Connection)
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: 7.8 Diagnostics OAuth health and diagnostics redaction coverage.
+- Work completed:
+  - Added `OAuthTokenRepository::diagnostics_status()` with safe OAuth metadata only: client configured, masked client ID, redirect URI, connected flag, token type, refresh-token presence, expiry, token age, expired state, scopes, connected account, and last refresh error.
+  - Updated Diagnostics page with an OAuth Health section that renders connected account, token metadata, expiry/remaining time, scopes, and last refresh error without displaying raw access tokens, refresh tokens, or client secrets.
+  - Wired `oauth.tokens` into `admin.diagnostics` through the container.
+  - Added diagnostics redaction unit coverage to `OAuthTokenRepositoryTest`.
+  - Live Diagnostics smoke seeded dummy sealed OAuth config/tokens and a refresh error, rendered Diagnostics as admin, verified no database errors and no raw client secret/access/refresh token leakage, captured a Camofox screenshot, then cleaned all dummy OAuth state.
+  - Fixed stale Diagnostics SQL references discovered by the live smoke: source health now uses `last_error_code`/`last_error_message`, and stale-video detection uses `last_success_at` instead of a non-existent `last_refreshed_at` column.
+- Files changed:
+  - `src/Admin/DiagnosticsPage.php`
+  - `src/Plugin.php`
+  - `src/Settings/OAuthTokenRepository.php`
+  - `tests/unit/Settings/OAuthTokenRepositoryTest.php`
+  - `screenshots/camofox/06-diagnostics.png`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` inside `vyg-wp` for touched PHP files → no syntax errors
+  - `make test-unit` → **196 tests, 515 assertions, 0 failures, 0 errors**
+  - Live WP render smoke as admin: `has_db_error=false`, `has_oauth_health=true`, `has_channel=true`, `has_masked_client=true`, `leaks_access=false`, `leaks_refresh=false`, `leaks_secret=false`
+  - Camofox screenshot capture: `screenshots/camofox/06-diagnostics.png` (340 KB)
+  - Cleanup verification: `vyg_oauth_%` options `[]`, `api_mode=api_key`, `siteurl/home=http://localhost:8000`.
+- Screenshot evidence:
+  - `screenshots/camofox/06-diagnostics.png` shows API Status, OAuth Health, quota usage, sync job health, source health, stale videos, and recent errors without database-error banners.
+- Result:
+  - Phase 7.8 and remaining 7.9 diagnostics redaction coverage are complete locally without real Google OAuth credentials or live YouTube API calls.
+- Next recommended action:
+  - Finish Phase 7.10 by documenting local no-real-Google OAuth browser verification as complete and marking live Google OAuth E2E blocked/deferred until credentials are entered through the admin UI.
