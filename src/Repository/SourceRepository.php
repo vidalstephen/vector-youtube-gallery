@@ -16,7 +16,7 @@ use VectorYT\Gallery\Database\Schema;
 
 defined( 'ABSPATH' ) || exit;
 
-final class SourceRepository {
+class SourceRepository {
 
     public function __construct() {}
 

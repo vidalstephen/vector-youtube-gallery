@@ -73,6 +73,14 @@ final class BrainHelpers {
         Functions\when( 'is_readable' )->alias( static fn( string $path ): bool => file_exists( $path ) );
         Functions\when( 'wp_create_nonce' )->alias( static fn( string $action ): string => 'nonce-' . md5( $action ) );
         Functions\when( 'current_time' )->alias( static fn( string $type = 'mysql', ?int $gmt = null ): string => gmdate( 'Y-m-d H:i:s' ) );
+        Functions\when( 'wp_generate_uuid4' )->alias( static fn(): string => sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int( 0, 0xffff ), random_int( 0, 0xffff ),
+            random_int( 0, 0xffff ),
+            random_int( 0, 0x0fff ) | 0x4000,
+            random_int( 0, 0x3fff ) | 0x8000,
+            random_int( 0, 0xffff ), random_int( 0, 0xffff ), random_int( 0, 0xffff )
+        ) );
         Functions\when( 'mysql2date' )->alias( static function ( string $format, string $date ): string {
             $ts = strtotime( $date . ' UTC' );
             return $ts ? gmdate( $format, $ts ) : $date;

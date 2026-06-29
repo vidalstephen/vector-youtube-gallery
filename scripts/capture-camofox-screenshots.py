@@ -170,6 +170,7 @@ def main() -> None:
             ("11-multi-source-feed", f"{WP_INNER}/?page_id=17"),
             ("12-feeds-list-multi-source", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds"),
             ("13-feeds-edit-multi-source", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds&action=edit&id=2"),
+            ("14-feeds-import-export", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds#vyg-feed-impex"),
         ]
         for name, url in pages:
             http_json("POST", f"/tabs/{tab_id}/navigate", {"userId": USER_ID, "sessionKey": SESSION_KEY, "url": url})

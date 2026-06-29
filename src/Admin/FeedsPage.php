@@ -332,7 +332,166 @@ final class FeedsPage {
                     </tbody>
                 </table>
             <?php endif; ?>
+
+            <?php $this->render_import_export_section(); ?>
         </div>
+        <?php
+    }
+
+    /**
+     * Phase 8.5: feed import/export section.
+     *
+     * - "Export all feeds" button hits the REST endpoint and triggers a
+     *   browser download of the JSON.
+     * - "Import feeds" form posts the pasted JSON to the REST endpoint
+     *   with a chosen conflict mode (replace / duplicate / skip).
+     */
+    private function render_import_export_section(): void {
+        $rest_root = rest_url( 'vyg/v1/' );
+        $nonce     = wp_create_nonce( 'wp_rest' );
+        ?>
+        <hr style="margin-top:2em;" />
+        <h2><?php esc_html_e( 'Import / Export Feeds', 'vector-youtube-gallery' ); ?></h2>
+        <p class="description">
+            <?php esc_html_e( 'Move feed configurations between installs. Source UUIDs are remapped automatically by YouTube ID; collisions can be replaced, duplicated, or skipped.', 'vector-youtube-gallery' ); ?>
+        </p>
+        <div id="vyg-feed-impex" style="display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start;">
+            <div style="flex:1; min-width:280px;">
+                <h3><?php esc_html_e( 'Export', 'vector-youtube-gallery' ); ?></h3>
+                <p>
+                    <button type="button" class="button" id="vyg-export-feeds-btn">
+                        <?php esc_html_e( 'Export all feeds as JSON', 'vector-youtube-gallery' ); ?>
+                    </button>
+                </p>
+                <p class="description">
+                    <?php esc_html_e( 'Downloads a JSON file containing every saved feed plus a source-remap lookup table.', 'vector-youtube-gallery' ); ?>
+                </p>
+            </div>
+            <div style="flex:1; min-width:320px;">
+                <h3><?php esc_html_e( 'Import', 'vector-youtube-gallery' ); ?></h3>
+                <form id="vyg-import-feeds-form">
+                    <p>
+                        <textarea id="vyg-import-feeds-json" rows="6" class="large-text code"
+                                  placeholder="<?php echo esc_attr__( 'Paste feeds JSON here…', 'vector-youtube-gallery' ); ?>"></textarea>
+                    </p>
+                    <p>
+                        <label for="vyg-import-feeds-conflict">
+                            <?php esc_html_e( 'On collision:', 'vector-youtube-gallery' ); ?>
+                        </label>
+                        <select id="vyg-import-feeds-conflict">
+                            <option value="skip"><?php esc_html_e( 'Skip (leave existing untouched)', 'vector-youtube-gallery' ); ?></option>
+                            <option value="duplicate"><?php esc_html_e( 'Duplicate (import as a copy)', 'vector-youtube-gallery' ); ?></option>
+                            <option value="replace"><?php esc_html_e( 'Replace (overwrite existing)', 'vector-youtube-gallery' ); ?></option>
+                        </select>
+                        <label style="margin-left:1em;">
+                            <input type="checkbox" id="vyg-import-feeds-force" value="1" />
+                            <?php esc_html_e( 'Force (accept newer export versions)', 'vector-youtube-gallery' ); ?>
+                        </label>
+                    </p>
+                    <p>
+                        <button type="submit" class="button button-primary">
+                            <?php esc_html_e( 'Import', 'vector-youtube-gallery' ); ?>
+                        </button>
+                    </p>
+                </form>
+                <div id="vyg-import-feeds-result" style="display:none; margin-top:1em;"></div>
+            </div>
+        </div>
+        <script>
+        (function () {
+            var restRoot = <?php echo wp_json_encode( $rest_root ); ?>;
+            var nonce    = <?php echo wp_json_encode( $nonce ); ?>;
+
+            function showResult(el, data) {
+                el.style.display = 'block';
+                var okClass = data && data.errors && data.errors.length ? 'notice-error' : 'notice-success';
+                var html = '<div class="notice ' + okClass + '"><p>';
+                if (data) {
+                    if (data.errors && data.errors.length) {
+                        html += '<strong>Errors:</strong><br/>' + data.errors.map(escapeHtml).join('<br/>');
+                    }
+                    if (data.imported)  { html += '<br/>Imported: '   + data.imported;   }
+                    if (data.replaced)  { html += '<br/>Replaced: '   + data.replaced;   }
+                    if (data.duplicated){ html += '<br/>Duplicated: ' + data.duplicated; }
+                    if (data.skipped)   { html += '<br/>Skipped: '    + data.skipped;    }
+                    if (data.warnings && data.warnings.length) {
+                        html += '<br/><strong>Warnings:</strong><br/>' + data.warnings.map(escapeHtml).join('<br/>');
+                    }
+                }
+                html += '</p></div>';
+                el.innerHTML = html;
+            }
+
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, function (c) {
+                    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+                });
+            }
+
+            var exportBtn = document.getElementById('vyg-export-feeds-btn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', function () {
+                    fetch(restRoot + 'admin/feeds/export', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-WP-Nonce': nonce,
+                        },
+                        body: JSON.stringify({}),
+                    })
+                    .then(function (resp) { return resp.json().then(function (j) { return { ok: resp.ok, body: j }; }); })
+                    .then(function (r) {
+                        if (!r.ok || !r.body || !r.body.json) {
+                            alert('Export failed.');
+                            return;
+                        }
+                        var blob = new Blob([r.body.json], { type: 'application/json' });
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'vyg-feeds-' + new Date().toISOString().slice(0, 10) + '.json';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    })
+                    .catch(function (err) {
+                        alert('Export failed: ' + err.message);
+                    });
+                });
+            }
+
+            var form = document.getElementById('vyg-import-feeds-form');
+            var result = document.getElementById('vyg-import-feeds-result');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    var json = document.getElementById('vyg-import-feeds-json').value.trim();
+                    var conflict = document.getElementById('vyg-import-feeds-conflict').value;
+                    var force = document.getElementById('vyg-import-feeds-force').checked;
+                    if (!json) {
+                        alert('Paste feeds JSON first.');
+                        return;
+                    }
+                    fetch(restRoot + 'admin/feeds/import', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-WP-Nonce': nonce,
+                        },
+                        body: JSON.stringify({ json: json, conflict: conflict, force: force }),
+                    })
+                    .then(function (resp) { return resp.json().then(function (j) { return { ok: resp.ok, body: j }; }); })
+                    .then(function (r) { showResult(result, r.body || {}); })
+                    .catch(function (err) {
+                        showResult(result, { errors: ['Import failed: ' + err.message] });
+                    });
+                });
+            }
+        })();
+        </script>
         <?php
     }
 

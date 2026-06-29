@@ -107,6 +107,18 @@ final class AdminRestController {
             'callback'            => array( $this, 'import_settings' ),
             'permission_callback' => $this->cap_and_nonce( $cap ),
         ) );
+
+        // Phase 8.5: feed export/import with conflict handling.
+        register_rest_route( self::NAMESPACE_V1, '/admin/feeds/export', array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array( $this, 'export_feeds' ),
+            'permission_callback' => $this->cap_and_nonce( $cap ),
+        ) );
+        register_rest_route( self::NAMESPACE_V1, '/admin/feeds/import', array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array( $this, 'import_feeds' ),
+            'permission_callback' => $this->cap_and_nonce( $cap ),
+        ) );
     }
 
     /**
@@ -196,6 +208,70 @@ final class AdminRestController {
         $json   = (string) ( $body['json'] ?? '' );
         $result = $this->importer_exporter->import_settings( $json );
         $status = $result['ok'] ? 200 : 400;
+        return new WP_REST_Response( $result, $status );
+    }
+
+    /**
+     * Phase 8.5: export selected (or all) feeds as JSON.
+     *
+     * Body: { feed_uuids: [string,...] }  // empty = all feeds
+     *
+     * Returns: { json: string, count: int, kind: 'feeds', version: string }
+     */
+    public function export_feeds( WP_REST_Request $request ): WP_REST_Response {
+        $body = (array) $request->get_json_params();
+        $uuids = isset( $body['feed_uuids'] ) && is_array( $body['feed_uuids'] )
+            ? array_values( array_filter( array_map( 'strval', $body['feed_uuids'] ) ) )
+            : array();
+
+        if ( empty( $uuids ) ) {
+            $feeds = $this->feeds->list();
+        } else {
+            $feeds = array();
+            foreach ( $uuids as $uuid ) {
+                $row = $this->feeds->find_by_uuid( $uuid );
+                if ( null !== $row ) {
+                    $feeds[] = $row;
+                }
+            }
+        }
+
+        $json  = $this->importer_exporter->export_feeds( $feeds );
+        $decoded = json_decode( $json, true );
+        $version = is_array( $decoded ) ? (string) ( $decoded['version'] ?? '' ) : '';
+
+        return new WP_REST_Response( array(
+            'json'    => $json,
+            'count'   => count( $feeds ),
+            'kind'    => 'feeds',
+            'version' => $version,
+        ), 200 );
+    }
+
+    /**
+     * Phase 8.5: import feeds from JSON with conflict handling.
+     *
+     * Body: { json: string, conflict: 'replace'|'duplicate'|'skip', force?: bool }
+     *
+     * Returns: { ok, imported, replaced, duplicated, skipped, errors, warnings }
+     */
+    public function import_feeds( WP_REST_Request $request ): WP_REST_Response {
+        $body     = (array) $request->get_json_params();
+        $json     = (string) ( $body['json']     ?? '' );
+        $conflict = (string) ( $body['conflict'] ?? 'skip' );
+        $force    = ! empty( $body['force'] );
+
+        // Sanitize the conflict value to the known set; fall back to 'skip'.
+        $allowed = array( 'replace', 'duplicate', 'skip' );
+        if ( ! in_array( $conflict, $allowed, true ) ) {
+            $conflict = 'skip';
+        }
+
+        $result = $this->importer_exporter->import_feeds( $json, array(
+            'conflict' => $conflict,
+            'force'    => $force,
+        ) );
+        $status = empty( $result['errors'] ) ? 200 : 400;
         return new WP_REST_Response( $result, $status );
     }
 

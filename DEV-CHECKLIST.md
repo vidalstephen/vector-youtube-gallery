@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.4 (public REST feed-by-uuid endpoint)
-- Last completed item: 8.4 — added `GET /wp-json/vyg/v1/feed/<uuid>` REST route; resolves a saved mixed-source feed by `feed_uuid`, decodes source_config, dispatches through the existing multi-source renderer path with `public_safe=true`, and returns only public-safe fields in the response (`html`, `has_more`, `next_offset`, `remaining`, `feed.{feed_uuid,name,layout,status}`); rejects unpublished/draft feeds with 404 + `vyg_feed_not_published`; rejects malformed UUIDs with 400; rejects unknown UUIDs with 404 + `vyg_feed_not_found`; new `src/Render/TemplateAttributes.php` centralizes the data-attribute generation for the root feed `<div>` and the load-more button with a `public_safe` flag that omits `data-source-uuid` when set; all 5 templates (grid, list, featured, shorts, live) updated to use it; `Renderer::emit_html()` reads `args['public_safe']` and threads it through to the template context; `load-more.js` prefers `data-feed-uuid` when present and falls back to `data-source-uuid` for legacy shortcodes; `AssetManager` exposes a new `VYG.feedByUuidUrl` localized string; live verification confirms: published feed returns 200 with no `data-source-uuid` and no leaked internal UUIDs; legacy single-source endpoint still works; legacy front-end pages still emit `data-source-uuid` for backwards-compat JS; draft feed returns 404
-- Next actionable item: Phase 8.5 — feed import/export JSON with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
+- Current sub-phase: 8.5 (feed import/export JSON with conflict handling)
+- Last completed item: 8.5 — added `POST /wp-json/vyg/v1/admin/feeds/export` and `POST /wp-json/vyg/v1/admin/feeds/import` REST routes; `ImporterExporter::export_feeds()` produces JSON with `{version: 0.2.0, kind: feeds, plugin_version, exported_at, feeds: [...], source_refs: { uuid → {channel_id, playlist_id, video_id, title} }}`; `ImporterExporter::import_feeds()` parses JSON, validates kind/version, runs source remap by YouTube ID, and resolves collisions with `replace`/`duplicate`/`skip` modes; new FeedsPage import/export UI section ("Export all feeds" → JSON download; "Import" form with paste-JSON textarea + conflict dropdown + force-version checkbox + result notice); export endpoint returns `{json, count, kind, version}`; import endpoint returns `{ok, imported, replaced, duplicated, skipped, errors, warnings}`; 400 on error, 200 on success; 403 for non-admin (cap_and_nonce); unit tests cover all 9 export/import paths (round-trip, version, conflict, source remap, malformed JSON, wrong kind, invalid conflict); live verification: export returns 2 feeds with 2 source_refs; re-import with skip → 2 skipped, 0 imported; re-import with duplicate → 2 duplicated, 0 warnings (sources matched by YouTube ID); re-import with replace + name tweak → feed name correctly overwritten; garbage JSON → 400 + "Invalid JSON"; 210 tests / 569 assertions / 0 failures
+- Next actionable item: Phase 8.6 — admin REST endpoints for feed import/export with nonce + capability checks (already implemented as part of 8.5; the remaining work is large-payload and malformed-JSON hardening, plus audit log of import operations)
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -200,9 +200,9 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 - [x] 8.2 FeedQuery supports mixed sources with deterministic sort, de-duplication by YouTube video ID, source status filtering, and per-source weighting/pinning rules
 - [x] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
 - [x] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
-- [ ] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
+- [x] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - [ ] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling
-- [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration covered; import/export coverage to land with 8.5)
+- [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration + import/export round-trip covered)
 - [ ] 8.8 E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render
 
 ### Phase 9 — Advanced Layouts + Front-end Polish
@@ -1049,3 +1049,52 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
 - Screenshot evidence: not captured this batch — endpoint is JSON-only and the curl/JSON inspection is the canonical evidence.
 - Result:
   - Phase 8.4 complete. The new endpoint serves saved mixed feeds anonymously while exposing only public-safe fields. The legacy single-source endpoint remains unchanged. Front-end JS routes load-more requests through the right endpoint based on which data attribute is present.
+
+### 2026-06-29 — Phase 8.5 feed import/export JSON
+
+- Trigger: "next phase"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Current phase: Phase 8
+- Selected task: 8.5 — feed import/export JSON with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
+- Work completed:
+  - ImporterExporter extended with `export_feeds(array): string` and `import_feeds(string, array): array`.
+  - `export_feeds` produces JSON: `{version: 0.2.0, kind: feeds, plugin_version, exported_at, feeds: [...], source_refs: { uuid → {channel_id, playlist_id, video_id, title} }}`. Each feed record includes feed_uuid, name, feed_type, layout, status, source_config_json, display_config_json, filter_config_json, sort_config_json, custom_css, created_at, updated_at.
+  - `import_feeds` parses JSON, validates `kind === 'feeds'`, refuses newer export versions unless `force=true`, runs source remap (matches by YouTube channel_id/playlist_id/video_id), and resolves collisions:
+    - `replace`: overwrites the existing feed row.
+    - `duplicate`: creates a new feed row with a new feed_uuid and `(copy)` suffix.
+    - `skip`: leaves the existing feed untouched (default).
+  - Returns `{ok, imported, replaced, duplicated, skipped, errors, warnings}`. `errors` contains fatal parsing/validation failures; `warnings` contains non-fatal remap notes (e.g. "source_uuid X has no local match; removed from feed").
+  - Empty-feeds-array is now a valid no-op (`ok=true` when no errors) rather than a hard error.
+  - Plugin.php container binding for `admin.importer_exporter` now also passes `repo.feeds` and `repo.sources` so the importer can do its work.
+  - SourceRepository un-finaled so test stubs can extend it (no production impact; it's still a single implementation).
+  - Two new REST routes registered in AdminRestController:
+    - `POST /wp-json/vyg/v1/admin/feeds/export` → `{json, count, kind, version}` (200).
+    - `POST /wp-json/vyg/v1/admin/feeds/import` → `{ok, imported, replaced, duplicated, skipped, errors, warnings}` (200 on success, 400 on error).
+    - Both gated by `manage_options` + `wp_rest` nonce (403 for anonymous / wrong nonce).
+  - New FeedsPage UI section beneath the list view:
+    - "Export all feeds as JSON" button → fetches the export endpoint and triggers a Blob download named `vyg-feeds-<YYYY-MM-DD>.json`.
+    - Import form: textarea for paste-JSON, conflict-mode dropdown (skip/duplicate/replace), force-versions checkbox, inline notice with imported/replaced/duplicated/skipped counts and warnings.
+  - 9 new unit tests in `tests/unit/Admin/ImporterExporterTest.php` using in-memory FakeFeedRepository/FakeSourceRepository: export shape, invalid JSON, wrong kind, version check + force, invalid conflict mode, create new row, skip preserves existing, replace overwrites, duplicate creates copy, source remap by YouTube ID.
+  - wp_generate_uuid4 stub added to BrainHelpers (test-side).
+- Files changed:
+  - `src/Admin/ImporterExporter.php` (+190 lines: export_feeds + import_feeds + remap_sources + index_local_sources_by_youtube_id)
+  - `src/Plugin.php` (+4 lines: container binding now passes both repos)
+  - `src/Repository/SourceRepository.php` (un-finaled; semantic unchanged)
+  - `src/REST/AdminRestController.php` (+85 lines: 2 routes + 2 callbacks)
+  - `src/Admin/FeedsPage.php` (+160 lines: render_import_export_section with inline JS fetch handler)
+  - `scripts/capture-camofox-screenshots.py` (+1 entry: 14-feeds-import-export)
+  - `tests/Support/BrainHelpers.php` (+8 lines: wp_generate_uuid4 stub)
+  - `tests/unit/Admin/ImporterExporterTest.php` (+310 lines: 9 new tests + 2 stub repos)
+- Tests run:
+  - `php -l` on all touched files inside `vyg-wp` → no syntax errors
+  - `make test-unit` → **210 tests, 569 assertions, 0 failures, 0 errors** (up from 200/536)
+- Live verification:
+  - `POST /admin/feeds/export` (empty body) → 200 with `count=2, kind=feeds, version=0.2.0`, JSON has 2 feeds + 2 source_refs.
+  - Re-export → re-import with skip → 200, `skipped=2, imported=0, ok=true`.
+  - Re-export → re-import with duplicate → 200, `duplicated=2, imported=2, warnings=[]` (sources matched locally by YouTube ID).
+  - Re-export with name tweak → re-import with replace → 200, `replaced=2, imported=2`. Verified feed name was actually overwritten in the DB.
+  - Garbage JSON → 400 with `errors=[Invalid JSON.]`.
+  - Anonymous POST → 403 `vyg_forbidden`.
+  - Routes listed in `wp-json/vyg/v1/` index.
+- Result:
+  - Phase 8.5 complete. Feeds can be exported as JSON and imported on another site with conflict handling and source remap. Live verified end-to-end on the dev instance.

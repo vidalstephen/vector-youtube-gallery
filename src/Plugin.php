@@ -330,7 +330,11 @@ final class Plugin {
             'admin.dashboard_widget',
             static fn( Container $c ): DashboardWidget => new DashboardWidget( $c->get( 'admin.dashboard_stats' ) )
         );
-        $c->set( 'admin.importer_exporter', static fn( Container $c ): ImporterExporter => new ImporterExporter( $c->get( 'settings' ) ) );
+        $c->set( 'admin.importer_exporter', static fn( Container $c ): ImporterExporter => new ImporterExporter(
+            $c->get( 'settings' ),
+            $c->get( 'repo.feeds' ),
+            $c->get( 'repo.sources' )
+        ) );
         $c->set( 'admin.gdpr', static fn(): GdprHooks => new GdprHooks() );
         $c->set( 'admin.system_info', static fn( Container $c ): SystemInfoPage => new SystemInfoPage( $c->get( 'admin.dashboard_stats' ) ) );
         $c->set(
