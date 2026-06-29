@@ -51,7 +51,8 @@ final class Renderer {
      * Render a feed.
      *
      * @param array<string,mixed> $args {
-     *     @type string  $source_uuid    Required.
+     *     @type string  $source_uuid    Required for legacy single-source feeds.
+     *     @type array<string,mixed> $source_config Optional canonical multi-source config (Phase 8).
      *     @type string  $layout         One of: grid, list, featured, shorts, live. Default 'grid'.
      *     @type string  $content_type   Optional filter: 'short_confirmed,live_active' etc.
      *     @type string  $orderby        Optional: published_at, view_count, duration_seconds.
@@ -64,6 +65,23 @@ final class Renderer {
      */
     public function render( array $args ): string {
         $source_uuid = (string) ( $args['source_uuid'] ?? '' );
+        $source_cfg  = isset( $args['source_config'] ) && is_array( $args['source_config'] ) ? $args['source_config'] : null;
+
+        // Multi-source path (Phase 8): when source_config has any sources or
+        // manual_video_ids, route through FeedQuery::videos_for_feed.
+        if ( null !== $source_cfg ) {
+            $has_multi = ! empty( $source_cfg['sources'] ) || ! empty( $source_cfg['manual_video_ids'] );
+            if ( $has_multi ) {
+                return $this->render_multi_source( $args, $source_cfg );
+            }
+            // Fall through: legacy single-source config under the new key.
+            if ( '' !== $source_uuid ) {
+                $args['source_uuid'] = $source_uuid;
+            } elseif ( ! empty( $source_cfg['sources'][0]['source_uuid'] ) ) {
+                $args['source_uuid'] = (string) $source_cfg['sources'][0]['source_uuid'];
+            }
+        }
+
         if ( '' === $source_uuid ) {
             return '<p>' . esc_html__( 'Missing source_uuid.', 'vector-youtube-gallery' ) . '</p>';
         }
@@ -104,8 +122,79 @@ final class Renderer {
             'content_type' => (string) ( $args['content_type'] ?? '' ),
         ) );
 
+        return $this->emit_html( $args, $source, $videos, $total, $layout_slug, $per_page, $offset );
+    }
+
+    /**
+     * Render a feed that uses multiple sources + manual video IDs.
+     *
+     * @param array<string,mixed> $args
+     * @param array<string,mixed> $source_config
+     */
+    private function render_multi_source( array $args, array $source_config ): string {
+        $layout_slug = sanitize_key( (string) ( $args['layout'] ?? 'grid' ) );
+        if ( ! isset( self::LAYOUTS[ $layout_slug ] ) ) {
+            $layout_slug = 'grid';
+        }
+        if ( 'live' === $layout_slug && empty( $args['content_type'] ) ) {
+            $args['content_type'] = 'live_active,live_upcoming,live_replay';
+        }
+        if ( 'shorts' === $layout_slug && empty( $args['content_type'] ) ) {
+            $args['content_type'] = 'short_confirmed,short_candidate';
+        }
+
+        $per_page = isset( $args['per_page'] ) ? max( 1, min( 200, (int) $args['per_page'] ) ) : 12;
+        $offset   = isset( $args['offset'] ) ? max( 0, (int) $args['offset'] ) : 0;
+
+        $videos = $this->feed->videos_for_feed( array(
+            'source'             => $source_config,
+            'content_type'       => (string) ( $args['content_type'] ?? '' ),
+            'orderby'            => (string) ( $args['orderby'] ?? 'published_at' ),
+            'order'              => (string) ( $args['order'] ?? 'DESC' ),
+            'limit'              => $per_page,
+            'offset'             => $offset,
+            'include_unavailable' => ! empty( $args['include_unavailable'] ),
+            'include_hidden'      => ! empty( $args['include_hidden'] ),
+            'include_manual'      => ! isset( $args['include_manual'] ) || (bool) $args['include_manual'],
+        ) );
+
+        $total = $this->feed->count_videos_for_feed( array(
+            'source'             => $source_config,
+            'content_type'       => (string) ( $args['content_type'] ?? '' ),
+            'include_unavailable' => ! empty( $args['include_unavailable'] ),
+            'include_hidden'      => ! empty( $args['include_hidden'] ),
+            'include_manual'      => ! isset( $args['include_manual'] ) || (bool) $args['include_manual'],
+        ) );
+
+        // Render context: pick the first source for legacy display attrs
+        // (templates consume $source for channel title, badge, etc.).
+        $first_source = null;
+        if ( ! empty( $source_config['sources'] ) && ! empty( $source_config['sources'][0]['source_uuid'] ) ) {
+            $first_source = $this->feed->find_source_by_uuid( (string) $source_config['sources'][0]['source_uuid'] );
+        }
+        // Fallback "source" object so templates don't blow up when there are
+        // only manual_video_ids and no resolved source.
+        if ( null === $first_source ) {
+            $first_source = array(
+                'source_uuid' => '',
+                'source_type' => 'manual',
+                'title'       => __( 'Curated videos', 'vector-youtube-gallery' ),
+            );
+        }
+        return $this->emit_html( $args, $first_source, $videos, $total, $layout_slug, $per_page, $offset );
+    }
+
+    /**
+     * Common HTML emit path for both single-source and multi-source render.
+     *
+     * @param array<string,mixed>        $args
+     * @param array<string,mixed>|null   $source
+     * @param array<int,array<string,mixed>> $videos
+     */
+    private function emit_html( array $args, ?array $source, array $videos, int $total, string $layout_slug, int $per_page, int $offset ): string {
         $wrapper_id = sanitize_text_field( (string) ( $args['wrapper_id'] ?? '' ) );
         if ( '' === $wrapper_id ) {
+            $source_uuid = (string) ( $source['source_uuid'] ?? '' );
             $wrapper_id = 'vyg-feed-' . substr( md5( $source_uuid . '|' . $layout_slug ), 0, 8 );
         }
         $feed_uuid  = sanitize_text_field( (string) ( $args['feed_uuid'] ?? '' ) );
@@ -121,6 +210,7 @@ final class Renderer {
                 'layout'     => $layout_slug,
                 'offset'     => $offset,
                 'total'      => $total,
+                'per_page'   => $per_page,
                 'wrapper_id' => $wrapper_id,
                 'feed_uuid'  => $feed_uuid,
             ) ),

@@ -13,10 +13,11 @@
 ## Current Development Status
 
 - Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
-- Current sub-phase: 7.10 (OAuth E2E/browser verification)
-- Last completed item: 7.9 — OAuth unit coverage is complete, including token repository sealing, OAuth client refresh behavior, callback state validation, disconnect revoke/failure cleanup, source-mode gating, and diagnostics redaction
-- Next actionable item: Finish Phase 7.10 — mark local no-real-Google OAuth browser verification complete and explicitly block/defer live Google OAuth E2E until real credentials are entered through the admin UI
-- Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
+- Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
+- Current sub-phase: 8.1 (multi-source feed schema)
+- Last completed item: 7.10 — live OAuth flow completed end-to-end against the real Google account `Stephen Vidal` (`UCAjP3V9fUdBX4jOqH1RjmAQ`); resolved and synced 50 videos from channel `The Way Of Holiness Broadcast` (`UCETTSWoXxA-oEbwxqpbVf-w`) at 3 YouTube Data API units; front-end gallery at `https://srv1388017.tail209ed.ts.net/youtube-gallery-test/` renders 12 cards with zero YouTube API calls on render; `headers already sent` warnings fixed on both `SettingsPage` and `SourcesPage` via `ob_start()`/`ob_end_clean()`
+- Next actionable item: Phase 8.1 — extend `vyg_feeds.source_config_json` schema to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
+- Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
 ## Status Legend
@@ -190,7 +191,7 @@ Goal: add first-class OAuth support for operators who prefer channel-owner autho
 - [x] 7.7 Source add/resolution can use OAuth mode for connected-account/private access cases while retaining public API-key behavior; new source rows persist `auth_mode=oauth` when OAuth mode is selected, access gating requires connected OAuth tokens outside mock mode, and the Sources UI exposes the current credential mode plus an `Auth Mode` column
 - [x] 7.8 Diagnostics page shows OAuth health: connected account, masked client ID, token age, expiry/expired state, refresh-token presence, scopes, last refresh error, and redacted token metadata only; live smoke verified no raw client secret/access/refresh token leakage and fixed Diagnostics SQL column drift (`last_error_code`/`last_error_message`, `last_success_at`)
 - [x] 7.9 Unit tests: token repository + OAuth client refresh behavior + callback state validation + disconnect revoke/failure cleanup + source-mode gating + diagnostics redaction coverage complete
-- [~] 7.10 E2E/browser verification: connect/disconnect-mode UI renders through Camofox and no-real-Google-call authorization/disconnect smoke works locally; live OAuth flow remains blocked unless real Google client creds are supplied
+- [x] 7.10 E2E/browser verification: live OAuth flow completed end-to-end against the real Google account `Stephen Vidal` (`UCAjP3V9fUdBX4jOqH1RjmAQ`); channel `The Way Of Holiness Broadcast` (`UCETTSWoXxA-oEbwxqpbVf-w`) resolved and synced (50 videos indexed at 3 YouTube Data API units); front-end gallery `https://srv1388017.tail209ed.ts.net/youtube-gallery-test/` renders 12 cards with real video IDs and zero YouTube API calls on render; `headers already sent` warnings fixed on `SettingsPage` + `SourcesPage` via output buffer; `dev/.env` flipped to `VYG_USE_MOCK=0` so the live OAuth client is active end-to-end
 
 ### Phase 8 — Multi-source Feeds + Feed Portability
 

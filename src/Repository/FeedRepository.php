@@ -141,12 +141,114 @@ class FeedRepository {
      */
     public static function decode_config( array $feed ): array {
         return array(
-            'source'  => self::json_field( $feed['source_config_json']  ?? null ),
-            'display' => self::json_field( $feed['display_config_json'] ?? null ),
-            'filter'  => self::json_field( $feed['filter_config_json']  ?? null ),
-            'sort'    => self::json_field( $feed['sort_config_json']    ?? null ),
+            'source'     => self::normalize_source_config( self::json_field( $feed['source_config_json'] ?? null ) ),
+            'display'    => self::json_field( $feed['display_config_json'] ?? null ),
+            'filter'     => self::json_field( $feed['filter_config_json']  ?? null ),
+            'sort'       => self::json_field( $feed['sort_config_json']    ?? null ),
             'custom_css' => (string) ( $feed['custom_css'] ?? '' ),
         );
+    }
+
+    /**
+     * Normalize a feed's source_config into the canonical multi-source shape.
+     *
+     * Backwards compatible: a legacy single-source config like
+     *   {"source_uuid":"abc"}
+     * is rewritten to
+     *   {"sources":[{"source_uuid":"abc","weight":1.0,"pinned":false,"label":""}],
+     *    "manual_video_ids":[], "exclude_video_ids":[], "include_query":"any"}
+     *
+     * @param array<string,mixed> $raw
+     * @return array<string,mixed>
+     */
+    public static function normalize_source_config( array $raw ): array {
+        $sources = array();
+
+        // New canonical form: sources[]. Each entry must have source_uuid.
+        if ( isset( $raw['sources'] ) && is_array( $raw['sources'] ) ) {
+            foreach ( $raw['sources'] as $entry ) {
+                if ( ! is_array( $entry ) ) {
+                    continue;
+                }
+                $uuid = isset( $entry['source_uuid'] ) ? (string) $entry['source_uuid'] : '';
+                if ( '' === $uuid ) {
+                    continue;
+                }
+                $sources[] = array(
+                    'source_uuid' => sanitize_text_field( $uuid ),
+                    'weight'      => self::coerce_weight( $entry['weight'] ?? 1.0 ),
+                    'pinned'      => ! empty( $entry['pinned'] ),
+                    'label'       => isset( $entry['label'] ) ? sanitize_text_field( (string) $entry['label'] ) : '',
+                );
+            }
+        }
+
+        // Legacy single-source form: {source_uuid: "..."} → migrate to sources[].
+        if ( empty( $sources ) && isset( $raw['source_uuid'] ) && is_string( $raw['source_uuid'] ) && '' !== $raw['source_uuid'] ) {
+            $sources[] = array(
+                'source_uuid' => sanitize_text_field( $raw['source_uuid'] ),
+                'weight'      => 1.0,
+                'pinned'      => false,
+                'label'       => '',
+            );
+        }
+
+        $manual = array();
+        if ( isset( $raw['manual_video_ids'] ) && is_array( $raw['manual_video_ids'] ) ) {
+            foreach ( $raw['manual_video_ids'] as $vid ) {
+                $vid = (string) $vid;
+                if ( '' === $vid ) {
+                    continue;
+                }
+                if ( preg_match( '/^[A-Za-z0-9_-]{1,32}$/', $vid ) ) {
+                    $manual[] = $vid;
+                }
+            }
+            $manual = array_values( array_unique( $manual ) );
+        }
+
+        $exclude = array();
+        if ( isset( $raw['exclude_video_ids'] ) && is_array( $raw['exclude_video_ids'] ) ) {
+            foreach ( $raw['exclude_video_ids'] as $vid ) {
+                $vid = (string) $vid;
+                if ( '' === $vid ) {
+                    continue;
+                }
+                if ( preg_match( '/^[A-Za-z0-9_-]{1,32}$/', $vid ) ) {
+                    $exclude[] = $vid;
+                }
+            }
+            $exclude = array_values( array_unique( $exclude ) );
+        }
+
+        $include_query = isset( $raw['include_query'] ) ? (string) $raw['include_query'] : 'any';
+        $include_query = in_array( $include_query, array( 'any', 'all' ), true ) ? $include_query : 'any';
+
+        return array(
+            'sources'           => $sources,
+            'manual_video_ids'  => $manual,
+            'exclude_video_ids' => $exclude,
+            'include_query'     => $include_query,
+        );
+    }
+
+    /**
+     * Coerce a weight value into the [0.0, 10.0] float range.
+     *
+     * @param mixed $value
+     */
+    private static function coerce_weight( $value ): float {
+        if ( ! is_numeric( $value ) ) {
+            return 1.0;
+        }
+        $w = (float) $value;
+        if ( $w < 0.0 ) {
+            return 0.0;
+        }
+        if ( $w > 10.0 ) {
+            return 10.0;
+        }
+        return $w;
     }
 
     /**

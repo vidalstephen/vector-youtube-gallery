@@ -92,8 +92,14 @@ final class ShortcodeRegistrar {
                 return '<p>' . esc_html__( 'Vector YouTube Gallery: this feed is archived.', 'vector-youtube-gallery' ) . '</p>';
             }
             $config = FeedRepository::decode_config( $feed_record );
-            if ( '' === $source_uuid && ! empty( $config['source']['source_uuid'] ) ) {
-                $source_uuid = (string) $config['source']['source_uuid'];
+            if ( '' === $source_uuid ) {
+                // Phase 8: legacy single-source config stores source_uuid at the
+                // top level; normalized multi-source form puts it in sources[].
+                if ( ! empty( $config['source']['source_uuid'] ) ) {
+                    $source_uuid = (string) $config['source']['source_uuid'];
+                } elseif ( ! empty( $config['source']['sources'][0]['source_uuid'] ) ) {
+                    $source_uuid = (string) $config['source']['sources'][0]['source_uuid'];
+                }
             }
             // Inline attributes override saved config.
             if ( 'grid' === $layout_slug && ! empty( $feed_record['layout'] ) ) {
@@ -146,18 +152,19 @@ final class ShortcodeRegistrar {
         }
 
         return $this->renderer->render( array(
-            'source_uuid'  => $source_uuid,
-            'layout'       => $layout_slug,
-            'content_type' => (string) $atts['content_type'],
-            'orderby'      => sanitize_key( (string) $atts['orderby'] ),
-            'order'        => sanitize_key( (string) $atts['order'] ),
-            'per_page'     => max( 1, (int) $atts['per_page'] ),
-            'offset'       => max( 0, (int) $atts['offset'] ),
-            'pagination'   => sanitize_key( (string) $atts['pagination'] ),
-            'columns'      => max( 1, (int) $atts['columns'] ),
-            'wrapper_id'   => $wrapper_id,
-            'custom_css'   => $inline_override,
-            'feed_uuid'    => $feed_uuid,
+            'source_uuid'   => $source_uuid,
+            'source_config' => isset( $feed_record ) ? ( $config['source'] ?? array() ) : null,
+            'feed_uuid'     => (string) ( $feed_record['feed_uuid'] ?? '' ),
+            'layout'        => $layout_slug,
+            'content_type'  => (string) $atts['content_type'],
+            'orderby'       => sanitize_key( (string) $atts['orderby'] ),
+            'order'         => sanitize_key( (string) $atts['order'] ),
+            'per_page'      => max( 1, (int) $atts['per_page'] ),
+            'offset'        => max( 0, (int) $atts['offset'] ),
+            'pagination'    => sanitize_key( (string) $atts['pagination'] ),
+            'columns'       => max( 1, (int) $atts['columns'] ),
+            'wrapper_id'    => $wrapper_id,
+            'custom_css'    => $inline_override,
         ) );
     }
 }

@@ -134,7 +134,10 @@ final class FeedRepositoryTest extends \PHPUnit\Framework\TestCase {
             'source_config_json' => null,
             'display_config_json' => '',
         ) );
-        $this->assertSame( array(), $cfg['source'] );
+        $this->assertSame( array(), $cfg['source']['sources'] );
+        $this->assertSame( array(), $cfg['source']['manual_video_ids'] );
+        $this->assertSame( array(), $cfg['source']['exclude_video_ids'] );
+        $this->assertSame( 'any', $cfg['source']['include_query'] );
         $this->assertSame( array(), $cfg['display'] );
     }
 
@@ -144,8 +147,77 @@ final class FeedRepositoryTest extends \PHPUnit\Framework\TestCase {
             'source_config_json' => '{"source_uuid":"abc"}',
             'display_config_json' => '{"columns":4}',
         ) );
-        $this->assertSame( 'abc', $cfg['source']['source_uuid'] );
+        // Legacy single-source config gets migrated to sources[].
+        $this->assertCount( 1, $cfg['source']['sources'] );
+        $this->assertSame( 'abc', $cfg['source']['sources'][0]['source_uuid'] );
+        $this->assertSame( 1.0, $cfg['source']['sources'][0]['weight'] );
+        $this->assertFalse( $cfg['source']['sources'][0]['pinned'] );
         $this->assertSame( 4, $cfg['display']['columns'] );
+    }
+
+    public function test_decode_config_normalizes_multi_source_form(): void {
+        $repo = new FeedRepository();
+        $cfg = $repo::decode_config( array(
+            'source_config_json' => wp_json_encode( array(
+                'sources' => array(
+                    array( 'source_uuid' => 'a', 'weight' => 2.5, 'pinned' => true, 'label' => 'Featured' ),
+                    array( 'source_uuid' => 'b', 'weight' => 0.5 ),
+                ),
+                'manual_video_ids'  => array( 'dQw4w9WgXcQ', 'abc', 'INVALID ID WITH SPACES' ),
+                'exclude_video_ids' => array( 'xyz' ),
+                'include_query'     => 'all',
+            ) ),
+        ) );
+        $this->assertCount( 2, $cfg['source']['sources'] );
+        $this->assertSame( 'a', $cfg['source']['sources'][0]['source_uuid'] );
+        $this->assertSame( 2.5, $cfg['source']['sources'][0]['weight'] );
+        $this->assertTrue( $cfg['source']['sources'][0]['pinned'] );
+        $this->assertSame( 'Featured', $cfg['source']['sources'][0]['label'] );
+        $this->assertSame( 0.5, $cfg['source']['sources'][1]['weight'] );
+        // Invalid YouTube IDs get filtered out.
+        $this->assertSame( array( 'dQw4w9WgXcQ', 'abc' ), $cfg['source']['manual_video_ids'] );
+        $this->assertSame( array( 'xyz' ), $cfg['source']['exclude_video_ids'] );
+        $this->assertSame( 'all', $cfg['source']['include_query'] );
+    }
+
+    public function test_decode_config_coerces_out_of_range_weights(): void {
+        $repo = new FeedRepository();
+        $cfg = $repo::decode_config( array(
+            'source_config_json' => wp_json_encode( array(
+                'sources' => array(
+                    array( 'source_uuid' => 'a', 'weight' => -5 ),
+                    array( 'source_uuid' => 'b', 'weight' => 99 ),
+                    array( 'source_uuid' => 'c', 'weight' => 'not-a-number' ),
+                ),
+            ) ),
+        ) );
+        $this->assertSame( 0.0, $cfg['source']['sources'][0]['weight'] );
+        $this->assertSame( 10.0, $cfg['source']['sources'][1]['weight'] );
+        $this->assertSame( 1.0, $cfg['source']['sources'][2]['weight'] );
+    }
+
+    public function test_decode_config_drops_invalid_include_query(): void {
+        $repo = new FeedRepository();
+        $cfg = $repo::decode_config( array(
+            'source_config_json' => wp_json_encode( array(
+                'sources' => array( array( 'source_uuid' => 'a' ) ),
+                'include_query' => 'bogus',
+            ) ),
+        ) );
+        $this->assertSame( 'any', $cfg['source']['include_query'] );
+    }
+
+    public function test_normalize_source_config_drops_empty_sources(): void {
+        $repo = new FeedRepository();
+        $cfg = FeedRepository::normalize_source_config( array(
+            'sources' => array(
+                array( 'source_uuid' => '' ),
+                'not-an-array',
+                array( 'source_uuid' => 'real' ),
+            ),
+        ) );
+        $this->assertCount( 1, $cfg['sources'] );
+        $this->assertSame( 'real', $cfg['sources'][0]['source_uuid'] );
     }
 
     public function test_allowed_feed_types_and_layouts(): void {
