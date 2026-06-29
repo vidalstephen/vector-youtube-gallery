@@ -46,7 +46,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${WP_PORT}:80"
+      - "127.0.0.1:${WP_PORT}:80"
     environment:
       WORDPRESS_DB_HOST: db:3306
       WORDPRESS_DB_USER: ${DB_USER}
@@ -79,7 +79,7 @@ services:
     container_name: vyg-adminer
     restart: unless-stopped
     ports:
-      - "${ADMINER_PORT}:8080"  # default 8090 (8080 collides with filebrowser on this host)
+      - "127.0.0.1:${ADMINER_PORT}:8080"  # default 8090 (8080 collides with filebrowser on this host)
     environment:
       ADMINER_DEFAULT_SERVER: db
     depends_on:
