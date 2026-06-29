@@ -463,6 +463,301 @@ final class ImporterExporterTest extends TestCase {
         $this->assertSame( 'export', $log->rows[0]['op'] );
         $this->assertSame( 1, $log->rows[0]['ok'] );
     }
+
+    // ----- Phase 8.7: round-trip + remap + version + mixed conflict -----
+
+    public function test_export_then_import_round_trip_preserves_all_fields(): void {
+        $sources = new FakeSourceRepository();
+        $sources->seed( 'src-A', array(
+            'youtube_channel_id'  => 'UC_A',
+            'youtube_playlist_id' => '',
+            'title'               => 'Channel A',
+        ) );
+        $sources->seed( 'src-B', array(
+            'youtube_playlist_id' => 'PL_B',
+            'youtube_channel_id'  => '',
+            'title'               => 'Playlist B',
+        ) );
+
+        $feed_orig_json = wp_json_encode( array(
+            'sources'          => array(
+                array(
+                    'source_uuid' => 'src-A',
+                    'weight'      => 1.5,
+                    'pinned'      => true,
+                    'label'       => 'Featured A',
+                ),
+                array( 'source_uuid' => 'src-B' ),
+            ),
+            'manual_video_ids'  => array( 'm1' ),
+            'exclude_video_ids' => array( 'x1' ),
+            'include_query'     => 'all',
+        ) );
+
+        $export_payload = wp_json_encode( array(
+            'version' => '0.2.0',
+            'kind'    => 'feeds',
+            'source_refs' => array(
+                'src-A' => array( 'youtube_channel_id'  => 'UC_A', 'youtube_playlist_id' => '', 'youtube_video_id' => '', 'title' => 'Channel A' ),
+                'src-B' => array( 'youtube_channel_id'  => '',     'youtube_playlist_id' => 'PL_B', 'youtube_video_id' => '', 'title' => 'Playlist B' ),
+            ),
+            'feeds' => array(
+                array(
+                    'feed_uuid'  => 'feed-original',
+                    'name'       => 'Round Trip Feed',
+                    'feed_type'  => 'source',
+                    'layout'     => 'list',
+                    'status'     => 'published',
+                    'source_config_json'  => $feed_orig_json,
+                    'display_config_json' => wp_json_encode( array( 'columns' => 4 ) ),
+                    'filter_config_json'  => wp_json_encode( array( 'min_duration' => 60 ) ),
+                    'sort_config_json'    => wp_json_encode( array( 'orderby' => 'view_count' ) ),
+                    'custom_css'          => '.vyg { color: blue; }',
+                ),
+            ),
+        ) );
+
+        $clean_repo = new FakeFeedRepository();
+        $ie         = new ImporterExporter(
+            new SettingsRepository(),
+            $clean_repo,
+            $sources
+        );
+        $result = $ie->import_feeds( $export_payload, array( 'conflict' => 'replace' ) );
+        $this->assertTrue( $result['ok'] );
+        $this->assertSame( 1, $result['imported'] );
+
+        $re_imported = $clean_repo->find_by_uuid( 'feed-original' );
+        $this->assertNotNull( $re_imported );
+        $this->assertSame( 'Round Trip Feed', $re_imported['name'] );
+        $this->assertSame( 'list',             $re_imported['layout'] );
+        $this->assertSame( 'published',        $re_imported['status'] );
+
+        $src_cfg = json_decode( $re_imported['source_config_json'], true );
+        $this->assertCount( 2, $src_cfg['sources'] );
+        $this->assertSame( 'src-A', $src_cfg['sources'][0]['source_uuid'] );
+        $this->assertSame( 1.5, $src_cfg['sources'][0]['weight'] );
+        $this->assertTrue(    $src_cfg['sources'][0]['pinned'] );
+        $this->assertSame( 'Featured A', $src_cfg['sources'][0]['label'] );
+        $this->assertSame( array( 'm1' ), $src_cfg['manual_video_ids'] );
+        $this->assertSame( array( 'x1' ), $src_cfg['exclude_video_ids'] );
+        $this->assertSame( 'all', $src_cfg['include_query'] );
+
+        $display = json_decode( $re_imported['display_config_json'], true );
+        $this->assertSame( array( 'columns' => 4 ), $display );
+        $this->assertSame( '.vyg { color: blue; }', $re_imported['custom_css'] );
+
+        $exported = $ie->export_feeds( array( $re_imported ) );
+        $this->assertIsString( $exported );
+        $roundtrip = json_decode( $exported, true );
+        $this->assertSame( 'feeds', $roundtrip['kind'] );
+        $this->assertCount( 1, $roundtrip['feeds'] );
+        // export_feeds emits source_config_json as an object (decoded array),
+        // not as a re-encoded JSON string. Access it directly.
+        $rt_src = $roundtrip['feeds'][0]['source_config_json'];
+        $this->assertSame( 'src-A', $rt_src['sources'][0]['source_uuid'] );
+        $this->assertSame( 1.5, $rt_src['sources'][0]['weight'] );
+    }
+
+    public function test_import_remaps_source_uuid_to_local_via_youtube_channel_id(): void {
+        $local_sources = new FakeSourceRepository();
+        $local_sources->seed( 'LOCAL-src-A', array(
+            'youtube_channel_id'  => 'UC_AAA',
+            'youtube_playlist_id' => '',
+            'title'               => 'Channel A (local)',
+        ) );
+        $feed_repo = new FakeFeedRepository();
+        $ie        = new ImporterExporter(
+            new SettingsRepository(),
+            $feed_repo,
+            $local_sources
+        );
+        $export_json = wp_json_encode( array(
+            'version' => '0.2.0',
+            'kind'    => 'feeds',
+            'source_refs' => array(
+                'REMOTE-src-A' => array(
+                    'youtube_channel_id'  => 'UC_AAA',
+                    'youtube_playlist_id' => '',
+                    'youtube_video_id'    => '',
+                    'title'               => 'Channel A (remote)',
+                ),
+            ),
+            'feeds' => array(
+                array(
+                    'feed_uuid'  => 'remixed-feed',
+                    'name'       => 'Remixed',
+                    'feed_type'  => 'source',
+                    'layout'     => 'grid',
+                    'status'     => 'published',
+                    'source_config_json' => wp_json_encode( array(
+                        'sources' => array(
+                            array(
+                                'source_uuid' => 'REMOTE-src-A',
+                                'weight'      => 1.5,
+                                'pinned'      => true,
+                                'label'       => '',
+                            ),
+                        ),
+                    ) ),
+                    'display_config_json' => '{}',
+                    'filter_config_json'  => '{}',
+                    'sort_config_json'    => '{}',
+                    'custom_css'          => '',
+                ),
+            ),
+        ) );
+
+        $result = $ie->import_feeds( $export_json, array( 'conflict' => 'replace' ) );
+        $this->assertTrue( $result['ok'], 'result ok; warnings=' . wp_json_encode( $result['warnings'] ) );
+        $this->assertSame( 1, $result['imported'] );
+        $this->assertEmpty( $result['warnings'] );
+
+        $row = $feed_repo->find_by_uuid( 'remixed-feed' );
+        $this->assertNotNull( $row );
+        $src_cfg = json_decode( $row['source_config_json'], true );
+        $this->assertCount( 1, $src_cfg['sources'] );
+        $this->assertSame( 'LOCAL-src-A',         $src_cfg['sources'][0]['source_uuid'] );
+        $this->assertSame( 1.5,                   $src_cfg['sources'][0]['weight'] );
+        $this->assertTrue(                        $src_cfg['sources'][0]['pinned'] );
+        $this->assertSame( 'Channel A (local)',   $src_cfg['sources'][0]['label'] );
+    }
+
+    public function test_import_warns_when_no_local_source_match(): void {
+        $feed_repo = new FakeFeedRepository();
+        $ie        = new ImporterExporter(
+            new SettingsRepository(),
+            $feed_repo,
+            new FakeSourceRepository()
+        );
+        $export_json = wp_json_encode( array(
+            'version' => '0.2.0',
+            'kind'    => 'feeds',
+            'source_refs' => array(
+                'REMOTE-orphan' => array(
+                    'youtube_channel_id'  => 'UC_XXX',
+                    'youtube_playlist_id' => '',
+                    'youtube_video_id'    => '',
+                ),
+            ),
+            'feeds' => array(
+                array(
+                    'feed_uuid'  => 'orphan-feed',
+                    'name'       => 'Orphan',
+                    'feed_type'  => 'source',
+                    'layout'     => 'grid',
+                    'status'     => 'published',
+                    'source_config_json' => wp_json_encode( array(
+                        'sources' => array(
+                            array( 'source_uuid' => 'REMOTE-orphan' ),
+                        ),
+                    ) ),
+                    'display_config_json' => '{}',
+                    'filter_config_json'  => '{}',
+                    'sort_config_json'    => '{}',
+                    'custom_css'          => '',
+                ),
+            ),
+        ) );
+        $result = $ie->import_feeds( $export_json, array( 'conflict' => 'replace' ) );
+        // The feed is still created, just with empty sources after the orphan
+        // was dropped. Result reflects: ok=true (feed created with no errors),
+        // no imports counted since the source was dropped, and a warning fired.
+        $this->assertTrue( $result['ok'] );
+        $this->assertSame( 1, $result['imported'] );
+        $this->assertNotEmpty( $result['warnings'] );
+        $this->assertStringContainsString( 'REMOTE-orphan', $result['warnings'][0] );
+    }
+
+    public function test_import_skips_collisions_in_skip_mode(): void {
+        $feeds_repo = new FakeFeedRepository();
+        $feeds_repo->create( array(
+            'feed_uuid'           => 'feed-A',
+            'name'                => 'Original A',
+            'feed_type'           => 'source',
+            'layout'              => 'grid',
+            'status'              => 'draft',
+            'source_config_json'  => '{}',
+            'display_config_json' => '{}',
+            'filter_config_json'  => '{}',
+            'sort_config_json'    => '{}',
+            'custom_css'          => '',
+        ) );
+        $ie = new ImporterExporter(
+            new SettingsRepository(),
+            $feeds_repo,
+            new FakeSourceRepository()
+        );
+        $export_json = wp_json_encode( array(
+            'version' => '0.2.0',
+            'kind'    => 'feeds',
+            'source_refs' => array(),
+            'feeds' => array(
+                array(
+                    'feed_uuid'  => 'feed-A',
+                    'name'       => 'Replaced A',
+                    'feed_type'  => 'source',
+                    'layout'     => 'list',
+                    'status'     => 'published',
+                    'source_config_json'  => '{}',
+                    'display_config_json' => '{}',
+                    'filter_config_json'  => '{}',
+                    'sort_config_json'    => '{}',
+                    'custom_css'          => '',
+                ),
+            ),
+        ) );
+        $first = $ie->import_feeds( $export_json, array( 'conflict' => 'replace' ) );
+        $this->assertSame( 1, $first['imported'] );
+        $this->assertSame( 0, $first['skipped'] );
+
+        $second = $ie->import_feeds( $export_json, array( 'conflict' => 'skip' ) );
+        $this->assertSame( 0, $second['imported'] );
+        $this->assertSame( 1, $second['skipped'] );
+
+        $row = $feeds_repo->find_by_uuid( 'feed-A' );
+        $this->assertSame( 'Replaced A', $row['name'] );
+        $this->assertSame( 'list',       $row['layout'] );
+    }
+
+    public function test_import_rejects_newer_major_version_without_force(): void {
+        $feed_repo = new FakeFeedRepository();
+        $ie        = new ImporterExporter(
+            new SettingsRepository(),
+            $feed_repo,
+            new FakeSourceRepository()
+        );
+        // The current EXPORT_VERSION is 0.2.0; sending 1.0.0 (major=1) is rejected
+        // unless force=true.
+        $export_json = wp_json_encode( array(
+            'version' => '1.0.0',
+            'kind'    => 'feeds',
+            'source_refs' => array(),
+            'feeds' => array(),
+        ) );
+        $result = $ie->import_feeds( $export_json );
+        $this->assertFalse( $result['ok'] );
+        $this->assertNotEmpty( $result['errors'] );
+        $this->assertStringContainsString( '1.0.0', $result['errors'][0] );
+    }
+
+    public function test_import_accepts_newer_major_version_with_force_flag(): void {
+        $feed_repo = new FakeFeedRepository();
+        $ie        = new ImporterExporter(
+            new SettingsRepository(),
+            $feed_repo,
+            new FakeSourceRepository()
+        );
+        $export_json = wp_json_encode( array(
+            'version' => '1.0.0',
+            'kind'    => 'feeds',
+            'source_refs' => array(),
+            'feeds' => array(),
+        ) );
+        $result = $ie->import_feeds( $export_json, array( 'force' => true ) );
+        $this->assertTrue( $result['ok'] );
+        $this->assertEmpty( $result['errors'] );
+    }
 }
 
 /**
@@ -480,6 +775,15 @@ final class FakeFeedRepository extends FeedRepository {
     public function create( array $data ): int {
         $uuid = $data['feed_uuid'] ?? sprintf( 'auto-%s-%d', wp_generate_uuid4(), $this->next_id );
         $this->next_id++;
+        // Mirror the production behavior: JSON-encode the *_json columns to a string.
+        foreach ( array( 'source_config_json', 'display_config_json', 'filter_config_json', 'sort_config_json' ) as $col ) {
+            if ( isset( $data[ $col ] ) && is_array( $data[ $col ] ) ) {
+                $data[ $col ] = wp_json_encode( $data[ $col ] );
+            }
+            if ( ! isset( $data[ $col ] ) || ! is_string( $data[ $col ] ) ) {
+                $data[ $col ] = '{}';
+            }
+        }
         $this->by_uuid[ $uuid ] = array_merge(
             array(
                 'id'        => $this->next_id,
@@ -497,6 +801,11 @@ final class FakeFeedRepository extends FeedRepository {
     public function update( int $id, array $data ): bool {
         foreach ( $this->by_uuid as $uuid => $row ) {
             if ( (int) ( $row['id'] ?? 0 ) === $id ) {
+                foreach ( array( 'source_config_json', 'display_config_json', 'filter_config_json', 'sort_config_json' ) as $col ) {
+                    if ( isset( $data[ $col ] ) && is_array( $data[ $col ] ) ) {
+                        $data[ $col ] = wp_json_encode( $data[ $col ] );
+                    }
+                }
                 $this->by_uuid[ $uuid ] = array_merge( $row, $data );
                 return true;
             }
@@ -614,6 +923,7 @@ final class FakeFeedRepository extends FeedRepository {
         $this->assertSame( 'export', $log->rows[0]['op'] );
         $this->assertSame( 1, $log->rows[0]['ok'] );
     }
+
 }
 
 /**

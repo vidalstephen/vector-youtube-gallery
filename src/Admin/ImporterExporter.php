@@ -58,7 +58,15 @@ final class ImporterExporter {
         private readonly ?FeedRepository $feeds = null,
         private readonly ?SourceRepository $sources = null,
         private readonly ?ImportLogRepository $import_log = null,
-    ) {}
+    ) {
+        // Instance-scoped cache for index_local_sources_by_youtube_id so
+        // tests with independent FakeSourceRepository instances don't see
+        // each other's data.
+        $this->local_index_cache = null;
+    }
+
+    /** Cached output of index_local_sources_by_youtube_id(); reset per-instance. */
+    private ?array $local_index_cache = null;
 
     /**
      * Build a JSON export of all current settings.
@@ -356,9 +364,17 @@ final class ImporterExporter {
             $existing = $this->feeds->find_by_uuid( $uuid );
 
             // Source remap: rewrite source_config.source[s].source_uuid to
-            // a local source_uuid matched by YouTube ID.
-            $src_cfg  = is_array( $rec['source_config_json'] ?? null ) ? $rec['source_config_json'] : array();
-            $src_cfg  = $this->remap_sources( $src_cfg, $source_refs, $result['warnings'], $idx );
+            // a local source_uuid matched by YouTube ID. The export shape is
+            // an object (already-decoded array OR a JSON string); decode if
+            // necessary so we get a uniform array.
+            $raw_src = $rec['source_config_json'] ?? null;
+            if ( is_string( $raw_src ) ) {
+                $decoded = json_decode( (string) $raw_src, true );
+                $raw_src = is_array( $decoded ) ? $decoded : array();
+            } elseif ( ! is_array( $raw_src ) ) {
+                $raw_src = array();
+            }
+            $src_cfg  = $this->remap_sources( $raw_src, $source_refs, $result['warnings'], $idx );
 
             $row = array(
                 'feed_uuid'           => $uuid,
@@ -367,9 +383,9 @@ final class ImporterExporter {
                 'layout'              => (string) ( $rec['layout'] ?? 'grid' ),
                 'status'              => (string) ( $rec['status'] ?? 'draft' ),
                 'source_config_json'  => $src_cfg,
-                'display_config_json' => is_array( $rec['display_config_json'] ?? null ) ? $rec['display_config_json'] : array(),
-                'filter_config_json'  => is_array( $rec['filter_config_json'] ?? null )  ? $rec['filter_config_json']  : array(),
-                'sort_config_json'    => is_array( $rec['sort_config_json'] ?? null )    ? $rec['sort_config_json']    : array(),
+                'display_config_json' => $this->decode_or_array( $rec['display_config_json'] ?? null ),
+                'filter_config_json'  => $this->decode_or_array( $rec['filter_config_json']  ?? null ),
+                'sort_config_json'    => $this->decode_or_array( $rec['sort_config_json']    ?? null ),
                 'custom_css'          => (string) ( $rec['custom_css'] ?? '' ),
             );
 
@@ -491,12 +507,12 @@ final class ImporterExporter {
      * @return array<string,array<string,mixed>>
      */
     private function index_local_sources_by_youtube_id(): array {
-        static $cache = null;
-        if ( null !== $cache ) {
-            return $cache;
+        if ( null !== $this->local_index_cache ) {
+            return $this->local_index_cache;
         }
         $cache = array();
         if ( null === $this->sources ) {
+            $this->local_index_cache = $cache;
             return $cache;
         }
         foreach ( $this->sources->list() as $row ) {
@@ -507,7 +523,22 @@ final class ImporterExporter {
                 }
             }
         }
+        $this->local_index_cache = $cache;
         return $cache;
+    }
+
+    /**
+     * Decode a value to an array, or return [] on any error.
+     */
+    private function decode_or_array( $value ): array {
+        if ( is_array( $value ) ) {
+            return $value;
+        }
+        if ( is_string( $value ) ) {
+            $decoded = json_decode( $value, true );
+            return is_array( $decoded ) ? $decoded : array();
+        }
+        return array();
     }
 
     /**

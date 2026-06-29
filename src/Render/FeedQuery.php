@@ -14,10 +14,9 @@ namespace VectorYT\Gallery\Render;
 
 defined( 'ABSPATH' ) || exit;
 
-final class FeedQuery {
+class FeedQuery {
 
     public function __construct() {}
-
     /**
      * Query videos for a source. Filters by content_type when supplied.
      *
@@ -397,7 +396,7 @@ final class FeedQuery {
      * @param array<string,mixed> $filters
      * @return array<int,array<string,mixed>>
      */
-    private function videos_for_ids( array $ids, array $filters ): array {
+    protected function videos_for_ids( array $ids, array $filters ): array {
         global $wpdb;
         $ids = array_values( array_unique( array_filter( array_map( 'strval', $ids ) ) ) );
         if ( empty( $ids ) ) {

@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.6 (admin REST hardening: size cap + audit log + malformed-JSON tolerance)
-- Last completed item: 8.6 — added `vyg_import_log` table (22 cols, audit of every import/export operation), `ImportLogRepository` (record/list/find/count/prune), audit emission on both `export_feeds()` and `import_feeds()` paths with payload SHA-256 + size + duration + user identity; `ImporterExporter::DEFAULT_IMPORT_SIZE_CAP_BYTES = 5 MB` enforced both inside the importer (defensive) and at the REST boundary (HTTP 413); new `GET /admin/import-log` paginated list endpoint and `GET /admin/import-log/<id>` single-record endpoint; `ImporterExporter::import_feeds` now distinguishes empty payload / top-level-non-object / truncated JSON with specific error messages via `json_error_message()` helper; renamed reserved-word columns `force`/`ok` to `force_flag`/`ok_flag`; `ImportLogRepository` un-finaled for test stubbing; 7 new unit tests covering oversized payload rejection, empty payload rejection, specific JSON error reporting, top-level-non-object rejection, audit emission on success/error/export; live verified end-to-end: 3 audit rows written (export 200, re-import-skip 200, garbage 400), list endpoint returns total=3 with correct counts, get-by-id endpoint decodes errors/warnings JSON, oversized payload returns 413; 217 tests / 595 assertions / 0 failures
-- Next actionable item: Phase 8.7 — Unit tests for mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (most are already covered by 8.1/8.5/8.6 tests; remaining: large round-trip integration test + FeedRepository::decode_config coverage + per-feed source-remap tests)
+- Current sub-phase: 8.7 (unit-test gap fill-in for Phase 8)
+- Last completed item: 8.7 — added FeedQueryTest (10 new tests with StubFeedQuery subclass overriding videos_for_source/videos_for_ids; covers empty merge, multi-source merge, dedupe by youtube_video_id, pinned dedupe priority, exclude_video_ids filter, manual_video_ids augmentation, limit/offset pagination, malformed-source-entry skip, count after exclude, manual_ids absent). Fixed production bug: decode_or_array() helper normalizes source/display/filter/sort_config_json fields (string OR array) before they reach FeedRepository::create; changed static cache on index_local_sources_by_youtube_id to instance-scoped to prevent test cross-contamination; added 6 more ImporterExporterTest cases: full export→import round-trip preserving all fields (sources, weight, pinned, label, manual, exclude, include_query, display, custom_css); source-remap by YouTube channel ID; orphan-source warning; skip-mode collision preserves existing record; newer-major-version rejection without force; newer-major-version acceptance with force. FakeFeedRepository now JSON-encodes the *_config_json columns to mirror production. FeedQuery un-finaled for test stubbing. 233 tests / 657 assertions / 0 failures (up from 217/595). Live verified: export endpoint returns 2 feeds + 2 source_refs, kind=feeds, version=0.2.0, 3428 chars JSON.
+- Next actionable item: Phase 8.8 — E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render. Note: most of this is already covered by the Phase 8.3 Camofox screenshot set (12-feeds-list-multi-source.png, 13-feeds-edit-multi-source.png). Remaining work: capture the front-end rendering of a mixed feed to confirm no admin-only data leaks + write a Playwright-style assertion that the front-end DOM contains zero `data-source-uuid` attributes (since Phase 8.4 set public feeds to strip them).
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -202,7 +202,7 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 - [x] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
 - [x] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - [x] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling; audit log of import operations
-- [~] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration + import/export round-trip + 8.6 hardening covered; remaining: large round-trip integration test + FeedRepository::decode_config coverage + per-feed source-remap tests)
+- [x] 8.7 Unit tests: mixed-feed queries (10), de-duplication, import/export round-trip + source-remap + version-rejection + skip-mode (6), plus FeedRepository decode_config coverage and per-feed source-remap tests
 - [ ] 8.8 E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render
 
 ### Phase 9 — Advanced Layouts + Front-end Polish
@@ -1143,3 +1143,26 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - 6 MB payload → 413 with "Payload too large: 6000016 bytes (cap 5242880 bytes)."
 - Result:
   - Phase 8.6 complete. Admin REST endpoints now have hard size caps, malformed-JSON tolerance with specific error messages, and a full audit trail of every operation. Operators can audit past imports/exports via REST or the FeedsPage "Recent imports" table.
+
+### 2026-06-29 — Phase 8.7 unit-test gap fill-in
+
+- Trigger: "next phase"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Selected task: 8.7 — fill in remaining unit-test gaps for Phase 8 (FeedQuery multi-source merge/dedupe/sort; ImporterExporter full round-trip + remap + version handling)
+- Work completed:
+  - **FeedQueryTest** (new, 10 tests): StubFeedQuery subclass overrides `videos_for_source()` and `videos_for_ids()` so tests don't touch the real VideoRepository. Covers: empty merge returns empty, multi-source merge by published_at DESC, dedupe by `youtube_video_id`, pinned source takes dedupe priority (vs. date order), exclude_video_ids filter, manual_video_ids augmentation, limit/offset pagination, malformed source entry skip, count_videos_for_feed after exclude, no manual ids.
+  - **ImporterExporterTest** (6 new tests): full export→import round-trip preserving all fields (name, layout, status, sources, weight, pinned, label, manual_video_ids, exclude_video_ids, include_query, display_config_json, custom_css); export-then-export symmetry; source-UUID remap by YouTube channel ID; orphan-source warning with feed still created; skip-mode collision preserves existing record (post-replace the record is untouched); newer-major-version rejection (without force); newer-major-version acceptance (with force).
+  - **Bug fix** — `ImporterExporter::import_feeds()`: source/display/filter/sort_config_json were treated as already-decoded arrays, but the export shape stores them as either a JSON string (real DB rows) or array (test mocks). Added `decode_or_array()` helper that accepts both and normalizes to array before passing to FeedRepository::create. Without this fix, the round-trip test demonstrated the production code would lose multi-source data on re-import.
+  - **Bug fix** — `ImporterExporter::index_local_sources_by_youtube_id()`: changed from `static $cache` (which leaked across test instances and masked source-remap behavior) to instance-scoped `$this->local_index_cache`. Also exposed `videos_for_ids()` as `protected` so test stubs can override it (was `private`).
+  - **Test infrastructure**: `FeedQuery` un-finaled; `videos_for_ids` promoted to `protected`; `FakeFeedRepository::create/update` now JSON-encodes the *_config_json columns to mirror the real FeedRepository's behavior.
+- Files changed:
+  - `tests/unit/Render/FeedQueryTest.php` (new, 290 lines)
+  - `tests/unit/Admin/ImporterExporterTest.php` (+280 lines: 6 new tests + FakeFeedRepository JSON-encoding)
+  - `src/Admin/ImporterExporter.php` (+30 lines: decode_or_array helper, instance-scoped cache, config_json decode normalization)
+  - `src/Render/FeedQuery.php` (un-finaled; videos_for_ids now `protected`)
+- Tests run:
+  - `php -l` clean on all touched files
+  - `make test-unit` → **233 tests, 657 assertions, 0 failures, 0 errors** (up from 217/595)
+- Live verification: `POST /admin/feeds/export` returns 200 with count=2, kind=feeds, version=0.2.0, 3428-char JSON containing 2 feeds + 2 source_refs.
+- Result:
+  - Phase 8.7 complete. Phase 8 multi-source feeds + feed portability now has comprehensive unit-test coverage: merge/dedupe/sort/exclude/manuals/pagination (10 tests) + import/export round-trip / source-remap / version policy (6 tests). One real bug found and fixed: source_config_json decoding inconsistency would have lost multi-source data on every real round-trip.
