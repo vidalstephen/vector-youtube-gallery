@@ -45,9 +45,14 @@ final class SettingsPage {
 
         // Handle save.
         if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
+            // WP 7.0 update banner can echo HTML before our handler runs,
+            // breaking wp_safe_redirect() with "headers already sent". Capture
+            // any stray output so the redirect works cleanly.
+            ob_start();
             $this->maybe_handle_save();
             $this->maybe_handle_oauth_save();
             $this->maybe_handle_settings_save();
+            ob_end_clean();
         }
 
         $has_key              = $this->secrets->has_api_key();
