@@ -1,14 +1,16 @@
 <?php
 /**
- * FeedsPage — admin UI for Phase 6 Feed Builder.
+ * FeedsPage — admin UI for Phase 6 Feed Builder + Phase 8 multi-source.
  *
- * Replaces the `[youtube_feed ...]` shortcode paradigm with named "feeds"
- * stored in vyg_feeds. The shortcode/block can then resolve by feed_uuid
- * instead of source_uuid + ad-hoc attributes.
- *
- * Two views:
+ * Three views:
  *  - List view (default): table of saved feeds with edit/duplicate/delete actions.
- *  - Edit view (?action=edit&id=N): full form with all feed configuration fields.
+ *  - Edit view (?action=edit&id=N): full form with multi-source configuration fields.
+ *
+ * Phase 8.3 additions to the edit form:
+ *  - Repeater for `sources[]` (add/remove/reorder via JS + remove buttons).
+ *  - Manual video IDs textarea (one ID per line).
+ *  - Exclude video IDs textarea (one ID per line).
+ *  - Per-source badge column on the list view.
  *
  * @package VectorYT\Gallery\Admin
  */
@@ -39,6 +41,11 @@ final class FeedsPage {
             wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
         }
 
+        // WP 7.0 update banner can echo HTML before our handler runs, breaking
+        // wp_safe_redirect() with "headers already sent". Capture any stray
+        // output so the redirect lands cleanly.
+        ob_start();
+
         $action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
         $id     = isset( $_GET['id'] ) ? absint( wp_unslash( $_GET['id'] ) ) : 0;
 
@@ -50,10 +57,12 @@ final class FeedsPage {
 
         if ( 'edit' === $action && $id > 0 ) {
             $this->render_edit( $id );
+            ob_end_flush();
             return;
         }
 
         $this->render_list();
+        ob_end_flush();
     }
 
     private function handle_post(): void {
@@ -118,11 +127,53 @@ final class FeedsPage {
      * @return array<string,mixed>
      */
     private function collect_posted(): array {
-        $source_uuid = isset( $_POST['source_uuid'] ) ? sanitize_text_field( wp_unslash( $_POST['source_uuid'] ) ) : '';
-        $source_config = array();
-        if ( $source_uuid !== '' ) {
-            $source_config['source_uuid'] = $source_uuid;
+        $sources = array();
+        if ( isset( $_POST['sources'] ) && is_array( $_POST['sources'] ) ) {
+            foreach ( $_POST['sources'] as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+                $uuid = isset( $row['source_uuid'] ) ? sanitize_text_field( wp_unslash( (string) $row['source_uuid'] ) ) : '';
+                if ( '' === $uuid ) {
+                    continue;
+                }
+                $weight = isset( $row['weight'] ) ? (float) $row['weight'] : 1.0;
+                if ( $weight < 0.0 ) {
+                    $weight = 0.0;
+                } elseif ( $weight > 10.0 ) {
+                    $weight = 10.0;
+                }
+                $sources[] = array(
+                    'source_uuid' => $uuid,
+                    'weight'      => $weight,
+                    'pinned'      => ! empty( $row['pinned'] ),
+                    'label'       => isset( $row['label'] ) ? sanitize_text_field( wp_unslash( (string) $row['label'] ) ) : '',
+                );
+            }
         }
+
+        // Legacy single-source form: source_uuid (no sources[] submitted).
+        if ( empty( $sources ) && ! empty( $_POST['source_uuid'] ) ) {
+            $legacy = sanitize_text_field( wp_unslash( (string) $_POST['source_uuid'] ) );
+            if ( '' !== $legacy ) {
+                $sources[] = array(
+                    'source_uuid' => $legacy,
+                    'weight'      => 1.0,
+                    'pinned'      => false,
+                    'label'       => '',
+                );
+            }
+        }
+
+        $manual_ids = $this->parse_id_lines( $_POST['manual_video_ids'] ?? '' );
+        $exclude_ids = $this->parse_id_lines( $_POST['exclude_video_ids'] ?? '' );
+
+        $source_config = array(
+            'sources'           => $sources,
+            'manual_video_ids'  => $manual_ids,
+            'exclude_video_ids' => $exclude_ids,
+            'include_query'     => 'any',
+        );
 
         $display = array(
             'columns'    => isset( $_POST['columns'] )    ? max( 1, min( 6, absint( wp_unslash( $_POST['columns'] ) ) ) ) : 3,
@@ -160,6 +211,29 @@ final class FeedsPage {
         );
     }
 
+    /**
+     * Parse a newline-separated list of YouTube video IDs.
+     *
+     * @param mixed $raw
+     * @return array<int,string>
+     */
+    private function parse_id_lines( $raw ): array {
+        if ( ! is_string( $raw ) ) {
+            return array();
+        }
+        $out = array();
+        foreach ( preg_split( '/[\r\n]+/', $raw ) ?: array() as $line ) {
+            $id = trim( (string) $line );
+            if ( '' === $id ) {
+                continue;
+            }
+            if ( preg_match( '/^[A-Za-z0-9_-]{1,32}$/', $id ) ) {
+                $out[] = $id;
+            }
+        }
+        return array_values( array_unique( $out ) );
+    }
+
     private function render_list(): void {
         $feeds  = $this->feeds->list();
         $msg    = isset( $_GET['vyg_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['vyg_msg'] ) ) : '';
@@ -185,6 +259,7 @@ final class FeedsPage {
                             <th><?php echo esc_html__( 'Type', 'vector-youtube-gallery' ); ?></th>
                             <th><?php echo esc_html__( 'Layout', 'vector-youtube-gallery' ); ?></th>
                             <th><?php echo esc_html__( 'Status', 'vector-youtube-gallery' ); ?></th>
+                            <th><?php echo esc_html__( 'Sources', 'vector-youtube-gallery' ); ?></th>
                             <th><?php echo esc_html__( 'UUID', 'vector-youtube-gallery' ); ?></th>
                             <th><?php echo esc_html__( 'Shortcode', 'vector-youtube-gallery' ); ?></th>
                             <th><?php echo esc_html__( 'Actions', 'vector-youtube-gallery' ); ?></th>
@@ -194,12 +269,47 @@ final class FeedsPage {
                         <?php foreach ( $feeds as $f ) :
                             $edit_url = add_query_arg( array( 'page' => AdminMenu::PARENT_SLUG . '-feeds', 'action' => 'edit', 'id' => (int) $f['id'] ), admin_url( 'admin.php' ) );
                             $shortcode = '[youtube_feed feed_uuid="' . esc_attr( (string) $f['feed_uuid'] ) . '"]';
+                            $f_config = FeedRepository::decode_config( $f );
+                            $f_sources = isset( $f_config['source']['sources'] ) ? $f_config['source']['sources'] : array();
+                            $f_manual = isset( $f_config['source']['manual_video_ids'] ) ? count( $f_config['source']['manual_video_ids'] ) : 0;
+                            $f_excluded = isset( $f_config['source']['exclude_video_ids'] ) ? count( $f_config['source']['exclude_video_ids'] ) : 0;
+                            $f_pinned = 0;
+                            foreach ( $f_sources as $f_entry ) {
+                                if ( ! empty( $f_entry['pinned'] ) ) {
+                                    $f_pinned++;
+                                }
+                            }
+                            $source_count = count( $f_sources );
                         ?>
                             <tr>
                                 <td><strong><?php echo esc_html( (string) ( $f['name'] ?? '(unnamed)' ) ); ?></strong></td>
                                 <td><?php echo esc_html( (string) ( $f['feed_type'] ?? '' ) ); ?></td>
                                 <td><?php echo esc_html( (string) ( $f['layout'] ?? '' ) ); ?></td>
                                 <td><span class="vyg-status-badge vyg-status-badge--<?php echo esc_attr( (string) ( $f['status'] ?? 'unknown' ) ); ?>"><?php echo esc_html( (string) ( $f['status'] ?? '' ) ); ?></span></td>
+                                <td>
+                                    <?php if ( $source_count > 0 ) : ?>
+                                        <span class="vyg-source-count" style="background:#dff5e1; color:#1d6b2c; padding:2px 8px; border-radius:10px; font-size:0.85em; white-space:nowrap;" title="<?php echo esc_attr( sprintf( _n( '%d source', '%d sources', $source_count, 'vector-youtube-gallery' ), $source_count ) ); ?>">
+                                            <?php echo esc_html( sprintf( _n( '%d source', '%d sources', $source_count, 'vector-youtube-gallery' ), $source_count ) ); ?>
+                                        </span>
+                                    <?php else : ?>
+                                        <span class="vyg-source-count vyg-source-count--empty" style="background:#f3f3f3; color:#777; padding:2px 8px; border-radius:10px; font-size:0.85em;"><?php echo esc_html__( 'no sources', 'vector-youtube-gallery' ); ?></span>
+                                    <?php endif; ?>
+                                    <?php if ( $f_manual > 0 ) : ?>
+                                        <span class="vyg-source-badge" style="background:#fff3cd; color:#7a5d00; padding:2px 8px; border-radius:10px; font-size:0.85em; margin-left:0.25rem;" title="<?php echo esc_attr( sprintf( _n( '%d manual video ID', '%d manual video IDs', $f_manual, 'vector-youtube-gallery' ), $f_manual ) ); ?>">
+                                            + <?php echo (int) $f_manual; ?> <?php echo esc_html__( 'manual', 'vector-youtube-gallery' ); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ( $f_excluded > 0 ) : ?>
+                                        <span class="vyg-source-badge" style="background:#fde2e1; color:#7a1f1d; padding:2px 8px; border-radius:10px; font-size:0.85em; margin-left:0.25rem;" title="<?php echo esc_attr( sprintf( _n( '%d excluded video ID', '%d excluded video IDs', $f_excluded, 'vector-youtube-gallery' ), $f_excluded ) ); ?>">
+                                            − <?php echo (int) $f_excluded; ?> <?php echo esc_html__( 'excluded', 'vector-youtube-gallery' ); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ( $f_pinned > 0 ) : ?>
+                                        <span class="vyg-source-badge" style="background:#e3e3ff; color:#2a2a7a; padding:2px 8px; border-radius:10px; font-size:0.85em; margin-left:0.25rem;" title="<?php echo esc_attr( sprintf( _n( '%d pinned source', '%d pinned sources', $f_pinned, 'vector-youtube-gallery' ), $f_pinned ) ); ?>">
+                                            ★ <?php echo (int) $f_pinned; ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><code style="font-size: 0.85em;"><?php echo esc_html( (string) $f['feed_uuid'] ); ?></code></td>
                                 <td><input type="text" readonly value="<?php echo esc_attr( $shortcode ); ?>" style="width: 100%; font-family: monospace; font-size: 0.85em;" onclick="this.select();" /></td>
                                 <td>
@@ -235,7 +345,6 @@ final class FeedsPage {
         }
 
         $config = FeedRepository::decode_config( $feed );
-        $source_uuid = (string) ( $config['source']['source_uuid'] ?? '' );
         $display = wp_parse_args( $config['display'], array(
             'columns' => 3, 'per_page' => 12, 'lightbox' => true, 'load_more' => true,
             'pagination' => 'none', 'player_mode' => 'iframe',
@@ -246,6 +355,17 @@ final class FeedsPage {
         $sort = wp_parse_args( $config['sort'], array( 'orderby' => 'published_at', 'order' => 'DESC' ) );
 
         $sources = $this->sources->list();
+        $source_index = array();
+        foreach ( $sources as $s ) {
+            $uuid = (string) ( $s['source_uuid'] ?? '' );
+            if ( '' !== $uuid ) {
+                $source_index[ $uuid ] = $s;
+            }
+        }
+
+        $feed_sources = isset( $config['source']['sources'] ) ? $config['source']['sources'] : array();
+        $manual_ids   = isset( $config['source']['manual_video_ids'] ) ? $config['source']['manual_video_ids'] : array();
+        $exclude_ids  = isset( $config['source']['exclude_video_ids'] ) ? $config['source']['exclude_video_ids'] : array();
 
         ?>
         <div class="wrap">
@@ -283,16 +403,86 @@ final class FeedsPage {
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><label for="source_uuid"><?php echo esc_html__( 'Source', 'vector-youtube-gallery' ); ?></label></th>
+                        <th scope="row"><?php echo esc_html__( 'Sources', 'vector-youtube-gallery' ); ?></th>
                         <td>
-                            <select name="source_uuid" id="source_uuid">
-                                <option value=""><?php echo esc_html__( '— Select source —', 'vector-youtube-gallery' ); ?></option>
-                                <?php foreach ( $sources as $s ) : ?>
-                                    <option value="<?php echo esc_attr( (string) ( $s['source_uuid'] ?? '' ) ); ?>" <?php selected( $source_uuid, (string) ( $s['source_uuid'] ?? '' ) ); ?>>
-                                        <?php echo esc_html( (string) ( $s['title'] ?? '(untitled)' ) ); ?> — <?php echo esc_html( (string) ( $s['source_type'] ?? '' ) ); ?>
-                                    </option>
+                            <p class="description"><?php echo esc_html__( 'Add one or more sources. Drag to reorder. Pinned sources always appear first in the rendered feed.', 'vector-youtube-gallery' ); ?></p>
+                            <div id="vyg-feed-sources" data-next-index="<?php echo (int) count( $feed_sources ); ?>">
+                                <?php foreach ( $feed_sources as $i => $entry ) :
+                                    $entry_uuid = (string) ( $entry['source_uuid'] ?? '' );
+                                    $entry_label = (string) ( $entry['label'] ?? '' );
+                                    $entry_pinned = ! empty( $entry['pinned'] );
+                                    $entry_weight = isset( $entry['weight'] ) ? (float) $entry['weight'] : 1.0;
+                                    $entry_title = isset( $source_index[ $entry_uuid ] ) ? (string) ( $source_index[ $entry_uuid ]['title'] ?? '' ) : '';
+                                ?>
+                                    <div class="vyg-source-row" data-source-index="<?php echo (int) $i; ?>" style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem; padding:0.5rem; background:#f9f9f9; border:1px solid #ddd; border-radius:4px;">
+                                        <span class="vyg-source-handle" style="cursor:move; color:#888;" title="<?php echo esc_attr__( 'Drag to reorder', 'vector-youtube-gallery' ); ?>">⇅</span>
+                                        <select name="sources[<?php echo (int) $i; ?>][source_uuid]" class="vyg-source-select" style="min-width:240px;">
+                                            <option value=""><?php echo esc_html__( '— Select source —', 'vector-youtube-gallery' ); ?></option>
+                                            <?php foreach ( $sources as $s ) :
+                                                $s_uuid = (string) ( $s['source_uuid'] ?? '' );
+                                                $s_title = (string) ( $s['title'] ?? '(untitled)' );
+                                                $s_type = (string) ( $s['source_type'] ?? '' );
+                                            ?>
+                                                <option value="<?php echo esc_attr( $s_uuid ); ?>" <?php selected( $entry_uuid, $s_uuid ); ?>><?php echo esc_html( $s_title ); ?> — <?php echo esc_html( $s_type ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <input type="number" name="sources[<?php echo (int) $i; ?>][weight]" step="0.1" min="0" max="10" value="<?php echo esc_attr( (string) $entry_weight ); ?>" style="width:5rem;" title="<?php echo esc_attr__( 'Weight', 'vector-youtube-gallery' ); ?>" />
+                                        <label style="display:inline-flex; align-items:center; gap:0.25rem;">
+                                            <input type="checkbox" name="sources[<?php echo (int) $i; ?>][pinned]" value="1" <?php checked( $entry_pinned ); ?> />
+                                            <span><?php echo esc_html__( 'Pin', 'vector-youtube-gallery' ); ?></span>
+                                        </label>
+                                        <input type="text" name="sources[<?php echo (int) $i; ?>][label]" value="<?php echo esc_attr( $entry_label ); ?>" placeholder="<?php echo esc_attr__( 'Label (optional)', 'vector-youtube-gallery' ); ?>" style="flex:1;" />
+                                        <?php if ( '' !== $entry_title ) : ?>
+                                            <span class="vyg-source-badge" style="background:#e7f3ff; color:#1e3a5f; padding:2px 8px; border-radius:10px; font-size:0.8em;" title="<?php echo esc_attr( $entry_title ); ?>"><?php echo esc_html( $entry_title ); ?></span>
+                                        <?php endif; ?>
+                                        <button type="button" class="button button-small vyg-source-remove" aria-label="<?php echo esc_attr__( 'Remove source', 'vector-youtube-gallery' ); ?>">×</button>
+                                    </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
+                            <p>
+                                <button type="button" class="button" id="vyg-add-source"><?php echo esc_html__( '+ Add another source', 'vector-youtube-gallery' ); ?></button>
+                            </p>
+                            <noscript>
+                                <p class="description"><?php echo esc_html__( 'JavaScript is required to add or remove sources dynamically. Reload after enabling JS.', 'vector-youtube-gallery' ); ?></p>
+                            </noscript>
+                            <!-- Source row template, cloned by JS -->
+                            <template id="vyg-source-row-template">
+                                <div class="vyg-source-row" data-source-index="__INDEX__" style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem; padding:0.5rem; background:#f9f9f9; border:1px solid #ddd; border-radius:4px;">
+                                    <span class="vyg-source-handle" style="cursor:move; color:#888;" title="<?php echo esc_attr__( 'Drag to reorder', 'vector-youtube-gallery' ); ?>">⇅</span>
+                                    <select name="sources[__INDEX__][source_uuid]" class="vyg-source-select" style="min-width:240px;">
+                                        <option value=""><?php echo esc_html__( '— Select source —', 'vector-youtube-gallery' ); ?></option>
+                                        <?php foreach ( $sources as $s ) :
+                                            $s_uuid = (string) ( $s['source_uuid'] ?? '' );
+                                            $s_title = (string) ( $s['title'] ?? '(untitled)' );
+                                            $s_type = (string) ( $s['source_type'] ?? '' );
+                                        ?>
+                                            <option value="<?php echo esc_attr( $s_uuid ); ?>"><?php echo esc_html( $s_title ); ?> — <?php echo esc_html( $s_type ); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="number" name="sources[__INDEX__][weight]" step="0.1" min="0" max="10" value="1.0" style="width:5rem;" title="<?php echo esc_attr__( 'Weight', 'vector-youtube-gallery' ); ?>" />
+                                    <label style="display:inline-flex; align-items:center; gap:0.25rem;">
+                                        <input type="checkbox" name="sources[__INDEX__][pinned]" value="1" />
+                                        <span><?php echo esc_html__( 'Pin', 'vector-youtube-gallery' ); ?></span>
+                                    </label>
+                                    <input type="text" name="sources[__INDEX__][label]" placeholder="<?php echo esc_attr__( 'Label (optional)', 'vector-youtube-gallery' ); ?>" style="flex:1;" />
+                                    <button type="button" class="button button-small vyg-source-remove" aria-label="<?php echo esc_attr__( 'Remove source', 'vector-youtube-gallery' ); ?>">×</button>
+                                </div>
+                            </template>
+                            <input type="hidden" name="source_uuid" value="" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="manual_video_ids"><?php echo esc_html__( 'Manual video IDs', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <textarea name="manual_video_ids" id="manual_video_ids" rows="4" class="large-text code" placeholder="<?php echo esc_attr__( 'One YouTube video ID per line (e.g. dQw4w9WgXcQ)', 'vector-youtube-gallery' ); ?>"><?php echo esc_textarea( implode( "\n", array_map( 'strval', $manual_ids ) ) ); ?></textarea>
+                            <p class="description"><?php echo esc_html__( 'Always included in this feed, in addition to source videos. One 11-char YouTube ID per line.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="exclude_video_ids"><?php echo esc_html__( 'Exclude video IDs', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <textarea name="exclude_video_ids" id="exclude_video_ids" rows="3" class="large-text code" placeholder="<?php echo esc_attr__( 'IDs to omit from this feed', 'vector-youtube-gallery' ); ?>"><?php echo esc_textarea( implode( "\n", array_map( 'strval', $exclude_ids ) ) ); ?></textarea>
+                            <p class="description"><?php echo esc_html__( 'One YouTube video ID per line. Excluded videos never appear, even if they come from a source above or are pinned.', 'vector-youtube-gallery' ); ?></p>
                         </td>
                     </tr>
                     <tr>
@@ -397,6 +587,112 @@ final class FeedsPage {
                 </p>
             </form>
         </div>
+        <script>
+        (function () {
+            var container = document.getElementById('vyg-feed-sources');
+            var template = document.getElementById('vyg-source-row-template');
+            var addBtn   = document.getElementById('vyg-add-source');
+            if (!container || !template || !addBtn) {
+                return;
+            }
+
+            function nextIndex() {
+                var max = -1;
+                var rows = container.querySelectorAll('.vyg-source-row');
+                for (var i = 0; i < rows.length; i++) {
+                    var idx = parseInt(rows[i].getAttribute('data-source-index'), 10);
+                    if (!isNaN(idx) && idx > max) {
+                        max = idx;
+                    }
+                }
+                return max + 1;
+            }
+
+            function reindex() {
+                var rows = container.querySelectorAll('.vyg-source-row');
+                for (var i = 0; i < rows.length; i++) {
+                    rows[i].setAttribute('data-source-index', i);
+                    var inputs = rows[i].querySelectorAll('[name]');
+                    for (var j = 0; j < inputs.length; j++) {
+                        var name = inputs[j].getAttribute('name');
+                        if (name) {
+                            inputs[j].setAttribute('name', name.replace(/sources\[\d+\]/, 'sources[' + i + ']'));
+                        }
+                    }
+                }
+            }
+
+            function attachRemove(row) {
+                var btn = row.querySelector('.vyg-source-remove');
+                if (!btn) {
+                    return;
+                }
+                btn.addEventListener('click', function () {
+                    row.parentNode.removeChild(row);
+                    reindex();
+                });
+            }
+
+            container.addEventListener('click', function (e) {
+                var target = e.target;
+                if (target && target.classList && target.classList.contains('vyg-source-remove')) {
+                    var row = target.closest('.vyg-source-row');
+                    if (row && row.parentNode) {
+                        row.parentNode.removeChild(row);
+                        reindex();
+                    }
+                }
+            });
+
+            addBtn.addEventListener('click', function () {
+                var html = template.innerHTML.replace(/__INDEX__/g, String(nextIndex()));
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = html;
+                var row = wrapper.firstChild;
+                container.appendChild(row);
+                attachRemove(row);
+            });
+
+            var rows = container.querySelectorAll('.vyg-source-row');
+            for (var k = 0; k < rows.length; k++) {
+                attachRemove(rows[k]);
+            }
+
+            // Simple drag-reorder using HTML5 drag API.
+            var dragSrc = null;
+            container.addEventListener('dragstart', function (e) {
+                var row = e.target.closest && e.target.closest('.vyg-source-row');
+                if (row) {
+                    dragSrc = row;
+                    e.dataTransfer.effectAllowed = 'move';
+                    try { e.dataTransfer.setData('text/plain', ''); } catch (err) {}
+                }
+            });
+            container.addEventListener('dragover', function (e) {
+                if (dragSrc) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                }
+            });
+            container.addEventListener('drop', function (e) {
+                e.preventDefault();
+                if (!dragSrc) {
+                    return;
+                }
+                var target = e.target.closest && e.target.closest('.vyg-source-row');
+                if (target && target !== dragSrc) {
+                    var parent = dragSrc.parentNode;
+                    parent.insertBefore(dragSrc, target.nextSibling);
+                    reindex();
+                }
+                dragSrc = null;
+            });
+            var handles = container.querySelectorAll('.vyg-source-row');
+            for (var h = 0; h < handles.length; h++) {
+                handles[h].setAttribute('draggable', 'true');
+            }
+        })();
+        </script>
         <?php
     }
 

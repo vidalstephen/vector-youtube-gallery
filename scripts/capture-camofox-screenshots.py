@@ -168,6 +168,8 @@ def main() -> None:
             ("09-frontend-feed", f"{WP_INNER}/?page_id=11"),
             ("10-settings-oauth", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-settings&tab=oauth"),
             ("11-multi-source-feed", f"{WP_INNER}/?page_id=17"),
+            ("12-feeds-list-multi-source", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds"),
+            ("13-feeds-edit-multi-source", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds&action=edit&id=2"),
         ]
         for name, url in pages:
             http_json("POST", f"/tabs/{tab_id}/navigate", {"userId": USER_ID, "sessionKey": SESSION_KEY, "url": url})

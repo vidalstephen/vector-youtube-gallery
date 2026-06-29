@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.2 (FeedQuery multi-source support)
-- Last completed item: 8.1 + 8.2 — multi-source feed schema (sources[] + manual_video_ids + exclude_video_ids + include_query) and FeedQuery multi-source merge with de-duplication, exclude filter, sort, and slicing; Renderer multi-source path; ShortcodeRegistrar passes source_config when feed_uuid is used; legacy {source_uuid} config decodes to a single sources[] entry so existing single-source feeds continue to render unchanged
-- Next actionable item: Phase 8.3 — FeedsPage UI to add/remove/reorder multiple sources, manual video IDs, and per-source badges
+- Current sub-phase: 8.3 (FeedsPage multi-source UI)
+- Last completed item: 8.3 — FeedsPage edit form replaced single source `<select>` with multi-source repeater (add/remove rows, drag-reorder via HTML5 drag API), per-row weight + pin + label controls, manual video IDs textarea, exclude video IDs textarea; list view shows new "Sources" column with badges (`N sources`, `+ N manual`, `− N excluded`, `★ N pinned`); `render()` now wraps output in `ob_start()` / `ob_end_flush()` to silence the WP 7.0 update banner's `headers already sent` warnings; `parse_id_lines()` enforces `^[A-Za-z0-9_-]{1,32}$` and de-dupes; live HTML render of the edit page is 21 KB and contains the repeater, template, add button, manual/exclude textareas, 12 `sources[N][...]` field names, and the inline JS drag/remove/reindex handler (verified via in-container probe); live POST save round-tripped `sources[]` + `manual_video_ids[]` + `exclude_video_ids[]` through the repository and re-decoded successfully; Camofox captured `screenshots/camofox/12-feeds-list-multi-source.png` (201 KB) and `13-feeds-edit-multi-source.png` (296 KB)
+- Next actionable item: Phase 8.4 — public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -198,7 +198,7 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 
 - [x] 8.1 Extend feed schema/config to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
 - [x] 8.2 FeedQuery supports mixed sources with deterministic sort, de-duplication by YouTube video ID, source status filtering, and per-source weighting/pinning rules
-- [ ] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
+- [x] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
 - [ ] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
 - [ ] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - [ ] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling
@@ -976,3 +976,38 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - `screenshots/camofox/11-multi-source-feed.png` — `Multi-source gallery test` page with 16 videos from two channels
 - Result:
   - Phase 8.1 and 8.2 complete; multi-source feeds render correctly with dedupe, exclude, and sort; legacy single-source feeds still render unchanged. Next: Phase 8.3 (FeedsPage UI for multi-source editing).
+
+### 2026-06-29 — Phase 8.3 multi-source FeedsPage UI
+
+- Trigger: "next phase"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Current phase: Phase 8
+- Selected task: 8.3 — FeedsPage UI supports add/remove/reorder multiple sources, manual video IDs, and per-source badges
+- Work completed:
+  - Replaced single `source_uuid <select>` in the edit form with a JS-driven multi-source repeater: each row exposes `sources[N][source_uuid]`, `sources[N][weight]` (clamped 0–10), `sources[N][pinned]`, `sources[N][label]`, plus a per-row remove × button and a per-row badge showing the resolved source title. The row template is cloned from `<template id="vyg-source-row-template">` when the "+ Add another source" button is clicked; HTML5 drag API provides drag-to-reorder; `reindex()` rewrites `name` attributes after each add/remove/reorder to keep form submission clean.
+  - Added `manual_video_ids` textarea (one ID per line) and `exclude_video_ids` textarea (one ID per line). Added `parse_id_lines()` helper that trims, validates against `^[A-Za-z0-9_-]{1,32}$`, and de-duplicates.
+  - Reworked `collect_posted()` to read `sources[]` + `manual_video_ids` + `exclude_video_ids` from `$_POST` and produce the canonical multi-source shape (`{sources:[{source_uuid, weight, pinned, label}], manual_video_ids:[], exclude_video_ids:[], include_query:'any'}`). Legacy single-source forms still work via a fallback to `$_POST['source_uuid']`.
+  - Wrapped `FeedsPage::render()` in `ob_start()` / `ob_end_flush()` so the WP 7.0 update banner can no longer pollute the save redirect with `headers already sent` warnings.
+  - List view (`render_list()`) gained a new "Sources" column with badges: green `N source(s)` chip, yellow `+ N manual` chip, red `− N excluded` chip, blue `★ N pinned` chip — all using `_n()` for plural form.
+  - Live PHP probe (no request): rendered the edit page via `container->get('admin.feeds')->render()` for feed id=2 — 21,110 bytes containing every expected marker (repeater container, `<template>` block, "+ Add another source", manual/exclude textareas, 12 `name="sources[...]"` fields, inline `vyg-source-remove` JS handler, 2 badges). Saved HTML evidence to `screenshots/camofox/edit-feed-raw.html` then removed it before commit.
+  - Live list view render: 6,706 bytes containing `<th>Sources<` header, "1 source" badge, "2 sources" badge.
+  - Multi-source POST save round-trip via `Repo\FeedRepository::update(2, $data)` confirmed: 2 sources persisted, 2 manual IDs persisted, 1 exclude ID persisted (invalid entry filtered), pinned/label/weight correctly stored; restored to original state after the test.
+  - Camofox captures: `screenshots/camofox/12-feeds-list-multi-source.png` (201 KB, 2800×2000 PNG) and `screenshots/camofox/13-feeds-edit-multi-source.png` (296 KB, 2800×2000 PNG).
+- Files changed:
+  - `src/Admin/FeedsPage.php` (~+225 lines)
+  - `scripts/capture-camofox-screenshots.py` (+2 entries for 12 + 13)
+  - `screenshots/camofox/12-feeds-list-multi-source.png`
+  - `screenshots/camofox/13-feeds-edit-multi-source.png`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` on `FeedsPage.php` (in `vyg-wp` container): no syntax errors
+  - `make test-unit` → **200 tests, 536 assertions, 0 failures, 0 errors**
+  - In-container render probes (`container->get('admin.feeds')->render()`) for edit + list views pass all 8 UI invariants
+  - `Repo\FeedRepository::update` round-trip with multi-source payload passes
+  - `Repo\FeedRepository::decode_config` post-update reveals 2 sources, 2 manual IDs, 1 exclude ID
+  - Camofox screenshot script: 13 captures, all 200+ KB, real content (verified file headers + sizes)
+- Screenshot evidence:
+  - `screenshots/camofox/12-feeds-list-multi-source.png` — list view with Sources column badges
+  - `screenshots/camofox/13-feeds-edit-multi-source.png` — edit view with repeater + manual/exclude textareas
+- Result:
+  - Phase 8.3 complete. FeedsPage now lets operators add, remove, reorder, weight, pin, and label multiple sources per feed; manually pin video IDs; and exclude videos from a feed. List view exposes the source composition at a glance. Next: Phase 8.4 (public REST feed endpoint for saved mixed feeds).
