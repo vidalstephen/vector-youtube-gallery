@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
-- Current sub-phase: 7.2 (OAuthClient implementation)
-- Last completed item: 7.3 — OAuthTokenRepository sealed token/client-config storage scaffold with tests and live WP smoke verification
-- Next actionable item: Begin Phase 7.2 — implement OAuthClient authorization URL, token exchange, refresh-on-401 behavior, and ApiClientInterface methods
+- Current sub-phase: 7.4 (Settings OAuth tab + mode selector)
+- Last completed item: 7.2 — OAuthClient implementation with authorization URL, token exchange, refresh-on-401 behavior, unit tests, and live WP smoke verification
+- Next actionable item: Begin Phase 7.4 — add OAuth settings tab, client credential status, connect/reconnect/disconnect controls, and API-key/OAuth mode selector
 - Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -181,14 +181,14 @@ Notes from the live browser review:
 Goal: add first-class OAuth support for operators who prefer channel-owner authorization over public API-key mode, while preserving API-key mode for lightweight/self-hosted installs.
 
 - [x] 7.1 OAuth app prerequisites documented: redirect URI, required scopes, Google Cloud consent-screen notes, dev-mode caveats, and secret storage expectations — `docs/oauth-setup.md`
-- [ ] 7.2 `src/YouTube/OAuthClient.php` implements `ApiClientInterface` using access tokens, refresh tokens, token expiry, and automatic refresh-on-401
+- [x] 7.2 `src/YouTube/OAuthClient.php` implements `ApiClientInterface` using access tokens, refresh tokens, token expiry, and automatic refresh-on-401; `youtube.oauth_api` service registered
 - [x] 7.3 `src/Settings/OAuthTokenRepository.php` stores refresh/access tokens encrypted/sealed; never autoload; never logs token material; `oauth.tokens` service registered in `Plugin.php`
 - [ ] 7.4 Settings UI adds OAuth tab: client ID/secret status, connect button, callback URL, reconnect/disconnect controls, and API-key/OAuth mode selector
 - [ ] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page
 - [ ] 7.6 Disconnect flow revokes OAuth token via Google endpoint, deletes stored tokens, flips sources to disconnected where appropriate, and preserves local metadata unless clean-uninstall is enabled
 - [ ] 7.7 Source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
 - [ ] 7.8 Diagnostics page shows OAuth health: connected account, token age, next refresh, last refresh error, revoked/expired state, and redacted token metadata only
-- [ ] 7.9 Unit tests: token repository, OAuth client refresh behavior, callback state validation, disconnect revocation, diagnostics redaction
+- [~] 7.9 Unit tests: token repository + OAuth client refresh behavior complete; callback state validation, disconnect revocation integration, and diagnostics redaction tests remain with 7.5–7.8
 - [ ] 7.10 E2E/browser verification: connect-mode UI renders through Camofox; mock-token flow works locally; live OAuth flow documented as blocked unless real Google client creds are supplied
 
 ### Phase 8 — Multi-source Feeds + Feed Portability
@@ -748,3 +748,32 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 7.1 and 7.3 are complete; Phase 7 is now in progress.
 - Next recommended action:
   - Begin Phase 7.2: implement `src/YouTube/OAuthClient.php` with authorization URL, auth-code exchange, token refresh, and ApiClientInterface methods using OAuthTokenRepository.
+
+### 2026-06-29 — Phase 7.2 OAuthClient implementation
+
+- Trigger: "Proceed"
+- Mode: Development Execution Mode (Phase 7 — OAuth Account Connection)
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: 7.2 OAuthClient implementation
+- Work completed:
+  - Added `src/YouTube/OAuthClient.php` implementing `ApiClientInterface` for OAuth mode.
+  - Added authorization URL generation with read-only YouTube scope, offline access, consent prompt, and one-time state persistence.
+  - Added auth-code token exchange and sealed token persistence through `OAuthTokenRepository`.
+  - Added access-token expiry checks, refresh-token exchange, refresh-error metadata, and one retry on HTTP 401 responses.
+  - Added OAuth Bearer-token YouTube API calls for channels/playlists/playlistItems/videos with `key` stripping so API-key material is never mixed into OAuth requests.
+  - Added token revocation against Google's revoke endpoint with local token cleanup on success.
+  - Registered `youtube.oauth_api` service in `Plugin.php` for the future mode selector.
+  - Added `tests/unit/YouTube/OAuthClientTest.php` covering auth URL params/state hashing, code exchange, bearer request signing, refresh-before-request, 401 refresh retry, refresh-error persistence, revoke cleanup, and missing-token auth errors.
+- Files changed:
+  - `src/YouTube/OAuthClient.php`
+  - `src/Plugin.php`
+  - `tests/unit/YouTube/OAuthClientTest.php`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` inside `vyg-wp` for touched PHP files → no syntax errors
+  - `make test-unit` → **185 tests, 454 assertions, 0 failures, 0 errors**
+  - Live WP smoke: resolved `youtube.oauth_api`, generated Google authorization URL, confirmed sealed client-secret/state storage did not leak raw dummy values, then cleaned all dummy `vyg_oauth_%` options.
+- Result:
+  - Phase 7.2 is complete; Phase 7.9 is partial because OAuth repo/client tests are done while callback/diagnostics tests wait for later UI/callback work.
+- Next recommended action:
+  - Begin Phase 7.4: add the OAuth settings tab, client credential status, connect/reconnect/disconnect controls, and API-key/OAuth mode selector.

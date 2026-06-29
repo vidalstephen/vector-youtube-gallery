@@ -57,6 +57,7 @@ use VectorYT\Gallery\YouTube\ApiClientInterface;
 use VectorYT\Gallery\YouTube\ApiKeyClient;
 use VectorYT\Gallery\YouTube\ChannelResolver;
 use VectorYT\Gallery\YouTube\MockApiClient;
+use VectorYT\Gallery\YouTube\OAuthClient;
 use VectorYT\Gallery\YouTube\PlaylistResolver;
 use VectorYT\Gallery\YouTube\QuotaTracker;
 use VectorYT\Gallery\YouTube\VideoMetadataFetcher;
@@ -177,6 +178,7 @@ final class Plugin {
         $c->set( 'repo.feeds',    static fn(): FeedRepository => new FeedRepository() );
 
         // --- YouTube API client (mock when VYG_USE_MOCK=1) ---
+        $c->set( 'youtube.oauth_api', static fn( Container $c ): OAuthClient => new OAuthClient( $c->get( 'oauth.tokens' ), $c->get( 'logger' ) ) );
         $c->set(
             'youtube.api',
             static function ( Container $c ): ApiClientInterface {
