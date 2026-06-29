@@ -12,12 +12,12 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 6 — Admin Polish** (COMPLETE)
-- Current sub-phase: 6.14 (browser E2E verified)
-- Last completed item: 6.14 — feed-by-uuid shortcode renders scoped-CSS gallery; Disconnect flips sources; retention sweep runs cleanly
-- Next actionable item: Begin Phase 7+ (deferred: OAuth, masonry, carousel, Elementor/Divi, advanced analytics)
-- Blocked items: none
-- Deferred items: see Phase 7+ (OAuth, Elementor/Divi, masonry, carousel, white-label, etc.)
+- Current phase: **Phase 7 — OAuth Account Connection** (READY)
+- Current sub-phase: 7.1 (OAuth app prerequisites + auth model)
+- Last completed item: 6.14 — live Camofox screenshots verified true WordPress admin/front-end rendering for Phase 6
+- Next actionable item: Begin Phase 7.1 — implement OAuth client configuration + encrypted token storage scaffolding
+- Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
+- Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
 ## Status Legend
 
@@ -43,18 +43,18 @@
 - [x] 0.9 `Container.php` minimal service-locator (returns `null` for now)
 - [x] 0.10 `Plugin.php` bootstrap class wired to `plugins_loaded`
 - [x] 0.11 `src/Logging/Logger.php` (file-based, sanitized)
-- [ ] 0.12 `src/Database/Installer.php` + `Schema.php` (skeleton, no tables yet) — Phase 2
-- [ ] 0.13 `src/Admin/AdminMenu.php` registers top-level menu shell only — Phase 1
-- [ ] 0.14 `src/Settings/SettingsRepository.php` (read-only, default values) — Phase 1
-- [ ] 0.15 Unit test scaffold: PHPUnit configured via `phpunit.xml.dist` — Phase 1
-- [ ] 0.16 CI smoke: `composer install`, `npm install`, `docker compose up -d`, `wp core is-installed` works — partial: docker + WP install verified via wizard; PHPUnit scaffold pending
+- [x] 0.12 `src/Database/Installer.php` + `Schema.php` — completed in Phase 2 (9 tables + dbDelta migrations)
+- [x] 0.13 `src/Admin/AdminMenu.php` registers top-level menu shell — completed in Phase 1 and expanded through Phase 6
+- [x] 0.14 `src/Settings/SettingsRepository.php` — completed in Phase 1 and expanded through later phases
+- [x] 0.15 Unit test scaffold: PHPUnit configured via `phpunit.xml.dist` — completed in Phase 1
+- [~] 0.16 CI smoke: manual Docker/WP/plugin/test/Camofox smoke verified; automated CI remains Phase 12.7
 - [x] 0.17 README.md with quickstart (docker compose up; wp-admin at :8000)
 - [x] 0.18 `.env.example` for docker compose (DB creds, WP salts, ports)
 
 ### Phase 1 — Public API Key Connection
 
 - [x] 1.1 `src/Settings/SecretsRepository.php` — stores API key in option with `autoload=no`
-- [ ] 1.2 `src/Admin/SettingsPage.php` — API key field, masked input, save handler, nonce — deferred: lands via SettingsPage below (1.2 + 1.12 split; key form lives in SettingsPage already)
+- [x] 1.2 `src/Admin/SettingsPage.php` — API key field, masked input, save handler, nonce — completed in Phase 1/SettingsPage work
 - [x] 1.3 `src/YouTube/ApiClientInterface.php` — `channelsList`, `playlistsList`, `playlistItemsList`, `videosList`, `revokeToken`
 - [x] 1.4 `src/YouTube/ApiKeyClient.php` — implements interface, signs requests with `key=` param
 - [x] 1.5 `src/YouTube/MockApiClient.php` — dev-only, returns fixtures, registered when `VYG_USE_MOCK=1`
@@ -66,7 +66,7 @@
 - [x] 1.12 `src/Admin/DiagnosticsPage.php` — shows last API call, response code, quota estimate
 - [x] 1.13 Unit tests: handle normalization, ID parsing, mock client responses, error mapping (46 tests passing)
 - [x] 1.14 Integration test: add source via admin form, confirm DB row created (manual curl test confirmed end-to-end)
-- [ ] 1.9 `src/Repository/SourceRepository.php` — CRUD over `vyg_sources` (table TBD Phase 2) — deferred to Phase 2
+- [x] 1.9 `src/Repository/SourceRepository.php` — CRUD over `vyg_sources` — completed in Phase 2
 
 ### Phase 0 — Foundation (carry-over from earlier)
 
@@ -82,12 +82,12 @@
 - [x] 2.3 `src/Database/Migrator.php` — versioned migrations table
 - [x] 2.4 `src/Repository/VideoRepository.php` — CRUD over `vyg_videos`
 - [x] 2.5 `src/Repository/PlaylistRepository.php` — CRUD over `vyg_playlists` + map
-- [~] 2.6 `src/Sync/SyncScheduler.php` — WP-Cron backed (Phase 2 default); Action Scheduler wrapper deferred — interface is in place so swapping is trivial
+- [x] 2.6 `src/Sync/SyncScheduler.php` — WP-Cron backed scheduler complete; Action Scheduler adapter moved to Phase 12.2
 - [x] 2.7 `src/Sync/SyncJobRunner.php` — generic runner with retry/backoff
 - [x] 2.8 `src/Sync/InitialImportJob.php` — channel → uploads playlist → page through items → batch video fetches → normalize → save
 - [x] 2.9 `src/Sync/IncrementalSyncJob.php` — first 1–3 pages only, stop when known IDs hit
 - [x] 2.10 `src/Sync/MetadataRefreshJob.php` — refresh by video type (per plan §6 table)
-- [>] 2.11 `src/Sync/LiveStatusPollJob.php` — deferred to Phase 5 (Live Fallback Module)
+- [x] 2.11 `src/Sync/LiveStatusPollJob.php` — completed in Phase 5 (Live Fallback Module)
 - [x] 2.12 `src/Sync/DeletedVideoDetector.php` — mark deleted/private/embed-disabled/unavailable
 - [x] 2.13 `src/Sync/RetryPolicy.php` — exponential backoff (5m, 15m, 1h, 6h, 24h) + hard-stop error codes
 - [x] 2.14 `src/Normalize/VideoNormalizer.php` — map API resource → internal schema
@@ -176,43 +176,117 @@ Notes from the live browser review:
 - WP `siteurl`/`home` must temporarily use `http://vyg-wp` during browser capture so redirects stay inside the Docker network.
 - Dev/mock video rows need realistic `thumbnail_*` values; otherwise the front-end renders black thumbnail cards and the screenshots are not useful for UI/UX review.
 
-### Phase 7+ — Deferred (post-MVP)
+### Phase 7 — OAuth Account Connection
 
-- [>] OAuth account connection (Phase 2 roadmap)
-- [>] Multiple channel sources mixed feeds
-- [>] Masonry layout
-- [>] Carousel/slider
-- [>] Advanced moderation queues
-- [>] Advanced analytics dashboard
-- [>] Elementor widget
-- [>] Divi module
-- [>] WooCommerce/product CTA integration
-- [>] Schema markup
-- [>] Multisite network tools
-- [>] White-label styling presets
-- [>] Feed import/export (separate from settings)
-- [>] Licensing/update server
-- [>] WP-CLI commands
-- [>] Advanced object cache support
-- [>] Block pattern library
+Goal: add first-class OAuth support for operators who prefer channel-owner authorization over public API-key mode, while preserving API-key mode for lightweight/self-hosted installs.
+
+- [ ] 7.1 OAuth app prerequisites documented: redirect URI, required scopes, Google Cloud consent-screen notes, dev-mode caveats, and secret storage expectations
+- [ ] 7.2 `src/YouTube/OAuthClient.php` implements `ApiClientInterface` using access tokens, refresh tokens, token expiry, and automatic refresh-on-401
+- [ ] 7.3 `src/Settings/OAuthTokenRepository.php` stores refresh/access tokens encrypted or sealed; never autoload; never logs token material
+- [ ] 7.4 Settings UI adds OAuth tab: client ID/secret status, connect button, callback URL, reconnect/disconnect controls, and API-key/OAuth mode selector
+- [ ] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page
+- [ ] 7.6 Disconnect flow revokes OAuth token via Google endpoint, deletes stored tokens, flips sources to disconnected where appropriate, and preserves local metadata unless clean-uninstall is enabled
+- [ ] 7.7 Source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
+- [ ] 7.8 Diagnostics page shows OAuth health: connected account, token age, next refresh, last refresh error, revoked/expired state, and redacted token metadata only
+- [ ] 7.9 Unit tests: token repository, OAuth client refresh behavior, callback state validation, disconnect revocation, diagnostics redaction
+- [ ] 7.10 E2E/browser verification: connect-mode UI renders through Camofox; mock-token flow works locally; live OAuth flow documented as blocked unless real Google client creds are supplied
+
+### Phase 8 — Multi-source Feeds + Feed Portability
+
+Goal: let operators build higher-level feeds from multiple channels/playlists/manual video sets and move those feeds between sites.
+
+- [ ] 8.1 Extend feed schema/config to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
+- [ ] 8.2 FeedQuery supports mixed sources with deterministic sort, de-duplication by YouTube video ID, source status filtering, and per-source weighting/pinning rules
+- [ ] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
+- [ ] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
+- [ ] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
+- [ ] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling
+- [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows
+- [ ] 8.8 E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render
+
+### Phase 9 — Advanced Layouts + Front-end Polish
+
+Goal: broaden front-end presentation options while maintaining no-API-on-render and accessible, responsive output.
+
+- [ ] 9.1 Masonry layout: CSS-first responsive masonry/waterfall layout with graceful fallback and theme override template
+- [ ] 9.2 Carousel/slider layout: accessible keyboard navigation, reduced-motion support, touch support, and no jQuery dependency
+- [ ] 9.3 Single-video/hero layout: featured latest video or manually pinned video with playlist/gallery below
+- [ ] 9.4 Block pattern library: prebuilt patterns for channel grid, shorts wall, live/replay hub, and featured-video landing section
+- [ ] 9.5 Schema.org markup: `VideoObject`/`ItemList` JSON-LD using locally cached metadata only, with per-feed toggle and validation notes
+- [ ] 9.6 White-label styling presets: preset themes, CSS variables, spacing/card controls, and preview in the Feed Builder
+- [ ] 9.7 Front-end performance pass: responsive image sizes, lazy iframe loading, asset splitting by layout, no duplicate enqueues across multiple feeds
+- [ ] 9.8 Unit tests: template escaping, layout dispatch, asset enqueue behavior, schema output, and CSS scoping for new layouts
+- [ ] 9.9 E2E/browser verification: Camofox screenshots for masonry, carousel, hero, mobile viewport; verify keyboard/focus behavior where scriptable
+
+### Phase 10 — Page Builder + Commerce Integrations
+
+Goal: make the plugin usable in common WordPress site-builder workflows without forcing manual shortcodes.
+
+- [ ] 10.1 Elementor widget: feed selector, layout controls, responsive controls, editor preview, and front-end render via existing Renderer
+- [ ] 10.2 Divi module: feed selector, layout/design controls, Visual Builder preview, and front-end render via existing Renderer
+- [ ] 10.3 WooCommerce/product CTA integration: optional per-video/per-feed CTA button, product link mapping, and compliance-safe local metadata usage
+- [ ] 10.4 Gutenberg block polish: feed picker UI, inspector controls matching Feed Builder options, server-rendered preview loading/error states
+- [ ] 10.5 Integration safety: all builder controls sanitize values, respect capabilities, and never expose API keys/tokens in editor payloads
+- [ ] 10.6 Unit/integration tests: widget registration guards when Elementor/Divi/WooCommerce are absent; render parity with shortcode/block
+- [ ] 10.7 E2E/browser verification: builder pages render when plugins are active or skip gracefully when not installed; capture screenshots for available integrations
+
+### Phase 11 — Analytics + Moderation Workflows
+
+Goal: help operators understand feed performance and manage large video libraries efficiently without external tracking by default.
+
+- [ ] 11.1 Local analytics model: optional event table for impression/play/lightbox/load-more events with retention and privacy toggle
+- [ ] 11.2 Analytics dashboard: top videos, feed views, click/play rates, source freshness, quota usage trends, sync health, and date-range filters
+- [ ] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions
+- [ ] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
+- [ ] 11.5 CSV/JSON export for analytics and moderation queues with capability checks and no secrets
+- [ ] 11.6 Privacy controls: analytics off by default or clearly disclosed; retention controls exposed; export/erase behavior documented
+- [ ] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, moderation queue filters, export sanitization
+- [ ] 11.8 E2E/browser verification: analytics dashboard and moderation queues render through Camofox with seeded data screenshots
+
+### Phase 12 — Operations, Scale, and Multisite
+
+Goal: harden the plugin for larger libraries, multisite installs, and operator automation.
+
+- [ ] 12.1 WP-CLI command suite: sync source/feed, list jobs, retry failed jobs, export/import feeds, run retention, diagnostics snapshot
+- [ ] 12.2 Action Scheduler adapter for sync jobs with migration path from WP-Cron and feature flag fallback to current scheduler
+- [ ] 12.3 Advanced object-cache support: cache feed query results, cache invalidation on video/feed/source changes, group namespacing, and multisite-safe keys
+- [ ] 12.4 Multisite network tools: network activation behavior, per-site tables/options policy, network diagnostics, and site-level cleanup
+- [ ] 12.5 Log rotation and configurable log levels: admin controls, redaction validation, max file size, and optional centralized shipping hook
+- [ ] 12.6 Large-library performance: query indexes review, pagination strategy, batch sizes, memory limits, and admin list-table performance
+- [ ] 12.7 CI smoke hardening: install WordPress in Docker, activate plugin, run migrations, hit key admin/front-end pages, and run `make test-unit`
+- [ ] 12.8 Unit/integration tests: WP-CLI commands, scheduler adapter, cache invalidation, multisite option/table behavior where feasible
+- [ ] 12.9 E2E verification: Docker smoke run + Camofox screenshot capture script succeeds in a clean environment
+
+### Phase 13 — Packaging, Updates, and Commercial/Distribution Layer
+
+Goal: prepare the plugin for real distribution while keeping the core usable for self-hosted/free deployments.
+
+- [ ] 13.1 Release packaging script: build production zip, exclude dev files, include vendor/assets, validate plugin headers and text domain
+- [ ] 13.2 Upgrade/migration test matrix: clean install, upgrade from each schema version, deactivate/reactivate, uninstall preserve/delete paths
+- [ ] 13.3 Licensing/update-server abstraction: optional update endpoint client, license status UI, and no hard dependency for self-hosted/free users
+- [ ] 13.4 Internationalization pass: POT generation, translator comments, text-domain consistency, date/number localization
+- [ ] 13.5 Accessibility audit: admin pages, front-end layouts, lightbox/carousel keyboard behavior, color contrast, reduced motion
+- [ ] 13.6 Security audit: nonce/capability map, REST permission callbacks, escaping/sanitization review, secrets redaction, OAuth token storage review
+- [ ] 13.7 Documentation set: install guide, API-key mode, OAuth mode, feed builder, privacy/compliance, shortcode/block reference, troubleshooting, screenshots
+- [ ] 13.8 Final release candidate E2E: fresh Docker site, Camofox screenshots, zero front-end API calls, unit tests, packaging smoke, and changelog update
 
 ## Deferred Work
 
 | Item | Reason Deferred | Resume Condition |
 |---|---|---|
-| OAuth mode | Plan §22 lists as Phase 2; security surface area warrants dedicated work | Begin after Phase 6 ships; needs Google Cloud OAuth client config |
+| (none) | Former Phase 7+ deferrals expanded into Phases 7–13 | Continue with Phase 7.1 |
 
 ## Blocked Work
 
 | Item | Blocker | Needed To Unblock |
 |---|---|---|
-| (none) | — | — |
+| Live OAuth authorization E2E | Requires real Google Cloud OAuth client ID/secret and approved redirect URI | User supplies/provisions OAuth app credentials out-of-band; never paste secrets into chat |
 
 ## Partial Work
 
 | Item | Completed Portion | Remaining Work |
 |---|---|---|
-| Item 0.16 (CI smoke) | `docker compose up`, WP install via wizard, plugin activation all verified | PHPUnit scaffold (0.15) still missing; once 0.15 lands, add `composer test` to smoke |
+| CI smoke | Docker stack, WP install, plugin activation, PHPUnit, and Camofox screenshots have all been verified manually | Phase 12.7 turns these manual checks into automated CI |
 
 ## Lessons Learned (Phase 0)
 
@@ -620,3 +694,29 @@ Notes from the live browser review:
   - XSS test: `<script>alert(1)</script>.foo { color: red } <img onerror=alert(2)>` stored via direct DB → output contains NO `<script>` tag, NO `onerror` attribute (defense-in-depth at Renderer caught it)
 - Result: **Phase 6 COMPLETE**. All 14 items done. The MVP is feature-complete per the Phase 7+ deferrals list.
 - Next recommended action: Begin Phase 7+ deferred work (OAuth account connection is the highest-value addition; needs Google Cloud OAuth client config + capability checks)
+
+### 2026-06-29 — deferred roadmap expansion
+
+- Trigger: "Next phase development of we've completed all current phases let's extend the DEV-CHECKLIST to include the remaining deferred components"
+- Mode: Checklist Reconciliation Mode
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: Convert Phase 7+ flat deferral bucket into concrete remaining roadmap phases
+- Work completed:
+  - Replaced `Phase 7+ — Deferred (post-MVP)` flat list with actionable Phases 7–13.
+  - Expanded OAuth into Phase 7 with token storage, callback, diagnostics, disconnect, tests, and E2E scope.
+  - Expanded mixed-source feeds and feed portability into Phase 8.
+  - Expanded masonry/carousel/schema/white-label/block-pattern work into Phase 9.
+  - Expanded Elementor/Divi/WooCommerce/Gutenberg polish into Phase 10.
+  - Expanded analytics and moderation workflows into Phase 11.
+  - Expanded WP-CLI, Action Scheduler, object cache, multisite, logs, performance, and CI smoke into Phase 12.
+  - Expanded packaging, update/licensing abstraction, i18n, accessibility, security, docs, and release-candidate checks into Phase 13.
+  - Reconciled stale early-phase markers: 0.12–0.15, 1.2, 1.9, 2.6, and 2.11 now reflect completed/deferred-to-new-phase reality.
+  - Updated current status: Phase 7 is now the next active phase; former deferred bucket is empty.
+- Files changed:
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - Checklist grep: no active `[>]` deferrals remain outside the status legend; Phase 7 is now next actionable.
+- Result:
+  - Remaining work is now a concrete Phase 7–13 roadmap instead of a flat deferred list.
+- Next recommended action:
+  - Begin Phase 7.1: OAuth app prerequisites + encrypted token storage scaffolding, with live OAuth E2E blocked until Google OAuth client credentials are provisioned out-of-band.
