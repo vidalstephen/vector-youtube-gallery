@@ -50,10 +50,22 @@
             return;
         }
 
-        var url = window.VYG.restUrl
-            + '?source_uuid=' + encodeURIComponent(btn.getAttribute('data-source-uuid'))
-            + '&offset='    + encodeURIComponent(btn.getAttribute('data-offset'))
-            + '&layout='    + encodeURIComponent(btn.getAttribute('data-layout'));
+        // Phase 8.4: prefer feed_uuid (mixed-source feeds) when present,
+        // fall back to source_uuid for legacy single-source feeds. Both
+        // endpoints share the same response shape.
+        var feedUuid = btn.getAttribute('data-feed-uuid') || feed.getAttribute('data-feed-uuid');
+        var sourceUuid = btn.getAttribute('data-source-uuid') || feed.getAttribute('data-source-uuid');
+        var url;
+        if (feedUuid) {
+            url = window.VYG.feedByUuidUrl.replace('{uuid}', encodeURIComponent(feedUuid))
+                + '?offset=' + encodeURIComponent(btn.getAttribute('data-offset'))
+                + '&layout=' + encodeURIComponent(btn.getAttribute('data-layout'));
+        } else {
+            url = window.VYG.restUrl
+                + '?source_uuid=' + encodeURIComponent(sourceUuid)
+                + '&offset='    + encodeURIComponent(btn.getAttribute('data-offset'))
+                + '&layout='    + encodeURIComponent(btn.getAttribute('data-layout'));
+        }
 
         fetch(url, {
             credentials: 'same-origin',

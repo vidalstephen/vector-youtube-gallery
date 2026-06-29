@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.3 (FeedsPage multi-source UI)
-- Last completed item: 8.3 — FeedsPage edit form replaced single source `<select>` with multi-source repeater (add/remove rows, drag-reorder via HTML5 drag API), per-row weight + pin + label controls, manual video IDs textarea, exclude video IDs textarea; list view shows new "Sources" column with badges (`N sources`, `+ N manual`, `− N excluded`, `★ N pinned`); `render()` now wraps output in `ob_start()` / `ob_end_flush()` to silence the WP 7.0 update banner's `headers already sent` warnings; `parse_id_lines()` enforces `^[A-Za-z0-9_-]{1,32}$` and de-dupes; live HTML render of the edit page is 21 KB and contains the repeater, template, add button, manual/exclude textareas, 12 `sources[N][...]` field names, and the inline JS drag/remove/reindex handler (verified via in-container probe); live POST save round-tripped `sources[]` + `manual_video_ids[]` + `exclude_video_ids[]` through the repository and re-decoded successfully; Camofox captured `screenshots/camofox/12-feeds-list-multi-source.png` (201 KB) and `13-feeds-edit-multi-source.png` (296 KB)
-- Next actionable item: Phase 8.4 — public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
+- Current sub-phase: 8.4 (public REST feed-by-uuid endpoint)
+- Last completed item: 8.4 — added `GET /wp-json/vyg/v1/feed/<uuid>` REST route; resolves a saved mixed-source feed by `feed_uuid`, decodes source_config, dispatches through the existing multi-source renderer path with `public_safe=true`, and returns only public-safe fields in the response (`html`, `has_more`, `next_offset`, `remaining`, `feed.{feed_uuid,name,layout,status}`); rejects unpublished/draft feeds with 404 + `vyg_feed_not_published`; rejects malformed UUIDs with 400; rejects unknown UUIDs with 404 + `vyg_feed_not_found`; new `src/Render/TemplateAttributes.php` centralizes the data-attribute generation for the root feed `<div>` and the load-more button with a `public_safe` flag that omits `data-source-uuid` when set; all 5 templates (grid, list, featured, shorts, live) updated to use it; `Renderer::emit_html()` reads `args['public_safe']` and threads it through to the template context; `load-more.js` prefers `data-feed-uuid` when present and falls back to `data-source-uuid` for legacy shortcodes; `AssetManager` exposes a new `VYG.feedByUuidUrl` localized string; live verification confirms: published feed returns 200 with no `data-source-uuid` and no leaked internal UUIDs; legacy single-source endpoint still works; legacy front-end pages still emit `data-source-uuid` for backwards-compat JS; draft feed returns 404
+- Next actionable item: Phase 8.5 — feed import/export JSON with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -199,7 +199,7 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 - [x] 8.1 Extend feed schema/config to support multiple source IDs plus include/exclude lists without breaking existing single-source feeds
 - [x] 8.2 FeedQuery supports mixed sources with deterministic sort, de-duplication by YouTube video ID, source status filtering, and per-source weighting/pinning rules
 - [x] 8.3 FeedsPage UI supports adding/removing/reordering multiple sources, manual video IDs, and per-source badges in the edit form
-- [ ] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
+- [x] 8.4 Public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
 - [ ] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - [ ] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling
 - [ ] 8.7 Unit tests: mixed-feed queries, de-duplication, import/export conflict modes, backwards compatibility with existing feed rows (subset added — multi-source dedupe + legacy migration covered; import/export coverage to land with 8.5)
@@ -1011,3 +1011,41 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - `screenshots/camofox/13-feeds-edit-multi-source.png` — edit view with repeater + manual/exclude textareas
 - Result:
   - Phase 8.3 complete. FeedsPage now lets operators add, remove, reorder, weight, pin, and label multiple sources per feed; manually pin video IDs; and exclude videos from a feed. List view exposes the source composition at a glance. Next: Phase 8.4 (public REST feed endpoint for saved mixed feeds).
+
+### 2026-06-29 — Phase 8.4 public REST feed-by-uuid endpoint
+
+- Trigger: "next step"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Current phase: Phase 8
+- Selected task: 8.4 — public REST feed endpoint supports saved mixed feeds by `feed_uuid` without exposing internal source IDs or admin-only metadata
+- Work completed:
+  - Added new route `GET /wp-json/vyg/v1/feed/<uuid>` to `FeedController`. Resolves the feed by `feed_uuid`, decodes the source_config, and dispatches through the existing multi-source renderer with `public_safe=true`.
+  - Response shape (public-safe only): `{html, has_more, next_offset, remaining, feed: {feed_uuid, name, layout, status}}`. Internal source UUIDs, manual video IDs, exclude IDs, custom CSS, and admin-only fields are NEVER included.
+  - 404 cases: unknown UUID → `vyg_feed_not_found`; draft/archived feed → `vyg_feed_not_published`. 400 for malformed UUIDs.
+  - Status normalization: accepts both `publish` (legacy WP shortcode flow) and `published` (FeedsPage flow); public payload always emits `published`.
+  - New helper `src/Render/TemplateAttributes.php` centralizes data-attribute generation for the root feed `<div>` and the load-more button. `feed_root()` and `load_more()` accept a `public_safe` flag that omits `data-source-uuid` when set.
+  - All 5 templates (grid, list, featured, shorts, live) updated to use `TemplateAttributes::feed_root()` (and `load_more()` in grid.php) with `$public_safe` read from `$attrs['public_safe']`.
+  - `Renderer::emit_html()` reads `args['public_safe']` and threads it through to the template context.
+  - `load-more.js`: prefers `data-feed-uuid` when present and falls back to `data-source-uuid` for legacy single-source shortcodes. Adds a new `VYG.feedByUuidUrl` (localized via `wp_localize_script`) — JS replaces `{uuid}` at click time.
+  - `AssetManager::enqueue_load_more()` exposes the new URL alongside the legacy `restUrl`.
+- Files changed:
+  - `src/REST/FeedController.php` (+105 lines: route + handler + helper)
+  - `src/Render/TemplateAttributes.php` (new, 95 lines)
+  - `src/Render/Renderer.php` (+13 lines: public_safe threading)
+  - `src/Render/AssetManager.php` (+5 lines: feedByUuidUrl)
+  - `src/Render/templates/grid.php`, `list.php`, `featured.php`, `shorts.php`, `live.php` (use TemplateAttributes helper, ~7 lines each)
+  - `assets/js/load-more.js` (+14 lines: feed_uuid/source_uuid branching)
+- Tests run:
+  - `php -l` on all touched files inside `vyg-wp` → no syntax errors
+  - `make test-unit` → **200 tests, 536 assertions, 0 failures, 0 errors**
+  - Live `curl` against `https://srv1388017.tail209ed.ts.net/wp-json/vyg/v1/feed/<uuid>?per_page=4`:
+    - Published feed (`f57c6cfe-...`) → 200, has_more=true, remaining=46, html=4701 bytes, `data-feed-uuid` present, `data-source-uuid` absent, internal source UUID `38f2b5e8-...` not in HTML, internal UUID `ffdf1663-...` not in HTML, 4 `<article>` cards
+    - Multi-source feed (`13a832cd-...`) → 200, valid public payload, no internal ID leaks
+    - Unknown UUID (`00000000-...`) → 404 `vyg_feed_not_found`
+    - Malformed UUID (`not-a-uuid`) → 404 `rest_no_route` (regex pattern doesn't match)
+    - Draft feed (`13a832cd-...` after flipping status) → 404 `vyg_feed_not_published`
+    - Page 2 with `offset=4` → 200, fresh content, remaining=42
+    - Legacy single-source endpoint `/wp-json/vyg/v1/feed?source_uuid=...` still 200, unchanged response shape
+- Screenshot evidence: not captured this batch — endpoint is JSON-only and the curl/JSON inspection is the canonical evidence.
+- Result:
+  - Phase 8.4 complete. The new endpoint serves saved mixed feeds anonymously while exposing only public-safe fields. The legacy single-source endpoint remains unchanged. Front-end JS routes load-more requests through the right endpoint based on which data attribute is present.

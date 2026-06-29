@@ -199,6 +199,7 @@ final class Renderer {
         }
         $feed_uuid  = sanitize_text_field( (string) ( $args['feed_uuid'] ?? '' ) );
         $custom_css = (string) ( $args['custom_css'] ?? '' );
+        $public_safe = ! empty( $args['public_safe'] );
 
         $ctx = array(
             'source'     => $source,
@@ -207,12 +208,13 @@ final class Renderer {
             'wrapper_id' => $wrapper_id,
             'feed_uuid'  => $feed_uuid,
             'attrs'      => array_merge( $args, array(
-                'layout'     => $layout_slug,
-                'offset'     => $offset,
-                'total'      => $total,
-                'per_page'   => $per_page,
-                'wrapper_id' => $wrapper_id,
-                'feed_uuid'  => $feed_uuid,
+                'layout'      => $layout_slug,
+                'offset'      => $offset,
+                'total'       => $total,
+                'per_page'    => $per_page,
+                'wrapper_id'  => $wrapper_id,
+                'feed_uuid'   => $feed_uuid,
+                'public_safe' => $public_safe,
             ) ),
         );
 

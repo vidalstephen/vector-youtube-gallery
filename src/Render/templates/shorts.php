@@ -14,10 +14,13 @@ if ( empty( $videos ) ) {
     echo '<div class="vyg-feed vyg-feed--empty"><p>' . esc_html__( 'No shorts yet.', 'vector-youtube-gallery' ) . '</p></div>';
     return;
 }
+$public_safe = ! empty( $attrs['public_safe'] );
+$root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
+    \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
+);
 ?>
 <div class="vyg-feed vyg-feed--shorts vyg-shorts"
-     data-source-uuid="<?php echo esc_attr( (string) ( $source['source_uuid'] ?? '' ) ); ?>"
-     data-layout="shorts">
+     <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
     <?php foreach ( $videos as $video ) : ?>
         <article class="vyg-shorts__card"
                  data-video-id="<?php echo esc_attr( (string) ( $video['youtube_video_id'] ?? '' ) ); ?>"

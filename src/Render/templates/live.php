@@ -24,10 +24,13 @@ if ( 0 === $total_count ) {
     echo '<div class="vyg-feed vyg-feed--empty"><p>' . esc_html__( 'No live or recent streams.', 'vector-youtube-gallery' ) . '</p></div>';
     return;
 }
+$public_safe = ! empty( $attrs['public_safe'] );
+$root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
+    \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
+);
 ?>
 <div class="vyg-feed vyg-feed--live vyg-live"
-     data-source-uuid="<?php echo esc_attr( (string) ( $source['source_uuid'] ?? '' ) ); ?>"
-     data-layout="live">
+     <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
     <?php if ( ! empty( $buckets['live'] ) ) : ?>
         <section class="vyg-live__section vyg-live__section--active">
             <h2 class="vyg-live__heading"><?php esc_html_e( 'Live now', 'vector-youtube-gallery' ); ?></h2>

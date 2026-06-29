@@ -19,10 +19,13 @@ $hero    = $videos[0];
 $rest    = array_slice( $videos, 1 );
 $columns = isset( $attrs['columns'] ) ? max( 2, min( 5, (int) $attrs['columns'] ) ) : 3;
 $hero_thumb = $renderer->best_thumbnail( $hero, 'high' );
+$public_safe = ! empty( $attrs['public_safe'] );
+$root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
+    \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
+);
 ?>
 <div class="vyg-feed vyg-feed--featured vyg-featured"
-     data-source-uuid="<?php echo esc_attr( (string) ( $source['source_uuid'] ?? '' ) ); ?>"
-     data-layout="featured">
+     <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
     <article class="vyg-featured__hero"
              data-video-id="<?php echo esc_attr( (string) ( $hero['youtube_video_id'] ?? '' ) ); ?>">
         <a class="vyg-featured__link" href="<?php echo esc_url( $renderer->watch_url( $hero ) ); ?>"

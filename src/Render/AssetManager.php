@@ -112,8 +112,11 @@ final class AssetManager {
         wp_set_script_translations( self::HANDLE_BASE . '-load-more', 'vector-youtube-gallery' );
         wp_enqueue_script( self::HANDLE_BASE . '-load-more' );
         wp_localize_script( self::HANDLE_BASE . '-load-more', 'VYG', array(
-            'restUrl' => esc_url_raw( rest_url( 'vyg/v1/feed' ) ),
-            'restNonce' => wp_create_nonce( 'wp_rest' ),
+            'restUrl'       => esc_url_raw( rest_url( 'vyg/v1/feed' ) ),
+            // Phase 8.4: feed-by-uuid endpoint. JS replaces {uuid} with the
+            // current feed_uuid at click time.
+            'feedByUuidUrl' => esc_url_raw( rest_url( 'vyg/v1/feed/{uuid}' ) ),
+            'restNonce'     => wp_create_nonce( 'wp_rest' ),
         ) );
         $this->load_more_enqueued = true;
     }
