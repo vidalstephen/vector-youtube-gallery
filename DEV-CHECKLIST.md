@@ -12,10 +12,10 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 7 — OAuth Account Connection** (READY)
-- Current sub-phase: 7.1 (OAuth app prerequisites + auth model)
-- Last completed item: 6.14 — live Camofox screenshots verified true WordPress admin/front-end rendering for Phase 6
-- Next actionable item: Begin Phase 7.1 — implement OAuth client configuration + encrypted token storage scaffolding
+- Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
+- Current sub-phase: 7.2 (OAuthClient implementation)
+- Last completed item: 7.3 — OAuthTokenRepository sealed token/client-config storage scaffold with tests and live WP smoke verification
+- Next actionable item: Begin Phase 7.2 — implement OAuthClient authorization URL, token exchange, refresh-on-401 behavior, and ApiClientInterface methods
 - Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -180,9 +180,9 @@ Notes from the live browser review:
 
 Goal: add first-class OAuth support for operators who prefer channel-owner authorization over public API-key mode, while preserving API-key mode for lightweight/self-hosted installs.
 
-- [ ] 7.1 OAuth app prerequisites documented: redirect URI, required scopes, Google Cloud consent-screen notes, dev-mode caveats, and secret storage expectations
+- [x] 7.1 OAuth app prerequisites documented: redirect URI, required scopes, Google Cloud consent-screen notes, dev-mode caveats, and secret storage expectations — `docs/oauth-setup.md`
 - [ ] 7.2 `src/YouTube/OAuthClient.php` implements `ApiClientInterface` using access tokens, refresh tokens, token expiry, and automatic refresh-on-401
-- [ ] 7.3 `src/Settings/OAuthTokenRepository.php` stores refresh/access tokens encrypted or sealed; never autoload; never logs token material
+- [x] 7.3 `src/Settings/OAuthTokenRepository.php` stores refresh/access tokens encrypted/sealed; never autoload; never logs token material; `oauth.tokens` service registered in `Plugin.php`
 - [ ] 7.4 Settings UI adds OAuth tab: client ID/secret status, connect button, callback URL, reconnect/disconnect controls, and API-key/OAuth mode selector
 - [ ] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page
 - [ ] 7.6 Disconnect flow revokes OAuth token via Google endpoint, deletes stored tokens, flips sources to disconnected where appropriate, and preserves local metadata unless clean-uninstall is enabled
@@ -720,3 +720,31 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Remaining work is now a concrete Phase 7–13 roadmap instead of a flat deferred list.
 - Next recommended action:
   - Begin Phase 7.1: OAuth app prerequisites + encrypted token storage scaffolding, with live OAuth E2E blocked until Google OAuth client credentials are provisioned out-of-band.
+
+### 2026-06-29 — Phase 7.1 OAuth prerequisites + token storage scaffold
+
+- Trigger: "Next phase"
+- Mode: Development Execution Mode (Phase 7 — OAuth Account Connection)
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: 7.1 OAuth prerequisites + 7.3 sealed token-storage scaffold
+- Work completed:
+  - Added `docs/oauth-setup.md` covering Google Cloud prerequisites, redirect URI shape, read-only YouTube scope, local-dev caveats, and secret-handling rules.
+  - Added `src/Settings/OAuthTokenRepository.php` for sealed OAuth client secret + access/refresh token storage.
+  - Registered `oauth.tokens` service in `src/Plugin.php` for future OAuthClient/settings/callback wiring.
+  - Extended `tests/Support/OptionsBag.php` to track the `autoload` flag so unit tests can assert OAuth options use `autoload=no`.
+  - Added `tests/unit/Settings/OAuthTokenRepositoryTest.php` covering sealed storage, no-autoload behavior, safe status output, refresh-error metadata, one-time OAuth state consumption, and deletion.
+- Files changed:
+  - `docs/oauth-setup.md`
+  - `src/Settings/OAuthTokenRepository.php`
+  - `src/Plugin.php`
+  - `tests/Support/OptionsBag.php`
+  - `tests/unit/Settings/OAuthTokenRepositoryTest.php`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` inside `vyg-wp` for touched PHP files → no syntax errors
+  - `make test-unit` → **177 tests, 409 assertions, 0 failures, 0 errors**
+  - Live WP smoke: resolved `oauth.tokens` from the plugin container, stored dummy OAuth client/tokens, verified raw storage did not contain dummy token text, then deleted dummy OAuth state/config/tokens.
+- Result:
+  - Phase 7.1 and 7.3 are complete; Phase 7 is now in progress.
+- Next recommended action:
+  - Begin Phase 7.2: implement `src/YouTube/OAuthClient.php` with authorization URL, auth-code exchange, token refresh, and ApiClientInterface methods using OAuthTokenRepository.

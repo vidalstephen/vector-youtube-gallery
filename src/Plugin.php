@@ -43,6 +43,7 @@ use VectorYT\Gallery\Repository\SyncLogRepository;
 use VectorYT\Gallery\Repository\VideoRepository;
 use VectorYT\Gallery\REST\AdminRestController;
 use VectorYT\Gallery\REST\FeedController;
+use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Sync\DeletedVideoDetector;
@@ -156,6 +157,7 @@ final class Plugin {
         // --- Core ---
         $c->set( 'logger',   static fn(): Logger => new Logger() );
         $c->set( 'secrets',  static fn(): SecretsRepository => new SecretsRepository() );
+        $c->set( 'oauth.tokens', static fn(): OAuthTokenRepository => new OAuthTokenRepository() );
         $c->set( 'settings', static fn(): SettingsRepository => new SettingsRepository() );
         $c->set( 'quota',    static fn(): QuotaTracker => new QuotaTracker() );
         $c->set( 'retry',    static fn(): RetryPolicy => new RetryPolicy() );

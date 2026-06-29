@@ -15,8 +15,12 @@ final class OptionsBag {
     /** @var array<string,mixed> */
     private static array $options = array();
 
+    /** @var array<string,bool|string|null> */
+    private static array $autoload = array();
+
     public static function reset(): void {
-        self::$options = array();
+        self::$options  = array();
+        self::$autoload = array();
     }
 
     public static function get( string $key, mixed $default = false ): mixed {
@@ -25,12 +29,17 @@ final class OptionsBag {
 
     public static function update( string $key, mixed $value, bool|string $autoload = null ): bool {
         self::$options[ $key ] = $value;
+        self::$autoload[ $key ] = $autoload;
         return true;
     }
 
     public static function delete( string $key ): bool {
-        unset( self::$options[ $key ] );
+        unset( self::$options[ $key ], self::$autoload[ $key ] );
         return true;
+    }
+
+    public static function autoload( string $key ): bool|string|null {
+        return self::$autoload[ $key ] ?? null;
     }
 
     /**
