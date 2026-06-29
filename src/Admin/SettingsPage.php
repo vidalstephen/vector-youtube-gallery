@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace VectorYT\Gallery\Admin;
 
 use VectorYT\Gallery\Logging\Logger;
+use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\YouTube\ApiClientInterface;
@@ -31,6 +32,7 @@ final class SettingsPage {
 
     public function __construct(
         private readonly SecretsRepository $secrets,
+        private readonly OAuthTokenRepository $oauth_tokens,
         private readonly SettingsRepository $settings,
         private readonly ApiClientInterface $api,
         private readonly Logger $logger,
@@ -44,6 +46,7 @@ final class SettingsPage {
         // Handle save.
         if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
             $this->maybe_handle_save();
+            $this->maybe_handle_oauth_save();
             $this->maybe_handle_settings_save();
         }
 
@@ -52,8 +55,10 @@ final class SettingsPage {
         $validated_at         = $this->secrets->get_api_key_validated_at();
         $last_error           = $this->secrets->get_api_key_last_error();
         $api_mode             = $this->api->mode();
+        $oauth_status         = $this->oauth_tokens->status();
+        $oauth_config         = $this->oauth_tokens->get_client_config();
 
-        $this->render_html( $has_key, $masked, $validated_at, $last_error, $api_mode );
+        $this->render_html( $has_key, $masked, $validated_at, $last_error, $api_mode, $oauth_status, $oauth_config );
     }
 
     private function maybe_handle_save(): void {
@@ -90,9 +95,74 @@ final class SettingsPage {
         }
     }
 
-    private function redirect_with_notice( string $notice ): void {
+    private function maybe_handle_oauth_save(): void {
+        $op = isset( $_POST['vyg_op'] ) ? sanitize_key( wp_unslash( $_POST['vyg_op'] ) ) : '';
+        if ( 'save_oauth' !== $op ) {
+            return;
+        }
+
+        if ( ! isset( $_POST['vyg_settings_nonce'] ) ) {
+            return;
+        }
+        $nonce = sanitize_text_field( wp_unslash( $_POST['vyg_settings_nonce'] ) );
+        if ( ! wp_verify_nonce( $nonce, self::NONCE_ACTION ) ) {
+            wp_die( esc_html__( 'Invalid nonce.', 'vector-youtube-gallery' ) );
+        }
+        if ( ! current_user_can( AdminMenu::REQUIRED_CAP ) ) {
+            wp_die( esc_html__( 'Insufficient permissions.', 'vector-youtube-gallery' ) );
+        }
+
+        $action = isset( $_POST['vyg_oauth_action'] ) ? sanitize_key( wp_unslash( $_POST['vyg_oauth_action'] ) ) : 'save';
+
+        if ( 'delete_config' === $action ) {
+            $this->oauth_tokens->delete_tokens();
+            $this->oauth_tokens->delete_client_config();
+            $this->logger->info( 'OAuth client configuration deleted via admin' );
+            $this->redirect_with_notice( 'oauth_deleted', 'oauth' );
+            return;
+        }
+
+        if ( 'disconnect_local' === $action ) {
+            $this->oauth_tokens->delete_tokens();
+            $this->logger->info( 'OAuth local token state deleted via admin' );
+            $this->redirect_with_notice( 'oauth_disconnected', 'oauth' );
+            return;
+        }
+
+        $posted = wp_unslash( $_POST );
+        $this->settings->save_posted( $posted );
+
+        $existing     = $this->oauth_tokens->get_client_config();
+        $client_id    = isset( $posted['vyg_oauth_client_id'] ) ? sanitize_text_field( (string) $posted['vyg_oauth_client_id'] ) : '';
+        $client_secret= isset( $posted['vyg_oauth_client_secret'] ) ? trim( (string) $posted['vyg_oauth_client_secret'] ) : '';
+        $redirect_uri = isset( $posted['vyg_oauth_redirect_uri'] ) ? esc_url_raw( trim( (string) $posted['vyg_oauth_redirect_uri'] ) ) : $this->oauth_callback_url();
+
+        if ( '' === $client_secret && null !== $existing ) {
+            $client_secret = $existing['client_secret'];
+        }
+
+        if ( '' !== $client_id && '' !== $client_secret && '' !== $redirect_uri ) {
+            $this->oauth_tokens->set_client_config( $client_id, $client_secret, $redirect_uri );
+        }
+
+        $this->logger->info( 'OAuth settings saved via admin', array(
+            'api_mode' => $this->settings->get( 'api_mode', 'api_key' ),
+            'client_configured' => $this->oauth_tokens->has_client_config(),
+        ) );
+        $this->redirect_with_notice( 'oauth_saved', 'oauth' );
+    }
+
+    private function oauth_callback_url(): string {
+        return admin_url( 'admin-post.php?action=vyg_oauth_callback' );
+    }
+
+    private function redirect_with_notice( string $notice, string $tab = '' ): void {
+        $args = array( 'page' => AdminMenu::PARENT_SLUG . '-settings', 'vyg_notice' => $notice );
+        if ( '' !== $tab ) {
+            $args['tab'] = $tab;
+        }
         $url = add_query_arg(
-            array( 'page' => AdminMenu::PARENT_SLUG . '-settings', 'vyg_notice' => $notice ),
+            $args,
             admin_url( 'admin.php' )
         );
         wp_safe_redirect( $url );
@@ -122,11 +192,13 @@ final class SettingsPage {
         ?string $validated_at,
         ?array $last_error,
         string $api_mode,
+        array $oauth_status,
+        ?array $oauth_config,
     ): void {
         $notice = isset( $_GET['vyg_notice'] ) ? sanitize_key( wp_unslash( $_GET['vyg_notice'] ) ) : '';
         $s = $this->settings->all();
         $current_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'api';
-        $valid_tabs = array( 'api', 'classification', 'sync', 'live', 'privacy' );
+        $valid_tabs = array( 'api', 'oauth', 'classification', 'sync', 'live', 'privacy' );
         if ( ! in_array( $current_tab, $valid_tabs, true ) ) {
             $current_tab = 'api';
         }
@@ -137,7 +209,8 @@ final class SettingsPage {
             <nav class="nav-tab-wrapper">
                 <?php
                 $tab_labels = array(
-                    'api'           => __( 'API', 'vector-youtube-gallery' ),
+                    'api'           => __( 'API Key', 'vector-youtube-gallery' ),
+                    'oauth'         => __( 'OAuth', 'vector-youtube-gallery' ),
                     'classification'=> __( 'Classification', 'vector-youtube-gallery' ),
                     'sync'          => __( 'Sync', 'vector-youtube-gallery' ),
                     'live'          => __( 'Live', 'vector-youtube-gallery' ),
@@ -155,6 +228,12 @@ final class SettingsPage {
                 <div class="notice notice-success is-dismissible">
                     <p><?php echo esc_html__( 'Settings saved.', 'vector-youtube-gallery' ); ?></p>
                 </div>
+            <?php elseif ( 'oauth_saved' === $notice ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'OAuth settings saved.', 'vector-youtube-gallery' ); ?></p></div>
+            <?php elseif ( 'oauth_deleted' === $notice ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'OAuth client configuration and local tokens deleted.', 'vector-youtube-gallery' ); ?></p></div>
+            <?php elseif ( 'oauth_disconnected' === $notice ) : ?>
+                <div class="notice notice-success is-dismissible"><p><?php echo esc_html__( 'Local OAuth token state deleted. Google revocation is handled by the disconnect flow in the next Phase 7 step.', 'vector-youtube-gallery' ); ?></p></div>
             <?php endif; ?>
 
             <?php if ( 'saved' === $notice ) : ?>
@@ -274,6 +353,85 @@ final class SettingsPage {
                 </table>
             </form>
             <?php endif; // end api tab ?>
+
+            <?php if ( 'oauth' === $current_tab ) : ?>
+            <h2><?php echo esc_html__( 'OAuth Account Connection', 'vector-youtube-gallery' ); ?></h2>
+            <p class="description"><?php echo esc_html__( 'OAuth mode lets a site operator connect a YouTube account instead of relying on a public API key. Live Google authorization is completed by the callback handler in the next Phase 7 step.', 'vector-youtube-gallery' ); ?></p>
+
+            <table class="widefat striped" style="max-width: 960px; margin: 1em 0;">
+                <tbody>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Configured client', 'vector-youtube-gallery' ); ?></th>
+                        <td><?php echo $oauth_status['client_configured'] ? '<code>' . esc_html( $oauth_status['client_id_masked'] ) . '</code>' : esc_html__( 'Not configured', 'vector-youtube-gallery' ); ?></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Connection status', 'vector-youtube-gallery' ); ?></th>
+                        <td><?php echo $oauth_status['connected'] ? esc_html__( 'Connected token stored locally', 'vector-youtube-gallery' ) : esc_html__( 'Not connected', 'vector-youtube-gallery' ); ?></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Callback URL', 'vector-youtube-gallery' ); ?></th>
+                        <td><code><?php echo esc_html( $this->oauth_callback_url() ); ?></code></td>
+                    </tr>
+                    <?php if ( ! empty( $oauth_status['expires_at'] ) ) : ?>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Access token expires', 'vector-youtube-gallery' ); ?></th>
+                        <td><?php echo esc_html( $oauth_status['expires_at'] ); ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $oauth_status['last_refresh_error'] ) ) : ?>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Last refresh error', 'vector-youtube-gallery' ); ?></th>
+                        <td><code><?php echo esc_html( $oauth_status['last_refresh_error']['code'] ); ?></code> <?php echo esc_html( $oauth_status['last_refresh_error']['message'] ); ?></td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <form method="post" action="">
+                <?php wp_nonce_field( self::NONCE_ACTION, 'vyg_settings_nonce' ); ?>
+                <input type="hidden" name="vyg_op" value="save_oauth" />
+
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'API credential mode', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <label><input type="radio" name="api_mode" value="api_key" <?php checked( 'api_key', (string) $s['api_mode'] ); ?> /> <?php echo esc_html__( 'API key mode', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="radio" name="api_mode" value="oauth" <?php checked( 'oauth', (string) $s['api_mode'] ); ?> /> <?php echo esc_html__( 'OAuth mode', 'vector-youtube-gallery' ); ?></label>
+                            <p class="description"><?php echo esc_html__( 'Development mock mode still takes precedence when VYG_USE_MOCK is enabled.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="vyg_oauth_client_id"><?php echo esc_html__( 'OAuth client ID', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input type="text" id="vyg_oauth_client_id" name="vyg_oauth_client_id" class="regular-text" value="<?php echo esc_attr( $oauth_config['client_id'] ?? '' ); ?>" autocomplete="off" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="vyg_oauth_client_secret"><?php echo esc_html__( 'OAuth client secret', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <input type="password" id="vyg_oauth_client_secret" name="vyg_oauth_client_secret" class="regular-text" value="" autocomplete="off" placeholder="<?php echo esc_attr( $oauth_config ? __( 'Leave blank to keep existing secret', 'vector-youtube-gallery' ) : __( 'Paste client secret', 'vector-youtube-gallery' ) ); ?>" />
+                            <p class="description"><?php echo esc_html__( 'Stored sealed with autoload=no. Never shown again after save.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="vyg_oauth_redirect_uri"><?php echo esc_html__( 'Authorized redirect URI', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <input type="url" id="vyg_oauth_redirect_uri" name="vyg_oauth_redirect_uri" class="large-text code" value="<?php echo esc_attr( $oauth_config['redirect_uri'] ?? $this->oauth_callback_url() ); ?>" />
+                            <p class="description"><?php echo esc_html__( 'Copy this exact URI into Google Cloud Console → OAuth Client → Authorized redirect URIs.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                </table>
+
+                <p>
+                    <button type="submit" name="vyg_oauth_action" value="save" class="button button-primary"><?php echo esc_html__( 'Save OAuth Settings', 'vector-youtube-gallery' ); ?></button>
+                    <?php if ( $oauth_status['client_configured'] ) : ?>
+                        <button type="button" class="button" disabled title="<?php echo esc_attr__( 'Enabled when the OAuth callback handler lands in Phase 7.5.', 'vector-youtube-gallery' ); ?>"><?php echo esc_html__( 'Connect / Reconnect YouTube', 'vector-youtube-gallery' ); ?></button>
+                        <button type="submit" name="vyg_oauth_action" value="delete_config" class="button button-link-delete" onclick="return confirm('<?php echo esc_js( __( 'Delete OAuth client configuration and local OAuth tokens?', 'vector-youtube-gallery' ) ); ?>');"><?php echo esc_html__( 'Delete OAuth Config', 'vector-youtube-gallery' ); ?></button>
+                    <?php endif; ?>
+                    <?php if ( $oauth_status['connected'] ) : ?>
+                        <button type="submit" name="vyg_oauth_action" value="disconnect_local" class="button"><?php echo esc_html__( 'Disconnect Local Token State', 'vector-youtube-gallery' ); ?></button>
+                    <?php endif; ?>
+                </p>
+            </form>
+            <?php endif; // end oauth tab ?>
 
             <?php if ( 'classification' === $current_tab || 'sync' === $current_tab || 'live' === $current_tab || 'privacy' === $current_tab ) : ?>
             <form method="post" action="">

@@ -49,6 +49,9 @@ class SettingsRepository {
         // Sync defaults (per-source overrides take precedence).
         'default_sync_interval_seconds' => 86400,        // 1 day
         'metadata_refresh_batch_size'   => 100,
+
+        // API credential mode. `api_key` remains the default; `oauth` is available from Phase 7 onward.
+        'api_mode'                      => 'api_key',
     );
 
     /** @var array<string,mixed>|null Cached values. */
@@ -112,6 +115,12 @@ class SettingsRepository {
             'respect_manual_overrides',
         ) as $bool_key ) {
             $values[ $bool_key ] = ! empty( $input[ $bool_key ] );
+        }
+
+        // Enumerations.
+        if ( array_key_exists( 'api_mode', $input ) ) {
+            $mode = sanitize_key( (string) $input['api_mode'] );
+            $values['api_mode'] = in_array( $mode, array( 'api_key', 'oauth' ), true ) ? $mode : self::DEFAULTS['api_mode'];
         }
 
         $this->save( $values );

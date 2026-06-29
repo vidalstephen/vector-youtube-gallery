@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 7 — OAuth Account Connection** (IN PROGRESS)
-- Current sub-phase: 7.4 (Settings OAuth tab + mode selector)
-- Last completed item: 7.2 — OAuthClient implementation with authorization URL, token exchange, refresh-on-401 behavior, unit tests, and live WP smoke verification
-- Next actionable item: Begin Phase 7.4 — add OAuth settings tab, client credential status, connect/reconnect/disconnect controls, and API-key/OAuth mode selector
+- Current sub-phase: 7.5 (OAuth callback handler)
+- Last completed item: 7.4 — Settings OAuth tab, credential status, local disconnect/delete controls, callback URL display, API-key/OAuth mode selector, and Camofox screenshot
+- Next actionable item: Begin Phase 7.5 — implement OAuth callback handler with nonce/state validation, auth-code exchange, token storage, connected account/channel identity, and admin redirect
 - Blocked items: OAuth live API E2E requires Google Cloud OAuth client ID/secret and redirect URI approval
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -170,6 +170,7 @@ Preferred capture path is now `scripts/capture-camofox-screenshots.py`: real Cam
 | Videos moderation (search, filter, hide/pin/reclassify) | ![](screenshots/camofox/07-videos.png) | 216 KB |
 | System Info (copy-to-clipboard, table counts, cron events) | ![](screenshots/camofox/08-system-info.png) | 259 KB |
 | Front-end gallery — feed-by-uuid shortcode rendering 2 videos with real thumbnails | ![](screenshots/camofox/09-frontend-feed.png) | 252 KB |
+| Settings OAuth tab — mode selector, sealed client config status, callback URL, connect/delete controls | ![](screenshots/camofox/10-settings-oauth.png) | 273 KB |
 
 Notes from the live browser review:
 - Camofox had to be attached to `vyg_net`; otherwise `browser_navigate`/Camofox cannot reach `vyg-wp`.
@@ -183,7 +184,7 @@ Goal: add first-class OAuth support for operators who prefer channel-owner autho
 - [x] 7.1 OAuth app prerequisites documented: redirect URI, required scopes, Google Cloud consent-screen notes, dev-mode caveats, and secret storage expectations — `docs/oauth-setup.md`
 - [x] 7.2 `src/YouTube/OAuthClient.php` implements `ApiClientInterface` using access tokens, refresh tokens, token expiry, and automatic refresh-on-401; `youtube.oauth_api` service registered
 - [x] 7.3 `src/Settings/OAuthTokenRepository.php` stores refresh/access tokens encrypted/sealed; never autoload; never logs token material; `oauth.tokens` service registered in `Plugin.php`
-- [ ] 7.4 Settings UI adds OAuth tab: client ID/secret status, connect button, callback URL, reconnect/disconnect controls, and API-key/OAuth mode selector
+- [x] 7.4 Settings UI adds OAuth tab: client ID/secret status, callback URL, save/delete config, local disconnect, disabled connect/reconnect placeholder for 7.5, and API-key/OAuth mode selector; Camofox screenshot captured at `screenshots/camofox/10-settings-oauth.png`
 - [ ] 7.5 OAuth callback handler validates nonce/state, exchanges auth code, stores tokens, records connected account/channel identity, and redirects to admin status page
 - [ ] 7.6 Disconnect flow revokes OAuth token via Google endpoint, deletes stored tokens, flips sources to disconnected where appropriate, and preserves local metadata unless clean-uninstall is enabled
 - [ ] 7.7 Source add/resolution can use OAuth mode for private/unlisted channel-access cases while retaining public API-key behavior
@@ -777,3 +778,34 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 7.2 is complete; Phase 7.9 is partial because OAuth repo/client tests are done while callback/diagnostics tests wait for later UI/callback work.
 - Next recommended action:
   - Begin Phase 7.4: add the OAuth settings tab, client credential status, connect/reconnect/disconnect controls, and API-key/OAuth mode selector.
+
+### 2026-06-29 — Phase 7.4 OAuth Settings UI
+
+- Trigger: "Next phase"
+- Mode: Development Execution Mode (Phase 7 — OAuth Account Connection)
+- Current phase: Phase 7 — OAuth Account Connection
+- Selected task: 7.4 Settings OAuth tab + mode selector
+- Work completed:
+  - Added `api_mode` setting (`api_key` default, `oauth` optional) with whitelist sanitization in `SettingsRepository`.
+  - Updated runtime client selection so non-mock installs use `youtube.oauth_api` when `api_mode=oauth`; development mock mode still takes precedence.
+  - Added an OAuth tab to `SettingsPage` showing credential status, connected status, callback URL, masked client ID, token expiry/refresh error metadata, and OAuth client fields.
+  - Added OAuth client config save, config delete, local token disconnect, and API-key/OAuth mode selector handling with nonce + capability checks.
+  - Added disabled Connect/Reconnect placeholder button that documents it becomes active with the Phase 7.5 callback handler.
+  - Updated `scripts/capture-camofox-screenshots.py` to capture `screenshots/camofox/10-settings-oauth.png`.
+  - Captured a live Camofox screenshot of the OAuth settings tab with dummy sealed OAuth config, then cleaned all dummy `vyg_oauth_%` options and restored `api_mode=api_key`.
+- Files changed:
+  - `src/Admin/SettingsPage.php`
+  - `src/Settings/SettingsRepository.php`
+  - `src/Plugin.php`
+  - `tests/unit/Settings/SettingsRepositoryTest.php`
+  - `scripts/capture-camofox-screenshots.py`
+  - `screenshots/camofox/10-settings-oauth.png`
+  - `DEV-CHECKLIST.md`
+- Tests run:
+  - `php -l` inside `vyg-wp` for touched PHP files → no syntax errors
+  - `make test-unit` → **187 tests, 457 assertions, 0 failures, 0 errors**
+  - Live WP smoke: dummy OAuth config saved sealed (`raw_secret_leaked=false`), OAuth tab rendered through Camofox, screenshot size 273 KB, cleanup verified `[]` for `vyg_oauth_%` options.
+- Result:
+  - Phase 7.4 is complete. Phase 7.5 remains the next step because actual Google redirect/callback handling is intentionally not active yet.
+- Next recommended action:
+  - Begin Phase 7.5: implement `admin-post.php?action=vyg_oauth_callback`, validate state, exchange the auth code, store tokens/account identity, and redirect back to the OAuth settings tab with status.

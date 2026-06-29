@@ -191,6 +191,10 @@ final class Plugin {
                         self::load_mock_handlers(),
                     );
                 }
+                $settings = $c->get( 'settings' );
+                if ( $settings instanceof SettingsRepository && 'oauth' === $settings->get( 'api_mode', 'api_key' ) ) {
+                    return $c->get( 'youtube.oauth_api' );
+                }
                 return new ApiKeyClient( $c->get( 'secrets' ), $logger );
             }
         );
@@ -258,6 +262,7 @@ final class Plugin {
             'admin.settings',
             static fn( Container $c ): SettingsPage => new SettingsPage(
                 $c->get( 'secrets' ),
+                $c->get( 'oauth.tokens' ),
                 $c->get( 'settings' ),
                 $c->get( 'youtube.api' ),
                 $c->get( 'logger' )

@@ -24,6 +24,7 @@ final class SettingsRepositoryTest extends TestCase {
         \Brain\Monkey\setUp();
         OptionsBag::reset();
         BrainHelpers::stubOptionFunctions();
+        BrainHelpers::stubEscapeFunctions();
         $this->repo = new SettingsRepository();
     }
 
@@ -43,6 +44,7 @@ final class SettingsRepositoryTest extends TestCase {
         $this->assertTrue( $values['auto_classify_shorts'] );
         $this->assertTrue( $values['auto_classify_live'] );
         $this->assertTrue( $values['respect_manual_overrides'] );
+        $this->assertSame( 'api_key', $values['api_mode'] );
     }
 
     public function test_get_with_default(): void {
@@ -90,6 +92,16 @@ final class SettingsRepositoryTest extends TestCase {
             'shorts_max_duration_seconds' => '-5',
         ) );
         $this->assertSame( 0, $this->repo->get( 'shorts_max_duration_seconds' ) );
+    }
+
+    public function test_save_posted_accepts_known_api_mode(): void {
+        $this->repo->save_posted( array( 'api_mode' => 'oauth' ) );
+        $this->assertSame( 'oauth', $this->repo->get( 'api_mode' ) );
+    }
+
+    public function test_save_posted_rejects_unknown_api_mode(): void {
+        $this->repo->save_posted( array( 'api_mode' => 'not-real' ) );
+        $this->assertSame( 'api_key', $this->repo->get( 'api_mode' ) );
     }
 
     public function test_reset_defaults(): void {
