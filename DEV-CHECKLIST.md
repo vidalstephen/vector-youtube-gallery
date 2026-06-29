@@ -157,21 +157,24 @@
 
 ### Phase 6 E2E verification — admin + front-end screenshots
 
-Captured via `scripts/capture-screenshots.sh` (chromium inside the wordpress container, file:// render of curl-fetched HTML). See `screenshots/` for the raw PNGs; `scripts/capture-screenshots.sh` to regenerate.
+Preferred capture path is now `scripts/capture-camofox-screenshots.py`: real Camofox browser session against the live WordPress Docker instance (`vyg-wp`), one-time dev login token (no password typed), temporary `siteurl/home=http://vyg-wp` while capturing, automatic restore to `http://localhost:8000` afterward. This supersedes the older `scripts/capture-screenshots.sh` fallback, which rendered curl-fetched admin HTML via `file://` and lost WP admin chrome styling.
 
-| Page | File | Bytes |
+| Page | Live Camofox screenshot | Approx size |
 | --- | --- | --- |
-| WordPress dashboard with Vector YouTube Gallery widget (4 stat cards + gauge + recent jobs table) | ![](screenshots/01-dashboard-widget.png) | 81 KB |
-| Sources page with status badges + Sync-now + Disconnect | ![](screenshots/02-sources.png) | 96 KB |
-| Feeds list view (saved feeds table + shortcode display) | ![](screenshots/03-feeds-list.png) | 73 KB |
-| Feeds edit form (13 fields: name, source, layout, display, filter, sort, custom CSS) | ![](screenshots/04-feeds-edit.png) | 129 KB |
-| Privacy & Compliance (7 sections: counts, retention, disconnect, import/export, policy) | ![](screenshots/05-privacy.png) | 129 KB |
-| Diagnostics (6 sections: API status, quota, sync jobs, source health, stale, errors) | ![](screenshots/06-diagnostics.png) | 112 KB |
-| Videos moderation (search, filter, hide/pin/reclassify) | ![](screenshots/07-videos.png) | 96 KB |
-| System Info (copy-to-clipboard, table counts, cron events) | ![](screenshots/08-system-info.png) | 73 KB |
-| WordPress login page | ![](screenshots/09-login.png) | 24 KB |
-| Front-end gallery — feed-by-uuid shortcode rendering 2 videos with scoped CSS | ![](screenshots/10-frontend-feed.png) | 70 KB |
-| Front-end gallery — mobile viewport (390px) | ![](screenshots/11-frontend-mobile.png) | 45 KB |
+| WordPress dashboard with Vector YouTube Gallery widget visible | ![](screenshots/camofox/01-dashboard.png) | 293 KB |
+| Sources page with status badges + Sync-now + Disconnect | ![](screenshots/camofox/02-sources.png) | 173 KB |
+| Feeds list view (saved feeds table + shortcode display) | ![](screenshots/camofox/03-feeds-list.png) | 144 KB |
+| Feeds edit form (name/status/source/layout/display/filter/sort/custom CSS) | ![](screenshots/camofox/04-feeds-edit.png) | 219 KB |
+| Privacy & Compliance (stored data, retention, clean uninstall, disconnect, export/import) | ![](screenshots/camofox/05-privacy.png) | 338 KB |
+| Diagnostics (API status, quota, sync jobs, source health, stale, errors) | ![](screenshots/camofox/06-diagnostics.png) | 241 KB |
+| Videos moderation (search, filter, hide/pin/reclassify) | ![](screenshots/camofox/07-videos.png) | 216 KB |
+| System Info (copy-to-clipboard, table counts, cron events) | ![](screenshots/camofox/08-system-info.png) | 259 KB |
+| Front-end gallery — feed-by-uuid shortcode rendering 2 videos with real thumbnails | ![](screenshots/camofox/09-frontend-feed.png) | 252 KB |
+
+Notes from the live browser review:
+- Camofox had to be attached to `vyg_net`; otherwise `browser_navigate`/Camofox cannot reach `vyg-wp`.
+- WP `siteurl`/`home` must temporarily use `http://vyg-wp` during browser capture so redirects stay inside the Docker network.
+- Dev/mock video rows need realistic `thumbnail_*` values; otherwise the front-end renders black thumbnail cards and the screenshots are not useful for UI/UX review.
 
 ### Phase 7+ — Deferred (post-MVP)
 
