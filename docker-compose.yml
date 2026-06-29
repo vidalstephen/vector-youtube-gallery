@@ -66,6 +66,9 @@ services:
       - wp_data:/var/www/html
       - ./:/var/www/html/wp-content/plugins/vector-youtube-gallery:rw
       - ./dev/logs:/var/www/html/wp-content/debug.log:rw
+      - ~/.hermes/secrets/smtp-config:/run/secrets/smtp-config:ro
+    secrets:
+      - smtp_config
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost/ >/dev/null || exit 1"]
       interval: 15s
@@ -153,3 +156,7 @@ networks:
   vyg_net:
     name: vyg_net
     driver: bridge
+
+secrets:
+  smtp_config:
+    file: ~/.hermes/secrets/smtp-config
