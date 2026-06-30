@@ -185,6 +185,21 @@ final class FeedsPage {
             'preset'         => isset( $_POST['preset'] ) ? sanitize_key( wp_unslash( $_POST['preset'] ) ) : 'default',
             'pagination'     => isset( $_POST['pagination'] ) ? sanitize_key( wp_unslash( $_POST['pagination'] ) ) : 'none',
             'player_mode'    => isset( $_POST['player_mode'] ) ? sanitize_key( wp_unslash( $_POST['player_mode'] ) ) : 'iframe',
+            // Phase 13.1 — grid redesign.
+            'density'                => isset( $_POST['density'] ) ? sanitize_key( wp_unslash( $_POST['density'] ) ) : 'comfortable',
+            'header_title'           => isset( $_POST['header_title'] ) ? sanitize_text_field( wp_unslash( $_POST['header_title'] ) ) : '',
+            'header_subtitle'        => isset( $_POST['header_subtitle'] ) ? sanitize_text_field( wp_unslash( $_POST['header_subtitle'] ) ) : '',
+            'header_columns_visible' => ! empty( $_POST['header_columns_visible'] ),
+            'header_cta_label'       => isset( $_POST['header_cta_label'] ) ? sanitize_text_field( wp_unslash( $_POST['header_cta_label'] ) ) : '',
+            'header_cta_url'         => isset( $_POST['header_cta_url'] ) ? esc_url_raw( wp_unslash( $_POST['header_cta_url'] ) ) : '',
+            'show_channel_avatar'    => ! empty( $_POST['show_channel_avatar'] ),
+            'show_channel_name'      => ! empty( $_POST['show_channel_name'] ),
+            'show_subscriber_count'  => ! empty( $_POST['show_subscriber_count'] ),
+            'show_verified_badge'    => ! empty( $_POST['show_verified_badge'] ),
+            'show_views_and_time'    => ! empty( $_POST['show_views_and_time'] ),
+            'product_cta_visible'    => ! empty( $_POST['product_cta_visible'] ),
+            'trust_strip'            => ! empty( $_POST['trust_strip'] ),
+            'card_radius'            => isset( $_POST['card_radius'] ) ? sanitize_text_field( wp_unslash( $_POST['card_radius'] ) ) : '12px',
         );
 
         $filter = array(
@@ -771,6 +786,65 @@ final class FeedsPage {
                                 <option value="iframe" <?php selected( (string) ( $display['player_mode'] ?? 'iframe' ), 'iframe' ); ?>><?php echo esc_html__( 'YouTube iframe (in-page)', 'vector-youtube-gallery' ); ?></option>
                                 <option value="external" <?php selected( (string) ( $display['player_mode'] ?? 'iframe' ), 'external' ); ?>><?php echo esc_html__( 'YouTube.com (new tab)', 'vector-youtube-gallery' ); ?></option>
                             </select>
+                        </td>
+                    </tr>
+
+                    <tr><th colspan="2"><h2><?php echo esc_html__( 'Grid layout (Phase 13.1)', 'vector-youtube-gallery' ); ?></h2></th></tr>
+                    <tr>
+                        <th scope="row"><label for="density"><?php echo esc_html__( 'Density', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <select name="density" id="density">
+                                <?php foreach ( FeedRepository::allowed_densities() as $density ) : ?>
+                                    <option value="<?php echo esc_attr( $density ); ?>" <?php selected( (string) ( $display['density'] ?? 'comfortable' ), $density ); ?>><?php echo esc_html( ucfirst( $density ) ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description"><?php echo esc_html__( 'Compact = tighter cards. Editorial = larger spacing, deeper shadow.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="header_title"><?php echo esc_html__( 'Section header title', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <input name="header_title" id="header_title" type="text" class="regular-text" value="<?php echo esc_attr( (string) ( $display['header_title'] ?? '' ) ); ?>" />
+                            <p class="description"><?php echo esc_html__( 'Leave empty to hide the section header.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="header_subtitle"><?php echo esc_html__( 'Section header subtitle', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="header_subtitle" id="header_subtitle" type="text" class="regular-text" value="<?php echo esc_attr( (string) ( $display['header_subtitle'] ?? '' ) ); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Header controls', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <label><input type="checkbox" name="header_columns_visible" value="1" <?php checked( ! empty( $display['header_columns_visible'] ) ); ?> /> <?php echo esc_html__( 'Show column count', 'vector-youtube-gallery' ); ?></label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="header_cta_label"><?php echo esc_html__( 'Header CTA label', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="header_cta_label" id="header_cta_label" type="text" class="regular-text" value="<?php echo esc_attr( (string) ( $display['header_cta_label'] ?? '' ) ); ?>" placeholder="<?php echo esc_attr__( 'e.g. Visit channel', 'vector-youtube-gallery' ); ?>" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="header_cta_url"><?php echo esc_html__( 'Header CTA URL', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="header_cta_url" id="header_cta_url" type="url" class="regular-text" value="<?php echo esc_attr( (string) ( $display['header_cta_url'] ?? '' ) ); ?>" placeholder="https://…" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Card visibility', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <label><input type="checkbox" name="show_channel_name" value="1" <?php checked( ! empty( $display['show_channel_name'] ) ); ?> /> <?php echo esc_html__( 'Show channel name', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="show_channel_avatar" value="1" <?php checked( ! empty( $display['show_channel_avatar'] ) ); ?> /> <?php echo esc_html__( 'Show channel avatar (Phase 13.2)', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="show_verified_badge" value="1" <?php checked( ! empty( $display['show_verified_badge'] ) ); ?> /> <?php echo esc_html__( 'Show verified badge (Phase 13.2)', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="show_subscriber_count" value="1" <?php checked( ! empty( $display['show_subscriber_count'] ) ); ?> /> <?php echo esc_html__( 'Show subscriber count (Phase 13.2)', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="show_views_and_time" value="1" <?php checked( ! empty( $display['show_views_and_time'] ) ); ?> /> <?php echo esc_html__( 'Show views and time', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="product_cta_visible" value="1" <?php checked( ! empty( $display['product_cta_visible'] ) ); ?> /> <?php echo esc_html__( 'Show product cart CTA (when mapped)', 'vector-youtube-gallery' ); ?></label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="card_radius"><?php echo esc_html__( 'Card border radius', 'vector-youtube-gallery' ); ?></label></th>
+                        <td><input name="card_radius" id="card_radius" type="text" class="small-text" value="<?php echo esc_attr( (string) ( $display['card_radius'] ?? '12px' ) ); ?>" placeholder="12px" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><?php echo esc_html__( 'Trust badges footer', 'vector-youtube-gallery' ); ?></th>
+                        <td>
+                            <label><input type="checkbox" name="trust_strip" value="1" <?php checked( ! empty( $display['trust_strip'] ) ); ?> /> <?php echo esc_html__( 'Show trust-badges strip (Lazy Loaded / Privacy Safe / Accessible / Builder Ready)', 'vector-youtube-gallery' ); ?></label>
                         </td>
                     </tr>
 
