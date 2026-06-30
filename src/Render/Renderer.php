@@ -233,16 +233,24 @@ final class Renderer {
             'feed_uuid'    => $feed_uuid,
             'feed_config'  => $feed_config,
             'preset'       => $preset,
-            'attrs'        => array_merge( $args, array(
-                'layout'      => $layout_slug,
-                'offset'      => $offset,
-                'total'       => $total,
-                'per_page'    => $per_page,
-                'wrapper_id'  => $wrapper_id,
-                'feed_uuid'   => $feed_uuid,
-                'public_safe' => $public_safe,
-                'preset'      => $preset,
-            ) ),
+            'attrs'        => array_merge(
+                // Phase 13.1: saved display_config_json (per-feed defaults).
+                ( isset( $feed_config['display'] ) && is_array( $feed_config['display'] ) )
+                    ? $feed_config['display']
+                    : array(),
+                // Inline shortcode / block attributes take precedence.
+                $args,
+                array(
+                    'layout'      => $layout_slug,
+                    'offset'      => $offset,
+                    'total'       => $total,
+                    'per_page'    => $per_page,
+                    'wrapper_id'  => $wrapper_id,
+                    'feed_uuid'   => $feed_uuid,
+                    'public_safe' => $public_safe,
+                    'preset'      => $preset,
+                )
+            ),
         );
 
         /** @var LayoutInterface $layout_class */
