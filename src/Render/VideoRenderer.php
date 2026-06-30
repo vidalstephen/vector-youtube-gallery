@@ -87,4 +87,46 @@ final class VideoRenderer {
         }
         return sprintf( '%d:%02d', $m, $s );
     }
+
+    /**
+     * Format a raw view count as a short, human-friendly string.
+     *
+     * Below 1,000 the raw integer is returned (e.g. "999"). At and above 1,000
+     * the number is divided into K (thousand), M (million), B (billion), or
+     * T (trillion) buckets. The 10K threshold collapses the decimal so common
+     * view counts read as "12K" rather than "12.3K".
+     *
+     * Examples:
+     *   0     → "0"
+     *   999   → "999"
+     *   1_000 → "1.0K"
+     *   12_345 → "12K"
+     *   1_250_000 → "1.3M"
+     *   1_234_567_890 → "1.2B"
+     *   1_000_000_000_000 → "1.0T"
+     *
+     * @param int $count Non-negative view count.
+     * @return string
+     */
+    public function format_view_count( int $count ): string {
+        if ( $count < 1_000 ) {
+            return (string) max( 0, $count );
+        }
+        $units = array(
+            1_000_000_000_000 => 'T',
+            1_000_000_000     => 'B',
+            1_000_000         => 'M',
+            1_000             => 'K',
+        );
+        foreach ( $units as $divisor => $suffix ) {
+            if ( $count >= $divisor ) {
+                $value = $count / $divisor;
+                // 10K threshold: drop the decimal when the value is >= 10.
+                $decimals = ( $value >= 10 ) ? 0 : 1;
+                return number_format( $value, $decimals ) . $suffix;
+            }
+        }
+        // Unreachable — the 1K branch above already returned.
+        return (string) $count;
+    }
 }
