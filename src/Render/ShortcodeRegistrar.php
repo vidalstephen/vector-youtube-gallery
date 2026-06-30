@@ -71,6 +71,8 @@ final class ShortcodeRegistrar {
                 'pagination'   => 'none',
                 'offset'       => 0,
                 'wrapper_id'   => '',
+                'schema_enabled' => false,
+                'preset'         => 'default',
             ),
             $atts,
             self::TAG
@@ -123,6 +125,12 @@ final class ShortcodeRegistrar {
             if ( 'none' === (string) $atts['pagination'] && ! empty( $config['display']['load_more'] ) ) {
                 $atts['pagination'] = 'load_more';
             }
+            if ( empty( $atts['schema_enabled'] ) && ! empty( $config['schema']['enabled'] ) ) {
+                $atts['schema_enabled'] = (bool) $config['schema']['enabled'];
+            }
+            if ( 'default' === (string) $atts['preset'] && ! empty( $config['display']['preset'] ) ) {
+                $atts['preset'] = sanitize_key( (string) $config['display']['preset'] );
+            }
             $inline_override = (string) ( $feed_record['custom_css'] ?? '' );
         }
 
@@ -173,6 +181,8 @@ final class ShortcodeRegistrar {
             'columns'       => max( 1, (int) $atts['columns'] ),
             'wrapper_id'    => $wrapper_id,
             'custom_css'    => $inline_override,
+            'schema_enabled' => ! empty( $atts['schema_enabled'] ),
+            'preset'         => sanitize_key( (string) ( $atts['preset'] ?? 'default' ) ),
         ) );
     }
 }

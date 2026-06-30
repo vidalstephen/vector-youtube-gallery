@@ -1,0 +1,83 @@
+/* Hero layout — large featured video with metadata + grid below. */
+.vyg-feed--hero.vyg-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.vyg-feed--hero.vyg-hero__primary,
+.vyg-feed--hero .vyg-hero__primary {
+    width: 100%;
+}
+
+.vyg-feed--hero .vyg-hero__link {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    align-items: stretch;
+}
+
+.vyg-feed--hero .vyg-hero__thumb-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.vyg-feed--hero .vyg-hero__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vyg-feed--hero .vyg-hero__meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.vyg-feed--hero .vyg-hero__title {
+    margin: 0;
+    font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.vyg-feed--hero .vyg-hero__channel {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(0, 0, 0, 0.7);
+}
+
+.vyg-feed--hero .vyg-hero__date {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.vyg-feed--hero .vyg-hero__desc {
+    margin: 0.4rem 0 0;
+    font-size: 0.9rem;
+    color: rgba(0, 0, 0, 0.7);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.vyg-feed--hero .vyg-hero__rest {
+    display: grid;
+    gap: 1rem;
+}
+
+@media (max-width: 700px) {
+    .vyg-feed--hero .vyg-hero__link {
+        grid-template-columns: 1fr;
+    }
+}

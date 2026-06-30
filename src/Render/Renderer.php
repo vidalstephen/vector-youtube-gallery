@@ -29,6 +29,9 @@ final class Renderer {
         'featured'     => \VectorYT\Gallery\Render\Layouts\FeaturedLayout::class,
         'shorts'       => \VectorYT\Gallery\Render\Layouts\ShortsLayout::class,
         'live'         => \VectorYT\Gallery\Render\Layouts\LiveLayout::class,
+        'masonry'      => \VectorYT\Gallery\Render\Layouts\MasonryLayout::class,
+        'carousel'     => \VectorYT\Gallery\Render\Layouts\CarouselLayout::class,
+        'hero'         => \VectorYT\Gallery\Render\Layouts\HeroLayout::class,
     );
 
     /**
@@ -53,13 +56,14 @@ final class Renderer {
      * @param array<string,mixed> $args {
      *     @type string  $source_uuid    Required for legacy single-source feeds.
      *     @type array<string,mixed> $source_config Optional canonical multi-source config (Phase 8).
-     *     @type string  $layout         One of: grid, list, featured, shorts, live. Default 'grid'.
+     *     @type string  $layout         One of: grid, list, featured, shorts, live, masonry, carousel, hero. Default 'grid'.
      *     @type string  $content_type   Optional filter: 'short_confirmed,live_active' etc.
      *     @type string  $orderby        Optional: published_at, view_count, duration_seconds.
      *     @type string  $order          Optional: ASC or DESC. Default DESC.
      *     @type int     $per_page       Default 12.
      *     @type int     $offset         Default 0.
      *     @type string  $pagination     'none' | 'load_more'. Default 'none'.
+     *     @type bool    $schema_enabled Emit JSON-LD schema.org markup. Default false.
      * }
      * @return string HTML.
      */
@@ -200,6 +204,7 @@ final class Renderer {
         $feed_uuid  = sanitize_text_field( (string) ( $args['feed_uuid'] ?? '' ) );
         $custom_css = (string) ( $args['custom_css'] ?? '' );
         $public_safe = ! empty( $args['public_safe'] );
+        $preset     = \VectorYT\Gallery\Render\Presets::sanitize_slug( (string) ( $args['preset'] ?? 'default' ) );
 
         $ctx = array(
             'source'     => $source,
@@ -207,6 +212,7 @@ final class Renderer {
             'renderer'   => $this->video_renderer,
             'wrapper_id' => $wrapper_id,
             'feed_uuid'  => $feed_uuid,
+            'preset'     => $preset,
             'attrs'      => array_merge( $args, array(
                 'layout'      => $layout_slug,
                 'offset'      => $offset,
@@ -215,6 +221,7 @@ final class Renderer {
                 'wrapper_id'  => $wrapper_id,
                 'feed_uuid'   => $feed_uuid,
                 'public_safe' => $public_safe,
+                'preset'      => $preset,
             ) ),
         );
 
@@ -243,7 +250,13 @@ final class Renderer {
                 . "\n</style>\n";
         }
 
-        return $css_block . $layout_html;
+        $preset_css = '';
+        if ( 'default' !== $preset ) {
+            $preset_css = "<style id=\"vyg-preset-{$wrapper_id}\">\n"
+                . \VectorYT\Gallery\Render\Presets::emit_css( $preset )
+                . "\n</style>\n";
+        }
+        return $preset_css . $css_block . $layout_html . \VectorYT\Gallery\Render\SchemaLd::render( $source, $videos, $args );
     }
 
     /**

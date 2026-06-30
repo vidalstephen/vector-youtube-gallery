@@ -32,6 +32,7 @@ use VectorYT\Gallery\Render\AssetManager;
 use VectorYT\Gallery\Render\BlockRegistrar;
 use VectorYT\Gallery\Render\FeedQuery;
 use VectorYT\Gallery\Render\LiveQuery;
+use VectorYT\Gallery\Render\PatternsRegistrar;
 use VectorYT\Gallery\Render\Renderer;
 use VectorYT\Gallery\Render\ShortcodeRegistrar;
 use VectorYT\Gallery\Render\TemplateLoader;
@@ -392,6 +393,10 @@ final class Plugin {
             static fn(): BlockRegistrar => new BlockRegistrar()
         );
         $c->set(
+            'render.patterns',
+            static fn(): PatternsRegistrar => new PatternsRegistrar()
+        );
+        $c->set(
             'rest.feed',
             static fn( Container $c ): FeedController => new FeedController(
                 $c->get( 'render.renderer' )
@@ -444,6 +449,8 @@ final class Plugin {
         $c->get( 'render.assets' )->register();
         $c->get( 'render.shortcode' )->register();
         $c->get( 'render.block' )->register();
+        // Phase 9.4: register block patterns so editors see them in the inserter.
+        $c->get( 'render.patterns' )->register();
         $c->get( 'rest.feed' )->register_routes();
         $c->get( 'rest.admin' )->register_routes();
 

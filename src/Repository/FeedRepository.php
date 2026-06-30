@@ -43,7 +43,7 @@ class FeedRepository {
      * @return array<int,string>
      */
     public static function allowed_layouts(): array {
-        return array( 'grid', 'list', 'featured', 'shorts', 'live' );
+        return array( 'grid', 'list', 'featured', 'shorts', 'live', 'masonry', 'carousel', 'hero' );
     }
 
     /**

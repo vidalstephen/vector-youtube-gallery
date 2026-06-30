@@ -5,6 +5,13 @@
  * Listens for clicks on any anchor with data-vyg-lightbox; opens an overlay
  * with the YouTube embed iframe. Closes on background click, close-button
  * click, or Escape key. Stops the video on close by clearing the iframe src.
+ *
+ * Phase 9.7 perf pass:
+ *   - The iframe is lazily constructed on click (never in initial page load).
+ *   - When constructed, we attach `loading="lazy"` which allows the browser
+ *     to defer iframe work until the overlay is actually visible/painted.
+ *   - autoplay is requested in the URL only when overlay opens; the URL
+ *     itself comes from data-vyg-lightbox (already URL-encoded by PHP).
  */
 (function () {
     'use strict';
@@ -12,6 +19,7 @@
     var overlay = null;
     var frame = null;
     var closeBtn = null;
+    var previouslyFocused = null;
 
     function ensureOverlay() {
         if (overlay) {
@@ -20,9 +28,10 @@
         overlay = document.createElement('div');
         overlay.className = 'vyg-lightbox';
         overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
         overlay.setAttribute('aria-label', 'Video player');
         overlay.addEventListener('click', function (e) {
-            if (e.target === overlay) {
+            if (e && e.target === overlay) {
                 close();
             }
         });
@@ -42,7 +51,7 @@
         document.body.appendChild(overlay);
     }
 
-    function open(url) {
+    function open(url, title) {
         ensureOverlay();
         // Build iframe dynamically (don't autoplay until click).
         var iframe = document.createElement('iframe');
@@ -50,6 +59,10 @@
         iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
         iframe.setAttribute('allowfullscreen', '');
         iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('loading', 'lazy');
+        if (title) {
+            iframe.setAttribute('title', title);
+        }
         // Clear previous iframe.
         while (frame.firstChild && frame.firstChild !== closeBtn) {
             frame.removeChild(frame.firstChild);
@@ -57,6 +70,13 @@
         frame.insertBefore(iframe, closeBtn);
         overlay.classList.add('is-open');
         document.body.style.overflow = 'hidden';
+        previouslyFocused = document.activeElement;
+        // Move focus into the dialog so keyboard users land in a sensible spot.
+        setTimeout(function () {
+            if (closeBtn) {
+                closeBtn.focus();
+            }
+        }, 0);
     }
 
     function close() {
@@ -64,11 +84,14 @@
             return;
         }
         overlay.classList.remove('is-open');
-        // Stop playback by removing iframe.
+        // Stop playback by removing iframe (releasing the player).
         while (frame.firstChild && frame.firstChild !== closeBtn) {
             frame.removeChild(frame.firstChild);
         }
         document.body.style.overflow = '';
+        if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+            previouslyFocused.focus();
+        }
     }
 
     document.addEventListener('click', function (e) {
@@ -88,7 +111,8 @@
         e.preventDefault();
         var url = anchor.getAttribute('data-vyg-lightbox');
         if (url) {
-            open(url);
+            var title = anchor.getAttribute('data-vyg-title') || '';
+            open(url, title);
         }
     });
 

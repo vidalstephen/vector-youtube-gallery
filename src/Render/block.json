@@ -49,6 +49,10 @@
         "pagination": {
             "type": "string",
             "default": "none"
+        },
+        "schema_enabled": {
+            "type": "boolean",
+            "default": false
         }
     },
     "editorScript": "file:./index.js",

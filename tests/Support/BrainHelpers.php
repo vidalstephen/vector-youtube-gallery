@@ -29,6 +29,7 @@ final class BrainHelpers {
         Functions\when( 'esc_html_e' )->alias( static function ( string $s, ?string $domain = null ): void { echo $s; } );
         Functions\when( 'esc_attr' )->alias( static fn( string $s ): string => $s );
         Functions\when( 'esc_attr__' )->alias( static fn( string $s, ?string $domain = null ): string => $s );
+        Functions\when( 'esc_attr_e' )->alias( static function ( string $s, ?string $domain = null ): void { echo $s; } );
         Functions\when( 'wp_unslash' )->alias( static fn( $v ) => $v );
         Functions\when( 'wp_trim_words' )->alias( static function ( string $text, int $num_words = 55, $more = null ): string {
             $words = preg_split( '/\s+/', trim( $text ) );
@@ -82,6 +83,9 @@ final class BrainHelpers {
             random_int( 0, 0x3fff ) | 0x8000,
             random_int( 0, 0xffff ), random_int( 0, 0xffff ), random_int( 0, 0xffff )
         ) );
+        Functions\when( 'date_i18n' )->alias( static function ( string $fmt, ?int $ts = null ): string {
+            return gmdate( $fmt, $ts ?? time() );
+        } );
         Functions\when( 'mysql2date' )->alias( static function ( string $format, string $date ): string {
             $ts = strtotime( $date . ' UTC' );
             return $ts ? gmdate( $format, $ts ) : $date;

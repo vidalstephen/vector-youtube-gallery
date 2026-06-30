@@ -46,5 +46,6 @@ function render_block_vectoryt_gallery( array $attributes ): string {
         'offset'       => isset( $attributes['offset'] ) ? max( 0, (int) $attributes['offset'] ) : 0,
         'pagination'   => sanitize_key( (string) ( $attributes['pagination'] ?? 'none' ) ),
         'columns'      => isset( $attributes['columns'] ) ? max( 1, (int) $attributes['columns'] ) : 3,
+        'schema_enabled' => ! empty( $attributes['schema_enabled'] ),
     ) );
 }

@@ -1,0 +1,63 @@
+/* Presets — white-label CSS variable bundles.
+ *
+ * This file declares the variable defaults that every preset overrides:
+ * `--vyg-card-radius`, `--vyg-card-bg`, etc. Layouts (grid.css, list.css,
+ * hero.css…) reference these variables; themes can override any variable in
+ * the cascade.
+ *
+ * Operator can either:
+ *   (a) Apply a preset via [youtube_feed preset="cinema"]
+ *   (b) Override individual variables in a child theme stylesheet.
+ *
+ * `.vyg-feed` is the common ancestor — every preset's variable values
+ * cascade down to the cards.
+ */
+.vyg-feed {
+    --vyg-card-radius:           8px;
+    --vyg-card-bg:               transparent;
+    --vyg-card-shadow:           none;
+    --vyg-card-border:           0 solid transparent;
+    --vyg-card-title-weight:     600;
+    --vyg-card-title-size:       0.95em;
+    --vyg-card-title-color:      inherit;
+    --vyg-grid-gap:              1rem;
+    --vyg-duration-bg:           rgba(0, 0, 0, 0.78);
+    --vyg-duration-color:        #fff;
+    --vyg-pill-bg:               rgba(0, 0, 0, 0.78);
+    --vyg-pill-color:            #fff;
+    --vyg-card-thumb-bg:         #000;
+}
+
+.vyg-feed .vyg-card {
+    background: var(--vyg-card-bg);
+    border-radius: var(--vyg-card-radius);
+    border: var(--vyg-card-border);
+    box-shadow: var(--vyg-card-shadow);
+}
+
+.vyg-feed .vyg-card__title {
+    font-weight: var(--vyg-card-title-weight);
+    font-size: var(--vyg-card-title-size);
+    color: var(--vyg-card-title-color);
+}
+
+.vyg-feed .vyg-card__thumb-wrap {
+    background: var(--vyg-card-thumb-bg);
+}
+
+.vyg-feed .vyg-card__duration {
+    background: var(--vyg-duration-bg);
+    color: var(--vyg-duration-color);
+}
+
+.vyg-feed .vyg-card__badge--live {
+    background: var(--vyg-pill-bg);
+    color: var(--vyg-pill-color);
+}
+
+/* per-layout gap overrides feed-wide token. */
+.vyg-feed--grid.vyg-grid,
+.vyg-feed--hero .vyg-hero__rest,
+.vyg-feed--masonry.vyg-masonry {
+    gap: var(--vyg-grid-gap);
+}

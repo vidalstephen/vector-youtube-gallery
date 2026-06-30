@@ -177,12 +177,14 @@ final class FeedsPage {
         );
 
         $display = array(
-            'columns'    => isset( $_POST['columns'] )    ? max( 1, min( 6, absint( wp_unslash( $_POST['columns'] ) ) ) ) : 3,
-            'per_page'   => isset( $_POST['per_page'] )   ? max( 1, min( 100, absint( wp_unslash( $_POST['per_page'] ) ) ) ) : 12,
-            'lightbox'   => ! empty( $_POST['lightbox'] ),
-            'load_more'  => ! empty( $_POST['load_more'] ),
-            'pagination' => isset( $_POST['pagination'] ) ? sanitize_key( wp_unslash( $_POST['pagination'] ) ) : 'none',
-            'player_mode'=> isset( $_POST['player_mode'] ) ? sanitize_key( wp_unslash( $_POST['player_mode'] ) ) : 'iframe',
+            'columns'        => isset( $_POST['columns'] )    ? max( 1, min( 6, absint( wp_unslash( $_POST['columns'] ) ) ) ) : 3,
+            'per_page'       => isset( $_POST['per_page'] )   ? max( 1, min( 100, absint( wp_unslash( $_POST['per_page'] ) ) ) ) : 12,
+            'lightbox'       => ! empty( $_POST['lightbox'] ),
+            'load_more'      => ! empty( $_POST['load_more'] ),
+            'schema_enabled' => ! empty( $_POST['schema_enabled'] ),
+            'preset'         => isset( $_POST['preset'] ) ? sanitize_key( wp_unslash( $_POST['preset'] ) ) : 'default',
+            'pagination'     => isset( $_POST['pagination'] ) ? sanitize_key( wp_unslash( $_POST['pagination'] ) ) : 'none',
+            'player_mode'    => isset( $_POST['player_mode'] ) ? sanitize_key( wp_unslash( $_POST['player_mode'] ) ) : 'iframe',
         );
 
         $filter = array(
@@ -735,7 +737,21 @@ final class FeedsPage {
                         <th scope="row"><?php echo esc_html__( 'Player features', 'vector-youtube-gallery' ); ?></th>
                         <td>
                             <label><input type="checkbox" name="lightbox" value="1" <?php checked( ! empty( $display['lightbox'] ) ); ?> /> <?php echo esc_html__( 'Lightbox player', 'vector-youtube-gallery' ); ?></label><br />
-                            <label><input type="checkbox" name="load_more" value="1" <?php checked( ! empty( $display['load_more'] ) ); ?> /> <?php echo esc_html__( 'Load-more pagination', 'vector-youtube-gallery' ); ?></label>
+                            <label><input type="checkbox" name="load_more" value="1" <?php checked( ! empty( $display['load_more'] ) ); ?> /> <?php echo esc_html__( 'Load-more pagination', 'vector-youtube-gallery' ); ?></label><br />
+                            <label><input type="checkbox" name="schema_enabled" value="1" <?php checked( ! empty( $display['schema_enabled'] ) ); ?> /> <?php echo esc_html__( 'Emit Schema.org JSON-LD', 'vector-youtube-gallery' ); ?></label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="preset"><?php echo esc_html__( 'Style preset', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <select name="preset" id="preset">
+                                <?php foreach ( \VectorYT\Gallery\Render\Presets::presets() as $preset_key => $_tokens ) : ?>
+                                    <option value="<?php echo esc_attr( $preset_key ); ?>" <?php selected( (string) ( $display['preset'] ?? 'default' ), $preset_key ); ?>><?php echo esc_html( ucfirst( $preset_key ) ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description">
+                                <?php echo esc_html__( 'Visual preset overriding the default card colors, radius, and typography. Theme overrides still win.', 'vector-youtube-gallery' ); ?>
+                            </p>
                         </td>
                     </tr>
                     <tr>
