@@ -81,7 +81,8 @@ final class Schema {
             KEY youtube_playlist_id (youtube_playlist_id),
             KEY status (status),
             KEY last_success_at (last_success_at),
-            KEY api_data_expires_at (api_data_expires_at)
+            KEY api_data_expires_at (api_data_expires_at),
+            KEY status_id (status, id)
         ) {$c};";
     }
 
@@ -144,7 +145,9 @@ final class Schema {
             KEY availability_status (availability_status),
             KEY is_hidden (is_hidden),
             KEY moderation_status (moderation_status),
-            KEY api_data_expires_at (api_data_expires_at)
+            KEY api_data_expires_at (api_data_expires_at),
+            KEY source_visibility_published (content_type, availability_status, is_hidden, published_at),
+            KEY channel_visibility_published (youtube_channel_id, availability_status, is_hidden, published_at)
         ) {$c};";
     }
 

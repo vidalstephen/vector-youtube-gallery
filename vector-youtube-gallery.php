@@ -30,7 +30,7 @@ define( 'VYG_PLUGIN_FILE', __FILE__ );
 define( 'VYG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );      // /path/to/wp-content/plugins/vector-youtube-gallery/
 define( 'VYG_PLUGIN_URL', plugin_dir_url( __FILE__ ) );       // https://site/wp-content/plugins/vector-youtube-gallery/
 define( 'VYG_PLUGIN_BASENAME', plugin_basename( __FILE__ ) ); // vector-youtube-gallery/vector-youtube-gallery.php
-define( 'VYG_DB_VERSION', '0.5.0' ); // Phase 11.3 — moderation columns
+define( 'VYG_DB_VERSION', '0.6.0' ); // Phase 12.6 — composite indexes for hot read path
 define( 'VYG_MIN_PHP', '8.1' );
 define( 'VYG_MIN_WP', '6.4' );
 define( 'VYG_API_NAMESPACE', 'vyg/v1' );

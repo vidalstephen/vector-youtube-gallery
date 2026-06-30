@@ -320,6 +320,74 @@ final class Command {
     }
 
     /**
+     * Phase 12.6: report row counts for every VYG table, plus the
+     * presence of the composite indexes that back the hot read
+     * path. Useful for a "is my install ready for a 100k-video
+     * library?" smoke.
+     *
+     * ## EXAMPLES
+     *
+     *     wp vyg performance
+     *     wp vyg performance --format=json
+     *
+     * @subcommand performance
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function performance( array $args, array $assoc_args ): void {
+        global $wpdb;
+        $tables = array(
+            'vyg_sources',
+            'vyg_feeds',
+            'vyg_videos',
+            'vyg_playlists',
+            'vyg_playlist_video_map',
+            'vyg_feed_video_overrides',
+            'vyg_sync_jobs',
+            'vyg_sync_logs',
+            'vyg_api_quota_log',
+            'vyg_previous_streams',
+            'vyg_events',
+        );
+
+        $rows = array();
+        foreach ( $tables as $t ) {
+            $count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}{$t}" );
+            $rows[] = array(
+                'metric' => $t,
+                'value'  => (string) $count,
+            );
+        }
+
+        // Hot-query index check (Phase 12.6).
+        $hot_indexes = array(
+            'vyg_videos' => 'source_visibility_published',
+            'vyg_sources' => 'status_id',
+        );
+        foreach ( $hot_indexes as $table => $expected_index ) {
+            $present = (bool) $wpdb->get_var( $wpdb->prepare(
+                "SHOW INDEX FROM {$wpdb->prefix}{$table} WHERE Key_name = %s",
+                $expected_index
+            ) );
+            $rows[] = array(
+                'metric' => "index.{$table}.{$expected_index}",
+                'value'  => $present ? 'present' : 'missing',
+            );
+        }
+
+        if ( 'json' === ( $assoc_args['format'] ?? '' ) ) {
+            $payload = array();
+            foreach ( $rows as $row ) {
+                $payload[ $row['metric'] ] = $row['value'];
+            }
+            \WP_CLI::line( wp_json_encode( $payload, JSON_PRETTY_PRINT ) );
+            return;
+        }
+        $this->format_items( 'table', $rows, array( 'metric', 'value' ) );
+    }
+
+    /**
      * List sync jobs.
      *
      * ## OPTIONS

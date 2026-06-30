@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 12 — Operations, Scale, and Multisite**
-- Current sub-phase: 12.6 — Large-library performance
-- Last completed item: 12.5 — `Logger` min-level filter + sink dispatch, `LogRotator` (size-based with max_files cap + clamps), daily `vyg_cron_log_rotation`, `wp vyg log` + `wp vyg log-rotate`. 23 new unit tests (392 / 1076 / 0 / 3 skipped).
-- Next actionable item: 12.6 — Large-library performance: query indexes review, pagination strategy, batch sizes, memory limits, and admin list-table performance
+- Current sub-phase: 12.7 — CI smoke hardening
+- Last completed item: 12.6 — Composite indexes for the hot read path (videos table: `source_visibility_published` + `channel_visibility_published`; sources table: `status_id`). Bumped VYG_DB_VERSION to 0.6.0. New `wp vyg performance` subcommand reports row counts + index presence. Live smoke confirmed the hot query runs in 3 DB queries.
+- Next actionable item: 12.7 — CI smoke hardening: install WordPress in Docker, activate plugin, run migrations, hit key admin/front-end pages, and run `make test-unit`
 - Blocked items: none
 - Deferred items: 10.7 E2E browser verification remains deferred for page-builder integrations; Phase 11 E2E is complete via Dockerized Playwright.
 
@@ -253,7 +253,7 @@ Goal: harden the plugin for larger libraries, multisite installs, and operator a
 - [x] 12.3 Advanced object-cache support: `FeedQueryCache` extends `FeedQuery` (decorator pattern, drop-in), uses `wp_cache_*` with multisite-safe keys (blog id + cache-version counter for invalidation when no `wp_cache_flush_group` is available). New `cache_enabled` + `cache_ttl_seconds` settings. `wp vyg cache` and `wp vyg cache-flush` subcommands; `wp vyg diagnostics` now shows a Cache section. 19 new unit tests (361 / 1013 / 0 / 3 skipped).
 - [x] 12.4 Multisite network tools: new `VectorYT\Gallery\Multisite\NetworkPolicy` (single source of truth for per-site policy). On `activate_*` (network activation), the hook walks every site via `switch_to_blog`/`restore_current_blog` and runs `Plugin::on_activate()` per site. New `wp vyg network-diagnostics` (per-site row table + JSON). New `wp vyg site-cleanup [--site-id=N] --yes` (drops vyg_* tables, options, cron, transients; refuses to run without `--yes`). Idempotent re-seed script `dev/reseed-phase12.php` for local-only data. 8 new unit tests (369 / 1027 / 0 / 3 skipped).
 - [x] 12.5 Log rotation and configurable log levels: `Logger` now has a configurable min-level filter (`debug`/`info`/`warning`/`error`) plus an extensible list of `LogSink` closures for centralized shipping (a misbehaving sink never breaks the main write path). New `LogRotator` does size-based rotation (drops oldest segment past `log_max_files`) with hard ceiling clamps. Container wires `log_level` from settings on `init`, and `vyg_cron_log_rotation` runs daily. New `wp vyg log` + `wp vyg log-rotate` subcommands. 23 new unit tests (392 / 1076 / 0 / 3 skipped).
-- [ ] 12.6 Large-library performance: query indexes review, pagination strategy, batch sizes, memory limits, and admin list-table performance
+- [x] 12.6 Large-library performance: added 3 composite indexes — `vyg_videos.source_visibility_published (content_type, availability_status, is_hidden, published_at)`, `vyg_videos.channel_visibility_published (youtube_channel_id, availability_status, is_hidden, published_at)`, and `vyg_sources.status_id (status, id)`. Bumped `VYG_DB_VERSION` to 0.6.0. New `wp vyg performance` subcommand reports per-table row counts and the index presence (so operators can confirm the hot path is indexed). Live smoke confirms the indexes are present and the hot `videos_for_source` query runs in 3 DB queries.
 - [ ] 12.7 CI smoke hardening: install WordPress in Docker, activate plugin, run migrations, hit key admin/front-end pages, and run `make test-unit`
 - [ ] 12.8 Unit/integration tests: WP-CLI commands, scheduler adapter, cache invalidation, multisite option/table behavior where feasible
 - [ ] 12.9 E2E verification: Docker smoke run + Camofox screenshot capture script succeeds in a clean environment
