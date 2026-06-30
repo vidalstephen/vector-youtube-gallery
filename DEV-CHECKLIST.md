@@ -17,7 +17,7 @@
 - Last completed item: 11.3 — Moderation queues added with durable moderation columns (`moderation_status`, `moderation_reason`, `moderated_by`, `moderated_at`), admin queue page, bulk approve/manual-review/hide/unhide/classify actions, and moderation JSON/CSV export. dbDelta verified `vyg_videos changes:5`; unit suite now 310 tests / 895 assertions / 0 failures / 3 skipped. Live render smoke passed (`contains_heading=yes`, `contains_queue=yes`, `contains_video_id=yes`, `contains_db_error=no`).
 - Next actionable item: 11.4 — Saved filters and bulk actions for VideosPage
 - Blocked items: none
-- Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation. Phase 11 PNG capture remains in 11.8 because no browser engine is installed; rendered HTML artifacts exist for 11.2 and 11.3.
+- Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation. Phase 11 screenshot capture is now unblocked via Dockerized Playwright/Chromium (`scripts/run-phase11-playwright.sh`) using the official Microsoft Playwright image on `vyg_net`.
 
 ## Status Legend
 
@@ -242,7 +242,7 @@ Goal: help operators understand feed performance and manage large video librarie
 - [x] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, export sanitization
 - [x] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions, plus moderation CSV/JSON export
 - [ ] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
-- [ ] 11.8 E2E/browser verification: analytics dashboard and moderation queues render through Camofox with seeded data screenshots
+- [x] 11.8 E2E/browser verification: analytics dashboard, moderation queues, and videos page render through Dockerized Playwright/Chromium on `vyg_net` with seeded data screenshots and `api_quota_delta=0`
 
 ### Phase 12 — Operations, Scale, and Multisite
 
@@ -1322,3 +1322,34 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - 11.3 complete and checklist updated. Phase 11 now has 11.1, 11.2, 11.3, 11.5, 11.6, 11.7 complete. 11.4 and 11.8 remain pending.
 - Next recommended action:
   - 11.4 — add saved filters and bulk actions to the existing VideosPage.
+
+### 2026-06-30 — Dockerized Playwright screenshot pipeline
+
+- Trigger: user asked to move forward with the recommended Dockerized Playwright screenshot setup before resuming development.
+- Mode: Infrastructure unblock / E2E verification.
+- Decision implemented:
+  - Used the official Microsoft Playwright Docker image (`mcr.microsoft.com/playwright:v1.45.0-jammy`) attached to `vyg_net`.
+  - Avoided public domain exposure and avoided host browser installs.
+  - Avoided npm registry dependency after registry/container npm calls hung; the runner uses the Chromium binary already bundled in the Playwright image (`/ms-playwright/chromium-1124/chrome-linux/chrome`).
+- Work completed:
+  - Added `scripts/run-phase11-playwright.sh` reusable screenshot wrapper.
+  - Added `scripts/mu-vyg-screenshot-login.php` one-time login helper template. The wrapper copies it into `wp-content/mu-plugins` only during capture, stores only `sha256(token)` in a temporary option, and removes it on exit.
+  - Added `scripts/seed-phase11-screenshots.php` deterministic local-only seed data for analytics/moderation screenshots.
+  - The wrapper temporarily sets `siteurl/home=http://vyg-wp` so WordPress redirects stay reachable from inside the Playwright container, then restores both to `http://localhost:8000` in cleanup.
+  - Captured real styled WordPress admin PNG screenshots:
+    - `screenshots/playwright/phase11-analytics-dashboard.png` — 119,572 bytes (~116 KB)
+    - `screenshots/playwright/phase11-moderation-queue.png` — 116,069 bytes (~113 KB)
+    - `screenshots/playwright/phase11-videos-page.png` — 177,694 bytes (~173 KB)
+- Validation:
+  - `api_quota_delta=0` during screenshot capture.
+  - `siteurl` restored to `http://localhost:8000`.
+  - `home` restored to `http://localhost:8000`.
+  - Temporary MU-plugin removed from `wp-content/mu-plugins` after capture.
+  - `bash -n scripts/run-phase11-playwright.sh` passed.
+  - `php -l scripts/seed-phase11-screenshots.php` passed.
+  - `php -l scripts/mu-vyg-screenshot-login.php` passed via stdin.
+  - Visual inspection confirmed the PNGs are real styled WordPress admin pages, not browser error pages or unstyled file renders.
+- Result:
+  - 11.8 E2E/browser verification complete via Dockerized Playwright/Chromium; checklist updated from Camofox wording to Playwright wording.
+- Next recommended action:
+  - Resume 11.4 — Saved filters and bulk actions for VideosPage.
