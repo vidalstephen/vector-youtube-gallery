@@ -12,12 +12,12 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 12 — Operations, Scale, and Multisite — COMPLETE; Phase 10.7 integration backfill CLOSED**
-- Current sub-phase: **10.7 browser verification backfill done; Phase 12 remains closed**
-- Last completed item: 10.7 — Page-builder/browser verification backfill via `scripts/run-phase10-7-playwright.sh`; deterministic Elementor/WooCommerce/Gutenberg/Divi-fallback/Phase 9 hero screenshots captured under `screenshots/playwright/`; preflight verified shortcode + Elementor + Gutenberg render paths and `api_quota_delta=0`.
-- Next actionable item: **Dedicated visual/layout design brainstorm and front-end polish pass**, then Phase 13 Packaging/Distribution.
+- Current phase: **Phase 13.1 — Grid layout redesign — IN PROGRESS**
+- Current sub-phase: **13.1 docs contract landed; template + CSS + tests in flight**
+- Last completed item: 13.1 (partial) — `docs/grid-layout.md` published; remaining sub-tasks (TDD template, CSS, shortcode/block attrs, FeedsPage form, Playwright captures) tracked under `## Phase 13.1` below.
+- Next actionable item: Complete Phase 13.1 sub-tasks, then Phase 13 Packaging/Distribution.
 - Blocked items: none
-- Deferred items: none
+- Deferred items: Channel avatar / verified badge / subscriber count data layer (Phase 13.2); interactive column switcher (Phase 13.5).
 - Phase 10.7 path note: Divi is a premium-only ThemeForest plugin and is not available from `downloads.wordpress.org`. 10.7's "Divi is installed" branch is covered by the stub-based unit tests in 10.6; the "Divi is NOT installed" branch is captured live (the shortcode fallback that runs in place of the Divi module) — that screenshot is the evidence. Elementor and WooCommerce ARE installed from WP.org.
 
 ## Status Legend
@@ -1415,3 +1415,27 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - 12.1 complete and checked. Current sub-phase moved to 12.2.
 - Next recommended action:
   - 12.2 — Action Scheduler adapter for sync jobs with migration path from WP-Cron and feature flag fallback.
+
+### 2026-06-30 — Phase 13.1 Grid layout redesign
+
+- Trigger: "kick off execution now" against `.hermes/plans/2026-06-30_213645-grid-layout-redesign.md`.
+- Mode: Development Execution Mode (TDD, subagent-driven via local loop).
+- Plan: `/root/projects/vector-youtube-gallery/.hermes/plans/2026-06-30_213645-grid-layout-redesign.md` (13 tasks).
+- Scope:
+  - New template `src/Render/templates/grid.php` — section header, redesigned card, density classes, opt-in trust strip, Phase 10.3 product-CTA hook.
+  - New `assets/css/grid.css` — 3 density presets, focus-visible, `prefers-reduced-motion`, 380/600/1200 breakpoints.
+  - New helper `src/Render/RelativeTime.php` and `VideoRenderer::format_view_count()`.
+  - `FeedQuery` left-join to `vyg_sources` for `youtube_channel_title`.
+  - `FeedRepository` allow-list for new `display_config_json` keys.
+  - Shortcode / `block.json` / `index.js` Inspector panels.
+  - `FeedsPage` form fields.
+  - Playwright captures under `screenshots/phase13/`.
+  - Docs: `docs/grid-layout.md` (already published).
+- Open questions (deferred, not blockers):
+  - Channel avatar / verified badge / subscriber count data layer (Phase 13.2).
+  - Interactive "3 columns ▾" header control (Phase 13.5).
+- Files changed in this sub-step:
+  - `docs/grid-layout.md` (created)
+  - `DEV-CHECKLIST.md` (this entry)
+- Validation: see individual sub-task entries below as they land.
+- Result: 13.1 docs sub-step complete. Sub-tasks 13.1.1 through 13.1.11 tracked below.
