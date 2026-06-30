@@ -12,10 +12,10 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 11 — Analytics + Moderation Workflows**
-- Current sub-phase: Phase 11 complete — ready for Phase 12
-- Last completed item: 11.4 — VideosPage saved filters + bulk actions added: search/type/channel-source/availability/live-state/pinned/hidden/date-range filters, saved filter presets, bulk hide/unhide/pin/unpin/reclassify, live smoke verified no DB errors, refreshed Dockerized Playwright screenshots with `api_quota_delta=0`, unit suite 312 tests / 911 assertions / 0 failures / 3 skipped.
-- Next actionable item: Phase 12 — Operations, Scale, and Multisite
+- Current phase: **Phase 12 — Operations, Scale, and Multisite**
+- Current sub-phase: 12.2 — Action Scheduler adapter
+- Last completed item: 12.1 — WP-CLI command suite added as `wp vyg`: diagnostics snapshot, jobs listing, sync run/enqueue/retry, feed export/import, and retention runner. Live WP-CLI smokes passed for diagnostics/jobs/export/import/sync enqueue/analytics retention with `api_quota_delta=0`; unit suite 312 tests / 911 assertions / 0 failures / 3 skipped.
+- Next actionable item: 12.2 — Action Scheduler adapter for sync jobs with migration path from WP-Cron and feature flag fallback
 - Blocked items: none
 - Deferred items: 10.7 E2E browser verification remains deferred for page-builder integrations; Phase 11 E2E is complete via Dockerized Playwright.
 
@@ -248,7 +248,7 @@ Goal: help operators understand feed performance and manage large video librarie
 
 Goal: harden the plugin for larger libraries, multisite installs, and operator automation.
 
-- [ ] 12.1 WP-CLI command suite: sync source/feed, list jobs, retry failed jobs, export/import feeds, run retention, diagnostics snapshot
+- [x] 12.1 WP-CLI command suite: sync source/feed, list jobs, retry failed jobs, export/import feeds, run retention, diagnostics snapshot
 - [ ] 12.2 Action Scheduler adapter for sync jobs with migration path from WP-Cron and feature flag fallback to current scheduler
 - [ ] 12.3 Advanced object-cache support: cache feed query results, cache invalidation on video/feed/source changes, group namespacing, and multisite-safe keys
 - [ ] 12.4 Multisite network tools: network activation behavior, per-site tables/options policy, network diagnostics, and site-level cleanup
@@ -1379,3 +1379,38 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Phase 11 complete: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, and 11.8 are all checked.
 - Next recommended action:
   - Phase 12 — Operations, Scale, and Multisite.
+
+### 2026-06-30 — Phase 12 WP-CLI command suite
+
+- Trigger: "Next phase"
+- Mode: Development Execution Mode.
+- Current phase: Phase 12 — Operations, Scale, and Multisite.
+- Selected task: 12.1 — WP-CLI command suite.
+- Work completed:
+  - Added `src/CLI/Command.php` as the `wp vyg` command namespace.
+  - Registered the command only in WP-CLI context from `Plugin::register_hooks()`.
+  - Added `wp vyg diagnostics` with safe counts, runtime metadata, cron snapshot, and recent sync jobs; no secrets are emitted.
+  - Added `wp vyg jobs` for recent/filtered sync-job listing.
+  - Added `wp vyg sync` for direct or queued sync jobs: `initial`, `incremental`, `metadata-refresh`, `live-poll`, and `cron-incremental-all`.
+  - Added `wp vyg retry <job-id>` for immediate retry through existing job runners.
+  - Added hyphenated feed portability commands: `wp vyg export-feeds` and `wp vyg import-feeds`.
+  - Added `wp vyg retention` for data retention and analytics retention runs.
+- Files changed:
+  - `src/CLI/Command.php`
+  - `src/Plugin.php`
+  - `DEV-CHECKLIST.md`
+- Validation:
+  - `php -l src/CLI/Command.php` → no syntax errors.
+  - `php -l src/Plugin.php` → no syntax errors.
+  - `wp vyg diagnostics --format=json` → returned counts/cron/recent job JSON.
+  - `wp vyg jobs --limit=3 --format=json` → returned recent jobs.
+  - `wp vyg export-feeds --file=/tmp/vyg-feeds-cli-export.json` → wrote 3,428-byte JSON export.
+  - `wp vyg import-feeds /tmp/vyg-feeds-cli-export.json --conflict=skip` → ok, skipped 2 existing feeds, no errors/warnings.
+  - `wp vyg sync metadata-refresh --enqueue` → queued metadata refresh job without running YouTube calls.
+  - API quota check around export + sync enqueue → `api_quota_delta=0`.
+  - `wp vyg retention --analytics --format=json` → `{ "deleted": 0, "ran": true }`.
+  - `vendor/bin/phpunit --testsuite=unit --colors=never` → 312 tests / 911 assertions / 0 failures / 3 skipped.
+- Result:
+  - 12.1 complete and checked. Current sub-phase moved to 12.2.
+- Next recommended action:
+  - 12.2 — Action Scheduler adapter for sync jobs with migration path from WP-Cron and feature flag fallback.

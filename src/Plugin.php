@@ -463,6 +463,10 @@ final class Plugin {
     private static function register_hooks(): void {
         $c = self::$container;
 
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            \WP_CLI::add_command( 'vyg', new \VectorYT\Gallery\CLI\Command( $c ) );
+        }
+
         add_action( 'admin_menu', static fn() => $c->get( 'admin.menu' )->register() );
         add_action( 'wp_dashboard_setup', static function () use ( $c ): void {
             if ( ! current_user_can( 'manage_options' ) ) {
