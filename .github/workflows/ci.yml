@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    name: Unit tests (PHPUnit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot the vyg stack
+        run: |
+          cp dev/.env.example dev/.env
+          make up
+          # Wait for MariaDB + WordPress to be ready.
+          for i in $(seq 1 30); do
+            if docker exec -u www-data vyg-wp wp core is-installed 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+      - name: composer install (inside vyg-wp)
+        run: make install
+
+      - name: make test-unit
+        run: make test-unit
+
+      - name: make lint
+        run: make lint
+
+  ci-smoke:
+    name: Phase 12 CI smoke (live WP)
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot the vyg stack
+        run: |
+          cp dev/.env.example dev/.env
+          make up
+          for i in $(seq 1 30); do
+            if docker exec -u www-data vyg-wp wp core is-installed 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+      - name: composer install (inside vyg-wp)
+        run: make install
+
+      - name: Run CI smoke
+        run: make ci-smoke
+
+      - name: Teardown
+        if: always()
+        run: make ci-clean || true
