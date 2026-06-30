@@ -57,6 +57,14 @@ class SettingsRepository {
         // when the library is available, otherwise falls back to WP-Cron.
         // `wp_cron` / `action_scheduler` force a specific backend.
         'sync_scheduler_mode'           => 'auto',
+
+        // Phase 12.3: feed-query result cache. Caches the read-side
+        // queries (`videos_for_source`, `count_videos_for_*`) so a
+        // high-traffic front-end does not re-query identical pagination
+        // windows on every request. `cache_enabled` defaults to true
+        // (a TTL > 0 in the cache layer is the real kill switch).
+        'cache_enabled'                 => true,
+        'cache_ttl_seconds'             => 3600,
     );
 
     /** @var array<string,mixed>|null Cached values. */

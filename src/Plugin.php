@@ -395,7 +395,18 @@ final class Plugin {
         );
 
         // --- Rendering ---
-        $c->set( 'render.feed',     static fn(): FeedQuery => new FeedQuery() );
+        // Phase 12.3: the front-end feed query is wrapped in
+        // FeedQueryCache for read-side caching. Renderer + Shortcode
+        // both type-hint `FeedQuery`, so the cache subclass is a
+        // drop-in.
+        $c->set( 'render.feed.inner',     static fn(): FeedQuery => new FeedQuery() );
+        $c->set(
+            'render.feed',
+            static fn( Container $c ): \VectorYT\Gallery\Render\FeedQueryCache => new \VectorYT\Gallery\Render\FeedQueryCache(
+                $c->get( 'render.feed.inner' ),
+                $c->get( 'settings' )
+            )
+        );
         $c->set( 'render.live',     static fn( Container $c ): LiveQuery => new LiveQuery( $c->get( 'repo.previous' ) ) );
         $c->set( 'render.video',    static fn(): VideoRenderer => new VideoRenderer() );
         $c->set( 'render.templates',static fn(): TemplateLoader => new TemplateLoader() );

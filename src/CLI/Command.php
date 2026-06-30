@@ -63,6 +63,7 @@ final class Command {
             'db_version' => defined( 'VYG_DB_VERSION' ) ? VYG_DB_VERSION : 'unknown',
             'site_url' => function_exists( 'home_url' ) ? home_url() : '',
             'scheduler' => $this->scheduler_snapshot(),
+            'cache' => $this->cache_snapshot(),
             'counts' => array(
                 'sources' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}vyg_sources" ),
                 'feeds' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}vyg_feeds" ),
@@ -88,6 +89,8 @@ final class Command {
         $this->format_items( 'table', $rows, array( 'metric', 'value' ) );
         \WP_CLI::line( 'Scheduler:' );
         $this->format_items( 'table', $snapshot['scheduler'], array( 'metric', 'value' ) );
+        \WP_CLI::line( 'Cache:' );
+        $this->format_items( 'table', $snapshot['cache'], array( 'metric', 'value' ) );
         \WP_CLI::line( 'Cron:' );
         $this->format_items( 'table', $snapshot['cron'], array( 'hook', 'next_run' ) );
     }
@@ -123,6 +126,52 @@ final class Command {
         if ( $resolver->has_misconfiguration() ) {
             \WP_CLI::warning( 'sync_scheduler_mode is "action_scheduler" but the Action Scheduler library is not loaded; jobs will fall back to WP-Cron.' );
         }
+    }
+
+    /**
+     * Show the feed-query cache snapshot.
+     *
+     * ## EXAMPLES
+     *
+     *     wp vyg cache
+     *     wp vyg cache --format=json
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function cache( array $args, array $assoc_args ): void {
+        $rows = $this->cache_snapshot();
+
+        if ( 'json' === ( $assoc_args['format'] ?? '' ) ) {
+            $payload = array();
+            foreach ( $rows as $row ) {
+                $payload[ $row['metric'] ] = $row['value'];
+            }
+            \WP_CLI::line( wp_json_encode( $payload, JSON_PRETTY_PRINT ) );
+            return;
+        }
+
+        $this->format_items( 'table', $rows, array( 'metric', 'value' ) );
+    }
+
+    /**
+     * Drop every cached feed-query entry. Use after a settings import,
+     * an operator-driven manual sync, or a suspected data-drift
+     * incident.
+     *
+     * @subcommand cache-flush
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function cache_flush( array $args, array $assoc_args ): void {
+        $cache = $this->container->get( 'render.feed' );
+        if ( ! method_exists( $cache, 'invalidate_all' ) ) {
+            \WP_CLI::warning( 'render.feed does not support cache invalidation (older feed layer).' );
+            return;
+        }
+        $cache->invalidate_all();
+        \WP_CLI::success( 'Dropped every feed-query cache entry.' );
     }
 
     /**
@@ -437,6 +486,47 @@ final class Command {
             array(
                 'metric' => 'scheduler_class',
                 'value'  => get_class( $resolver->resolve() ),
+            ),
+        );
+    }
+
+    /**
+     * Phase 12.3: snapshot the feed-query cache for `wp vyg diagnostics`
+     * and `wp vyg cache`. Reports whether the cache is enabled, the
+     * current TTL, and the persistent-object-cache availability
+     * (so operators can tell whether wp_cache_* is backed by Redis /
+     * Memcache / transients).
+     *
+     * @return array<int,array<string,string>>
+     */
+    private function cache_snapshot(): array {
+        $settings = $this->container->get( 'settings' );
+        $enabled  = (bool) $settings->get( 'cache_enabled', true );
+        $ttl      = (int) $settings->get( 'cache_ttl_seconds', 3600 );
+
+        // wp_cache_flush_group exists on most persistent object-cache
+        // backends (Redis, Memcache). When it is missing, WP falls back
+        // to the built-in transients-backed option cache, which does
+        // not support group-flush; in that mode the FeedQueryCache's
+        // bump_version() path is what actually invalidates entries.
+        $persistent_cache = function_exists( 'wp_cache_flush_group' );
+
+        return array(
+            array(
+                'metric' => 'cache_enabled',
+                'value'  => $enabled ? 'yes' : 'no',
+            ),
+            array(
+                'metric' => 'cache_ttl_seconds',
+                'value'  => (string) $ttl,
+            ),
+            array(
+                'metric' => 'persistent_object_cache',
+                'value'  => $persistent_cache ? 'yes' : 'no',
+            ),
+            array(
+                'metric' => 'cache_class',
+                'value'  => get_class( $this->container->get( 'render.feed' ) ),
             ),
         );
     }
