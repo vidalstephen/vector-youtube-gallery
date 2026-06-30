@@ -56,7 +56,7 @@ final class FeedsPage {
             return;
         }
 
-        if ( 'edit' === $action && $id > 0 ) {
+        if ( 'edit' === $action ) {
             $this->render_edit( $id );
             ob_end_flush();
             return;
@@ -593,6 +593,16 @@ final class FeedsPage {
         }
 
         $feed_sources = isset( $config['source']['sources'] ) ? $config['source']['sources'] : array();
+        if ( $is_new && empty( $feed_sources ) ) {
+            $feed_sources = array(
+                array(
+                    'source_uuid' => '',
+                    'weight'      => 1.0,
+                    'pinned'      => false,
+                    'label'       => '',
+                ),
+            );
+        }
         $manual_ids   = isset( $config['source']['manual_video_ids'] ) ? $config['source']['manual_video_ids'] : array();
         $exclude_ids  = isset( $config['source']['exclude_video_ids'] ) ? $config['source']['exclude_video_ids'] : array();
 
