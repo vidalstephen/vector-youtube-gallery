@@ -30,6 +30,15 @@ cleanup() {
   if [[ -n "$ORIG_HOME" ]]; then
     docker exec -u www-data "$WP_CONTAINER" wp option update home "$ORIG_HOME" --path="$WP_PATH" --allow-root >/dev/null 2>&1 || true
   fi
+  docker exec -u www-data "$WP_CONTAINER" wp eval '
+foreach (["vyg_cron_incremental_all", "vyg_cron_metadata_refresh", "vyg_cron_live_poll", "vyg_cron_data_retention"] as $hook) {
+    wp_clear_scheduled_hook($hook);
+}
+if (! wp_next_scheduled("vyg_cron_incremental_all")) { wp_schedule_event(time() + HOUR_IN_SECONDS, "hourly", "vyg_cron_incremental_all"); }
+if (! wp_next_scheduled("vyg_cron_metadata_refresh")) { wp_schedule_event(time() + DAY_IN_SECONDS, "twicedaily", "vyg_cron_metadata_refresh"); }
+if (! wp_next_scheduled("vyg_cron_live_poll")) { wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, "vyg_five_minutes", "vyg_cron_live_poll"); }
+if (! wp_next_scheduled("vyg_cron_data_retention")) { wp_schedule_event(time() + DAY_IN_SECONDS, "daily", "vyg_cron_data_retention"); }
+' --path="$WP_PATH" --allow-root >/dev/null 2>&1 || true
   docker exec -u root "$WP_CONTAINER" rm -f "$MU_PLUGIN_DEST" >/dev/null 2>&1 || true
   docker exec -u www-data "$WP_CONTAINER" wp option delete vyg_screenshot_token_hash --path="$WP_PATH" --allow-root >/dev/null 2>&1 || true
   docker exec -u www-data "$WP_CONTAINER" wp option delete vyg_screenshot_user_id --path="$WP_PATH" --allow-root >/dev/null 2>&1 || true
@@ -110,6 +119,13 @@ docker cp "$MU_PLUGIN_SRC" "${WP_CONTAINER}:${MU_PLUGIN_DEST}"
 docker exec -u root "$WP_CONTAINER" chown www-data:www-data "$MU_PLUGIN_DEST" && docker exec -u root "$WP_CONTAINER" chmod 644 "$MU_PLUGIN_DEST"
 ADMIN_ID="$(docker exec -u www-data "$WP_CONTAINER" wp user list --role=administrator --field=ID --path="$WP_PATH" --allow-root | head -1)"
 docker exec -u www-data "$WP_CONTAINER" wp option update vyg_screenshot_user_id "$ADMIN_ID" --autoload=no --path="$WP_PATH" --allow-root >/dev/null
+
+echo "[phase11-playwright] suspending VYG cron hooks during browser capture..."
+docker exec -u www-data "$WP_CONTAINER" wp eval '
+foreach (["vyg_cron_incremental_all", "vyg_cron_metadata_refresh", "vyg_cron_live_poll", "vyg_cron_data_retention"] as $hook) {
+    wp_clear_scheduled_hook($hook);
+}
+' --path="$WP_PATH" --allow-root >/dev/null
 
 API_BEFORE="$(docker exec -u www-data "$WP_CONTAINER" wp eval 'global $wpdb; echo (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}vyg_api_quota_log");' --path="$WP_PATH" --allow-root)"
 

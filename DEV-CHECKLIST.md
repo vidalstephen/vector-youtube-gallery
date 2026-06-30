@@ -13,11 +13,11 @@
 ## Current Development Status
 
 - Current phase: **Phase 11 — Analytics + Moderation Workflows**
-- Current sub-phase: 11.4 — Saved filters + bulk actions for VideosPage
-- Last completed item: 11.3 — Moderation queues added with durable moderation columns (`moderation_status`, `moderation_reason`, `moderated_by`, `moderated_at`), admin queue page, bulk approve/manual-review/hide/unhide/classify actions, and moderation JSON/CSV export. dbDelta verified `vyg_videos changes:5`; unit suite now 310 tests / 895 assertions / 0 failures / 3 skipped. Live render smoke passed (`contains_heading=yes`, `contains_queue=yes`, `contains_video_id=yes`, `contains_db_error=no`).
-- Next actionable item: 11.4 — Saved filters and bulk actions for VideosPage
+- Current sub-phase: Phase 11 complete — ready for Phase 12
+- Last completed item: 11.4 — VideosPage saved filters + bulk actions added: search/type/channel-source/availability/live-state/pinned/hidden/date-range filters, saved filter presets, bulk hide/unhide/pin/unpin/reclassify, live smoke verified no DB errors, refreshed Dockerized Playwright screenshots with `api_quota_delta=0`, unit suite 312 tests / 911 assertions / 0 failures / 3 skipped.
+- Next actionable item: Phase 12 — Operations, Scale, and Multisite
 - Blocked items: none
-- Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation. Phase 11 screenshot capture is now unblocked via Dockerized Playwright/Chromium (`scripts/run-phase11-playwright.sh`) using the official Microsoft Playwright image on `vyg_net`.
+- Deferred items: 10.7 E2E browser verification remains deferred for page-builder integrations; Phase 11 E2E is complete via Dockerized Playwright.
 
 ## Status Legend
 
@@ -241,7 +241,7 @@ Goal: help operators understand feed performance and manage large video librarie
 - [x] 11.6 Privacy controls: analytics off by default or clearly disclosed; retention controls exposed; export/erase behavior documented
 - [x] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, export sanitization
 - [x] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions, plus moderation CSV/JSON export
-- [ ] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
+- [x] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
 - [x] 11.8 E2E/browser verification: analytics dashboard, moderation queues, and videos page render through Dockerized Playwright/Chromium on `vyg_net` with seeded data screenshots and `api_quota_delta=0`
 
 ### Phase 12 — Operations, Scale, and Multisite
@@ -1353,3 +1353,29 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - 11.8 E2E/browser verification complete via Dockerized Playwright/Chromium; checklist updated from Camofox wording to Playwright wording.
 - Next recommended action:
   - Resume 11.4 — Saved filters and bulk actions for VideosPage.
+
+### 2026-06-30 — Phase 11 VideosPage saved filters + bulk actions
+
+- Trigger: resumed development after confirming Dockerized Playwright screenshots work.
+- Mode: Development Execution Mode.
+- Selected task: 11.4 — Saved filters + bulk actions for VideosPage.
+- Work completed:
+  - Reworked `src/Admin/VideosPage.php` to support expanded filters: search, content type, channel/source ID (`youtube_channel_id`), availability, live state, pinned, hidden, published-after, published-before.
+  - Added saved filter presets stored in `vyg_videos_saved_filters` with save/apply/delete controls.
+  - Added row checkboxes and bulk actions: hide, unhide, pin, unpin, reclassify selected.
+  - Preserved per-row reclassification forms and audit logging.
+  - Added `tests/unit/Admin/VideosPageTest.php` for filter sanitization.
+  - Fixed a live-smoke bug where the first implementation incorrectly queried nonexistent `source_id`; changed source filtering to existing `youtube_channel_id`.
+  - Hardened `scripts/run-phase11-playwright.sh` so it temporarily suspends VYG cron hooks during screenshots and reschedules them in cleanup; this eliminated a `videos.list` background quota side effect.
+  - Refreshed `screenshots/playwright/phase11-videos-page.png` showing saved filters, expanded filters, bulk action controls, checkboxes, and pinned/hidden column.
+- Validation:
+  - `php -l src/Admin/VideosPage.php` → no syntax errors.
+  - `php -l tests/unit/Admin/VideosPageTest.php` → no syntax errors.
+  - `vendor/bin/phpunit --testsuite=unit --colors=never` → 312 tests / 911 assertions / 0 failures / 3 skipped.
+  - Live wp-cli smoke: `clean_type=live_replay`, `clean_source=UC-test`, invalid date dropped, bulk pin/unpin changed DB values, rendered HTML had saved filters + bulk controls + pinned/hidden column, `contains_db_error=no`, `html_bytes=53683`.
+  - Dockerized Playwright screenshot runner: analytics/moderation/videos PNGs captured, `api_quota_delta=0`.
+  - Visual inspection confirmed refreshed Videos screenshot is styled WP admin UI with the 11.4 controls visible.
+- Result:
+  - Phase 11 complete: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, and 11.8 are all checked.
+- Next recommended action:
+  - Phase 12 — Operations, Scale, and Multisite.
