@@ -37,6 +37,7 @@ final class AdminMenu {
         private readonly SourcesPage $sources_page,
         private readonly DiagnosticsPage $diagnostics_page,
         private readonly VideosPage $videos_page,
+        private readonly AnalyticsPage $analytics_page,
         private readonly SystemInfoPage $system_info_page,
         private readonly FeedsPage $feeds_page,
         private readonly PrivacyPage $privacy_page,
@@ -90,6 +91,15 @@ final class AdminMenu {
             self::REQUIRED_CAP,
             self::PARENT_SLUG . '-videos',
             array( $this->videos_page, 'render' )
+        );
+
+        add_submenu_page(
+            self::PARENT_SLUG,
+            __( 'Analytics', 'vector-youtube-gallery' ),
+            __( 'Analytics', 'vector-youtube-gallery' ),
+            self::REQUIRED_CAP,
+            self::PARENT_SLUG . '-analytics',
+            array( $this->analytics_page, 'render' )
         );
 
         // Live submenu (Phase 6: real, opens a live-broadcasts list using LiveQuery).

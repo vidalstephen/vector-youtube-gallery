@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 11 — Analytics + Moderation Workflows**
-- Current sub-phase: 11.2 — Analytics dashboard
-- Last completed item: 11.1, 11.5, 11.6, 11.7 — local analytics events table + retention + privacy UI + export endpoint + 12 new unit tests (290→302 tests). VYG_DB_VERSION bumped to 0.4.0. Real bug caught and fixed: `register_rest_route` must be hooked to `rest_api_init`, not `plugins_loaded` — the analytics controller now uses an explicit `add_action('rest_api_init', ...)` wrapper.
-- Next actionable item: 11.2 — Analytics dashboard (top videos, click/play rates, source freshness, quota usage trends, date filters)
+- Current sub-phase: 11.3 — Moderation queues
+- Last completed item: 11.2 — Analytics dashboard added as a local-only admin page (`YouTube Gallery → Analytics`) with top videos, feed views, quota trends, sync health, and bounded date filters. Live wp-cli render smoke passed (`contains_heading=yes`, `contains_video_id=yes`, `contains_db_error=no`, `html_bytes=2556`). Unit suite now 305 tests / 876 assertions / 0 failures / 3 skipped.
+- Next actionable item: 11.3 — Moderation queues (manual-review/stale/unavailable/hidden candidates, bulk actions, moderation export)
 - Blocked items: none
 - Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation.
 
@@ -236,11 +236,11 @@ Goal: make the plugin usable in common WordPress site-builder workflows without 
 Goal: help operators understand feed performance and manage large video libraries efficiently without external tracking by default.
 
 - [x] 11.1 Local analytics model: optional event table for impression/play/lightbox/load-more events with retention and privacy toggle
-- [x] 11.5 CSV/JSON export for analytics and moderation queues with capability checks and no secrets
+- [x] 11.2 Analytics dashboard: top videos, feed views, click/play rates, source freshness, quota usage trends, sync health, and date-range filters
+- [x] 11.5 CSV/JSON export for analytics with capability checks and no secrets (moderation export remains tied to 11.3)
 - [x] 11.6 Privacy controls: analytics off by default or clearly disclosed; retention controls exposed; export/erase behavior documented
-- [x] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, moderation queue filters, export sanitization
-- [ ] 11.2 Analytics dashboard: top videos, feed views, click/play rates, source freshness, quota usage trends, sync health, and date-range filters
-- [ ] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions
+- [x] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, export sanitization
+- [ ] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions, plus moderation CSV/JSON export
 - [ ] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
 - [ ] 11.8 E2E/browser verification: analytics dashboard and moderation queues render through Camofox with seeded data screenshots
 
@@ -1253,3 +1253,34 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Committed as `phase-9: advanced layouts + front-end polish (masonry/carousel/hero/presets/schema/patterns/perf)` (a245d3a).
 - Next recommended action:
   - Phase 10.1 — Elementor widget. Wire `vectoryt/gallery` block's Elementor wrapper: feed selector (saved feed_uuid dropdown + ad-hoc source_uuid), layout/columns/per_page/orderby/order/pagination/content_type/preset/schema_enabled controls, responsive controls (device-mode toggles), editor preview using `<template>` JS that hydrates from REST `/vyg/v1/feed/{uuid}`, front-end render delegated to the existing `Renderer::render()` (no double rendering paths).
+
+### 2026-06-30 — Phase 11 Analytics review + dashboard
+
+- Trigger: `/queue review what done for phase 11 so far fix any lingering issues of completed steps then move on to the next phase`
+- Mode: Reconciliation + Development Execution Mode
+- Current phase: Phase 11 — Analytics + Moderation Workflows
+- Selected task: Review 11.1/11.5/11.6/11.7, then implement 11.2 Analytics dashboard
+- Work completed:
+  - Re-ran unit suite for completed Phase 11 work: 302 tests / 872 assertions / 0 failures / 3 skipped.
+  - Re-linted Phase 11 completed source files: analytics repo, retention job, analytics/export REST controllers, PrivacyPage, AssetManager, Plugin — all syntax clean.
+  - Corrected stale checklist wording: 11.5 is analytics export complete; moderation export remains tied to 11.3 moderation queues.
+  - Added `src/Admin/AnalyticsPage.php`, a local-only admin analytics page with bounded date filters, summary cards, top videos, feed views, quota trends, and sync health.
+  - Added Analytics submenu (`YouTube Gallery → Analytics`) via `AdminMenu` and wired `admin.analytics` service in `Plugin.php`.
+  - Added `tests/unit/Admin/AnalyticsPageTest.php` for page shell/date-boundary coverage.
+  - Ran live wp-cli render smoke with seeded local `wp_vyg_events` rows; verified heading/top videos/video ID render and no WordPress DB error.
+  - Created rendered visual artifact `screenshots/camofox/29-phase-11-analytics-dashboard.html`. Camofox file navigation rejected and no Chromium/Playwright/Puppeteer browser is installed, so PNG capture remains for 11.8.
+- Files changed:
+  - `src/Admin/AnalyticsPage.php`
+  - `src/Admin/AdminMenu.php`
+  - `src/Plugin.php`
+  - `tests/unit/Admin/AnalyticsPageTest.php`
+  - `DEV-CHECKLIST.md`
+  - `screenshots/camofox/29-phase-11-analytics-dashboard.html`
+- Tests run:
+  - `vendor/bin/phpunit --testsuite=unit --colors=never` → 305 tests / 876 assertions / 0 failures / 3 skipped.
+  - `php -l` for new/modified PHP files → no syntax errors.
+  - `wp eval-file dev/phase11-analytics-smoke.php` → `contains_heading=yes`, `contains_top_videos=yes`, `contains_video_id=yes`, `contains_db_error=no`, `html_bytes=2556`.
+- Result:
+  - 11.2 complete and checklist updated. Phase 11 now has 11.1, 11.2, 11.5, 11.6, 11.7 complete. 11.3, 11.4, and 11.8 remain pending.
+- Next recommended action:
+  - 11.3 — build moderation queues (hidden/unavailable/stale/manual-review candidates), bulk approve/hide/classify actions, and moderation CSV/JSON export.
