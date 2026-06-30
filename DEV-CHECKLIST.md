@@ -12,10 +12,10 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 12 — Operations, Scale, and Multisite**
-- Current sub-phase: 12.9 — E2E verification
-- Last completed item: 12.8 — 31 new unit tests for Phase 12 (SettingsRepository, FeedQueryCache, NetworkPolicy, ActionSchedulerSyncScheduler). Fixed a real AS adapter bug: `unschedule_recurring` was calling AS with `(hook, args, group)` instead of the discovered `action_id`, which would no-op for recurring actions. Full unit suite: 423 / 1125 / 0 / 3 skipped.
-- Next actionable item: 12.9 — E2E verification: Docker smoke run + Camofox screenshot capture script succeeds in a clean environment
+- Current phase: **Phase 12 — Operations, Scale, and Multisite — COMPLETE**
+- Current sub-phase: **12.9 done; Phase 12 closed**
+- Last completed item: 12.9 — E2E summary script (7-row table per sub-phase) integrated into `make ci-smoke`. Final state: 423 tests / 1125 assertions / 0 failures / 3 skipped; all 5 phase 12.x live smokes pass; all 5 new CLI subcommands return exit 0; lint clean. Phase 12 fully closed.
+- Next actionable item: **Phase 13 — Packaging, Updates, and Commercial/Distribution Layer** (per the checklist).
 - Blocked items: none
 - Deferred items: 10.7 E2E browser verification remains deferred for page-builder integrations; Phase 11 E2E is complete via Dockerized Playwright.
 
@@ -256,7 +256,7 @@ Goal: harden the plugin for larger libraries, multisite installs, and operator a
 - [x] 12.6 Large-library performance: added 3 composite indexes — `vyg_videos.source_visibility_published (content_type, availability_status, is_hidden, published_at)`, `vyg_videos.channel_visibility_published (youtube_channel_id, availability_status, is_hidden, published_at)`, and `vyg_sources.status_id (status, id)`. Bumped `VYG_DB_VERSION` to 0.6.0. New `wp vyg performance` subcommand reports per-table row counts and the index presence (so operators can confirm the hot path is indexed). Live smoke confirms the indexes are present and the hot `videos_for_source` query runs in 3 DB queries.
 - [x] 12.7 CI smoke hardening: `make ci` runs `lint + test-unit + ci-smoke`. `scripts/ci-smoke.sh` boots vyg-wp, activates the plugin, runs all 5 phase 12.x live smokes, hits every new CLI subcommand, and validates the diagnostics JSON has the expected sections. Exit codes 0/1/2. `.github/workflows/ci.yml` runs the same gate on every PR + push to main.
 - [x] 12.8 Unit/integration tests: added 31 new tests for Phase 12 — `SettingsRepositoryTest` now covers the new keys (`sync_scheduler_mode`, `cache_*`, `log_*`) including validation, default values, and negative-integer clamping (15 new tests). `FeedQueryCacheTest` got edge-case coverage (invalidation actually refetches, disabled cache short-circuits, empty results are cached, count_videos_for_feed is cached) (6 new tests). `NetworkPolicyTest` covers `is_network_active` false-path, `on_network_activate` walking every site, and `site_uninstall` clearing the cache-version option (4 new tests). `ActionSchedulerSyncSchedulerTest` covers unschedule-by-action-id, null invoker returns, recurring signature (5 new tests). Fixed a real bug along the way: `unschedule_recurring` was calling AS with `(hook, args, group)` instead of the discovered `action_id`, which would no-op for recurring actions. Now uses `array($action_id)`. Full unit suite: 423 tests / 1125 assertions / 0 failures / 3 skipped.
-- [ ] 12.9 E2E verification: Docker smoke run + Camofox screenshot capture script succeeds in a clean environment
+- [x] 12.9 E2E verification: `dev/phase12-summary.php` produces a 7-row summary table (one per Phase 12 sub-phase) printed at the end of every `make ci-smoke` run. The summary is now an enforced part of the CI gate (the smoke script asserts `smoke_status=ok`). Final state: 423 unit tests / 1125 assertions / 0 failures / 3 skipped; all 5 Phase 12.x live smokes pass; all 5 new CLI subcommands (`scheduler`, `cache`, `log` + `log-rotate`, `performance`, `network-diagnostics` + `site-cleanup`) return exit 0.
 
 ### Phase 13 — Packaging, Updates, and Commercial/Distribution Layer
 

@@ -96,6 +96,19 @@ for cmd in "${CLI_COMMANDS[@]}"; do
     fi
 done
 
+# 4.5. Phase 12.9: run the final E2E summary script. The output
+#     is a 7-row table that an operator can paste into the
+#     release notes.
+bold "==> Phase 12.9: E2E summary"
+SUMMARY=$(docker exec -u www-data "${CONTAINER}" wp eval-file "/var/www/html/wp-content/plugins/${PLUGIN_SLUG}/dev/phase12-summary.php" 2>&1 || true)
+echo "${SUMMARY}" | sed 's/^/    /'
+if echo "${SUMMARY}" | grep -q "smoke_status=ok"; then
+    ok "phase12-summary reports ok"
+else
+    fail "phase12-summary did not report ok"
+    EXIT=1
+fi
+
 # 5. WP diagnostics snapshot. The JSON must include the expected
 #    `cache` and `scheduler` keys.
 bold "==> CLI: wp vyg diagnostics --format=json"
