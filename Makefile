@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 COMPOSE := docker compose --env-file dev/.env
 
-.PHONY: help install composer test test-unit test-integration lint perms up down logs reset ci ci-smoke ci-clean
+.PHONY: help install composer test test-unit test-integration lint perms up down logs reset ci ci-smoke ci-clean remote-admin-status
 
 help:
 	@echo "Vector YouTube Gallery — local dev"
@@ -17,10 +17,12 @@ help:
 	@echo "  make ci              Full CI gate: lint + test-unit + ci-smoke"
 	@echo "  make ci-smoke        Boot WP, activate plugin, hit key endpoints, run all phase smokes"
 	@echo "  make ci-clean        Tear down the CI smoke environment"
+	@echo "  make remote-admin-status  Verify local + Tailscale wp-admin URLs"
 	@echo ""
 	@echo "Containers:"
-	@echo "  WordPress:    http://localhost:8000  (admin / changeme_wp_admin_password)"
-	@echo "  Adminer:      http://localhost:8090"
+	@echo "  WordPress local:   http://localhost:8000"
+	@echo "  WordPress remote:  https://srv1388017.tail209ed.ts.net/wp-admin  (Tailscale tailnet only)"
+	@echo "  Adminer:           http://localhost:8090"
 	@echo ""
 
 up:
@@ -31,6 +33,17 @@ down:
 
 logs:
 	$(COMPOSE) logs -f --tail=100
+
+remote-admin-status:
+	@echo "==> Tailscale Serve"
+	@tailscale serve status
+	@echo "==> Local wp-login canonical links"
+	@curl -fsSL http://localhost:8000/wp-login.php | grep -Eo 'action="[^"]+"|href="http[^"]+"' | grep -E 'localhost|wp-login|wp-admin' | head -4
+	@echo "==> Remote wp-login canonical links"
+	@curl -k -fsSL https://srv1388017.tail209ed.ts.net/wp-login.php | grep -Eo 'action="[^"]+"|href="http[^"]+"' | grep -E 'srv1388017|wp-login|wp-admin' | head -4
+	@echo "==> Remote wp-admin redirect"
+	@curl -k -sSIL https://srv1388017.tail209ed.ts.net/wp-admin/ | grep -i '^location:' | head -1
+	@echo "remote admin url: https://srv1388017.tail209ed.ts.net/wp-admin/"
 
 perms:
 	find . -type f -not -path './.git/*' -not -path './vendor/*' -not -path './node_modules/*' -exec chmod 644 {} \;

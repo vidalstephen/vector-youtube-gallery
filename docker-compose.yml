@@ -39,7 +39,10 @@ services:
       - vyg_net
 
   wordpress:
-    image: wordpress:6.4-php8.2-apache
+    build:
+      context: .
+      dockerfile: docker/wordpress/Dockerfile
+    image: vyg-wordpress-dev:6.4-php8.2-apache-wpcli
     container_name: vyg-wp
     restart: unless-stopped
     depends_on:
@@ -60,6 +63,13 @@ services:
         define('SCRIPT_DEBUG', true);
         define('AUTOMATIC_UPDATER_DISABLED', true);
         define('WP_AUTO_UPDATE_CORE', false);
+
+        // Remote dev admin support.
+        //
+        // Keep the actual PHP in a bind-mounted file so Docker Compose
+        // interpolation cannot corrupt PHP server globals.
+        require_once '/var/www/html/wp-content/plugins/vector-youtube-gallery/dev/wp-config-extra-remote-admin.php';
+
         @ini_set('display_errors', '1');
         @error_reporting(E_ALL);
     volumes:

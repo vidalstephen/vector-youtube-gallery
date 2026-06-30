@@ -29,8 +29,12 @@ curl -fsS -o /dev/null -w "%{http_code}\n" http://localhost:8000/
 curl -fsS -o /dev/null -w "%{http_code}\n" http://localhost:8090/   # Adminer (server=db)
 
 # 4. Open in browser
-#    WordPress:  http://localhost:8000  (admin/admin / changeme_wp_admin_password)
-#    Adminer:    http://localhost:8090  (server=db, user=wordpress, pass from dev/.env, db=wordpress)
+#    Local WordPress:   http://localhost:8000
+#    Remote wp-admin:   https://srv1388017.tail209ed.ts.net/wp-admin  (Tailscale tailnet only)
+#    Adminer:           http://localhost:8090  (server=db, user=wordpress, pass from dev/.env, db=wordpress)
+#
+#    Sanity-check remote admin routing:
+#    make remote-admin-status
 
 # 5. Activate the plugin
 #    wp-admin → Plugins → Vector YouTube Gallery → Activate
