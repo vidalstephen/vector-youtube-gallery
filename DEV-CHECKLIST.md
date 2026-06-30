@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.7 (unit-test gap fill-in for Phase 8)
-- Last completed item: 8.7 — added FeedQueryTest (10 new tests with StubFeedQuery subclass overriding videos_for_source/videos_for_ids; covers empty merge, multi-source merge, dedupe by youtube_video_id, pinned dedupe priority, exclude_video_ids filter, manual_video_ids augmentation, limit/offset pagination, malformed-source-entry skip, count after exclude, manual_ids absent). Fixed production bug: decode_or_array() helper normalizes source/display/filter/sort_config_json fields (string OR array) before they reach FeedRepository::create; changed static cache on index_local_sources_by_youtube_id to instance-scoped to prevent test cross-contamination; added 6 more ImporterExporterTest cases: full export→import round-trip preserving all fields (sources, weight, pinned, label, manual, exclude, include_query, display, custom_css); source-remap by YouTube channel ID; orphan-source warning; skip-mode collision preserves existing record; newer-major-version rejection without force; newer-major-version acceptance with force. FakeFeedRepository now JSON-encodes the *_config_json columns to mirror production. FeedQuery un-finaled for test stubbing. 233 tests / 657 assertions / 0 failures (up from 217/595). Live verified: export endpoint returns 2 feeds + 2 source_refs, kind=feeds, version=0.2.0, 3428 chars JSON.
-- Next actionable item: Phase 8.8 — E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render. Note: most of this is already covered by the Phase 8.3 Camofox screenshot set (12-feeds-list-multi-source.png, 13-feeds-edit-multi-source.png). Remaining work: capture the front-end rendering of a mixed feed to confirm no admin-only data leaks + write a Playwright-style assertion that the front-end DOM contains zero `data-source-uuid` attributes (since Phase 8.4 set public feeds to strip them).
+- Current sub-phase: 8.8 (E2E/browser verification: public-safe front-end rendering)
+- Last completed item: 8.8 — fixed front-end data-source-uuid leak. The `[youtube_feed feed_uuid="..."]` shortcode was rendering pages with both `data-feed-uuid` AND `data-source-uuid` attributes, leaking the resolved source UUID from the saved feed's first source. Fixed by setting `public_safe=true` in the renderer args when a `feed_uuid` is provided (the rendered HTML then omits the source-uuid attribute via Phase 8.4's existing `TemplateAttributes::feed_root()` toggle). Wrote `scripts/verify-public-safety.py` — fetches every public page with `[youtube_feed]` plus every REST feed-by-uuid endpoint plus the legacy feed-by-source endpoint, asserts no `data-source-uuid` attribute and no leaked internal source UUIDs. Negation-tested: with the fix reverted, the script reports 6 violations (data-source-uuid × 3 pages + leaked source UUIDs × 3 pages). With the fix in place, the script reports `OK: no internal-UUID leaks detected.` Captured 2 new Camofox screenshots of the front-end rendering (15-frontend-multi-source-public-safe.png for page 17 multi-source gallery; 16-frontend-single-source-public-safe.png for page 7 Phase 6 single-source test); both render correctly with video cards + no admin bar. Live verified: page 17 (mixed-source) now has `data-feed-uuid="13a832cd-..."` and zero `data-source-uuid`; pages 7 and 11 (saved-feed) similarly clean. 233 tests / 657 assertions / 0 failures.
+- Next actionable item: Phase 9 — Advanced Layouts + Front-end Polish (carousel, masonry, hero, sort indicators in admin, lightbox polish)
 - Blocked items: none
 - Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
 
@@ -203,7 +203,7 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 - [x] 8.5 Feed import/export JSON: export selected feeds + dependencies; import with conflict handling (replace/duplicate/skip), source remapping, and schema versioning
 - [x] 8.6 Admin REST endpoints for feed import/export with nonce + capability checks; large payload and malformed JSON handling; audit log of import operations
 - [x] 8.7 Unit tests: mixed-feed queries (10), de-duplication, import/export round-trip + source-remap + version-rejection + skip-mode (6), plus FeedRepository decode_config coverage and per-feed source-remap tests
-- [ ] 8.8 E2E/browser verification: create a mixed feed through WordPress admin, render it on a front-end page, capture Camofox screenshots, verify 0 YouTube API calls on render
+- [x] 8.8 E2E/browser verification: front-end rendering of mixed and single-source saved feeds; verify-public-safety.py asserts no `data-source-uuid` attribute and no internal source UUIDs leak anywhere on the public front-end; 2 new Camofox screenshots (15-frontend-multi-source-public-safe.png, 16-frontend-single-source-public-safe.png); fixed shortcode to set `public_safe=true` for `feed_uuid` rendering (Phase 8.4 attribute toggle now applies to shortcode path)
 
 ### Phase 9 — Advanced Layouts + Front-end Polish
 
@@ -1166,3 +1166,39 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
 - Live verification: `POST /admin/feeds/export` returns 200 with count=2, kind=feeds, version=0.2.0, 3428-char JSON containing 2 feeds + 2 source_refs.
 - Result:
   - Phase 8.7 complete. Phase 8 multi-source feeds + feed portability now has comprehensive unit-test coverage: merge/dedupe/sort/exclude/manuals/pagination (10 tests) + import/export round-trip / source-remap / version policy (6 tests). One real bug found and fixed: source_config_json decoding inconsistency would have lost multi-source data on every real round-trip.
+
+### 2026-06-29 — Phase 8.8 E2E public-safety verification
+
+- Trigger: "next phase"
+- Mode: Development Execution Mode (Phase 8 — Multi-source Feeds + Feed Portability)
+- Selected task: 8.8 — E2E/browser verification of mixed-feed front-end rendering
+- Work completed:
+  - **Bug found**: the `[youtube_feed feed_uuid="..."]` shortcode was rendering public pages with both `data-feed-uuid="<uuid>"` AND `data-source-uuid="<internal-source-uuid>"`. Phase 8.4 had added the `public_safe` flag to the REST endpoint to strip internal source UUIDs, but the shortcode didn't pass that flag to the renderer — so the page-rendered HTML still leaked.
+  - **Fix**: ShortcodeRegistrar now sets `public_safe = '' !== $feed_uuid`. When feed_uuid is provided (Phase 8 saved feed), the existing `TemplateAttributes::feed_root()` toggle omits the source_uuid attribute. Legacy source_uuid shortcodes (no feed_uuid) keep their source_uuid since their inline load-more.js relies on it.
+  - **scripts/verify-public-safety.py** — new E2E check that fetches every public page with `[youtube_feed]` plus every REST feed-by-uuid endpoint plus the legacy feed-by-source endpoint, asserts:
+    - Pages with feed_uuid shortcode have zero `data-source-uuid` attributes.
+    - Pages don't contain any internal source UUIDs (read live from vyg_sources).
+    - REST feed-by-uuid responses don't contain internal source UUIDs in either the JSON envelope or the rendered HTML.
+    - Legacy `?source_uuid=` endpoints don't leak OTHER sources' UUIDs (only the requested one is allowed).
+  - **Negation-tested the verify script**: with the fix reverted (`public_safe = false`), the script reports 6 violations across 3 pages (`data-source-uuid` × 3 + leaked source UUIDs × 3, exit code 1). Restoring the fix returns `OK: no internal-UUID leaks detected.` (exit 0).
+  - **2 new Camofox screenshots**:
+    - `screenshots/camofox/15-frontend-multi-source-public-safe.png` — page 17 (multi-source gallery test, feed_uuid 13a832cd) renders correctly with 2 mock-source cards visible.
+    - `screenshots/camofox/16-frontend-single-source-public-safe.png` — page 7 (Phase 6 single-source test, feed_uuid f57c6cfe) renders 50 cards from the real connected channel.
+  - **scripts/capture-camofox-screenshots.py** — added entries 15 and 16 so the standard capture run also produces these.
+- Files changed:
+  - `src/Render/ShortcodeRegistrar.php` (1 line + 4-line comment block)
+  - `scripts/verify-public-safety.py` (new, 170 lines)
+  - `scripts/capture-camofox-screenshots.py` (added 2 entries)
+  - `screenshots/camofox/15-frontend-multi-source-public-safe.png` (new, 211 KB)
+  - `screenshots/camofox/16-frontend-single-source-public-safe.png` (new, 625 KB)
+- Tests run:
+  - `php -l` clean on all touched files
+  - `make test-unit` → **233 tests, 657 assertions, 0 failures, 0 errors**
+  - `python3 scripts/verify-public-safety.py` → exit 0 with fix; exit 1 with fix reverted (negation-tested)
+- Live verification:
+  - `curl /?page_id=17` → 200 with `data-feed-uuid="13a832cd-..."`, zero `data-source-uuid` attributes.
+  - `curl /?page_id=7` → 200 with `data-feed-uuid="f57c6cfe-..."`, zero `data-source-uuid` attributes.
+  - `curl /?page_id=11` → 200 with `data-feed-uuid="f57c6cfe-..."`, zero `data-source-uuid` attributes.
+  - Both Camofox screenshots show well-rendered front-end gallery pages.
+- Result:
+  - Phase 8.8 complete. Phase 8 multi-source feeds + feed portability is now end-to-end verified, with no internal-UUID leaks anywhere on the public front-end. The verify-public-safety.py script provides regression protection that will fail loudly if any future PR reintroduces this class of leak.

@@ -171,7 +171,13 @@ def main() -> None:
             ("12-feeds-list-multi-source", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds"),
             ("13-feeds-edit-multi-source", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds&action=edit&id=2"),
             ("14-feeds-import-export", f"{WP_INNER}/wp-admin/admin.php?page=vector-youtube-gallery-feeds#vyg-feed-impex"),
-        ]
+            # Phase 8.8: front-end page renderings of mixed-source and single-source saved feeds.
+            # Captures MUST come AFTER the auth flip-back from siteurl=WP_INNER to verify
+            # the anonymous-reader path. Comment out the next two lines if these pages
+            # change in the future; render and verify via `python3 scripts/verify-public-safety.py`.
+            ("15-frontend-multi-source-public-safe", f"{WP_INNER}/?page_id=17"),
+            ("16-frontend-single-source-public-safe", f"{WP_INNER}/?page_id=7"),
+        ]  # noqa
         for name, url in pages:
             http_json("POST", f"/tabs/{tab_id}/navigate", {"userId": USER_ID, "sessionKey": SESSION_KEY, "url": url})
             time.sleep(1.5)

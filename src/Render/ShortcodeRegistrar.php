@@ -151,12 +151,20 @@ final class ShortcodeRegistrar {
             $wrapper_id = 'vyg-feed-' . (string) ( $feed_record['feed_uuid'] ?? '' );
         }
 
+        // Phase 8.8: public-safe attribute — strip internal source_uuid from the
+        // rendered HTML on PUBLIC pages. Saved mixed-source feeds (feed_uuid
+        // set) always render via REST, which only needs feed_uuid; the legacy
+        // source_uuid shortcode path keeps source_uuid so its inline
+        // load-more.js can still find the legacy endpoint.
+        $public_safe = '' !== $feed_uuid;
+
         return $this->renderer->render( array(
             'source_uuid'   => $source_uuid,
             'source_config' => isset( $feed_record ) ? ( $config['source'] ?? array() ) : null,
             'feed_uuid'     => (string) ( $feed_record['feed_uuid'] ?? '' ),
             'layout'        => $layout_slug,
             'content_type'  => (string) $atts['content_type'],
+            'public_safe'   => $public_safe,
             'orderby'       => sanitize_key( (string) $atts['orderby'] ),
             'order'         => sanitize_key( (string) $atts['order'] ),
             'per_page'      => max( 1, (int) $atts['per_page'] ),
