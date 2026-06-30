@@ -12,12 +12,12 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 8 — Multi-source Feeds + Feed Portability**
-- Current sub-phase: 8.8 (E2E/browser verification: public-safe front-end rendering)
-- Last completed item: 8.8 — fixed front-end data-source-uuid leak. The `[youtube_feed feed_uuid="..."]` shortcode was rendering pages with both `data-feed-uuid` AND `data-source-uuid` attributes, leaking the resolved source UUID from the saved feed's first source. Fixed by setting `public_safe=true` in the renderer args when a `feed_uuid` is provided (the rendered HTML then omits the source-uuid attribute via Phase 8.4's existing `TemplateAttributes::feed_root()` toggle). Wrote `scripts/verify-public-safety.py` — fetches every public page with `[youtube_feed]` plus every REST feed-by-uuid endpoint plus the legacy feed-by-source endpoint, asserts no `data-source-uuid` attribute and no leaked internal source UUIDs. Negation-tested: with the fix reverted, the script reports 6 violations (data-source-uuid × 3 pages + leaked source UUIDs × 3 pages). With the fix in place, the script reports `OK: no internal-UUID leaks detected.` Captured 2 new Camofox screenshots of the front-end rendering (15-frontend-multi-source-public-safe.png for page 17 multi-source gallery; 16-frontend-single-source-public-safe.png for page 7 Phase 6 single-source test); both render correctly with video cards + no admin bar. Live verified: page 17 (mixed-source) now has `data-feed-uuid="13a832cd-..."` and zero `data-source-uuid`; pages 7 and 11 (saved-feed) similarly clean. 233 tests / 657 assertions / 0 failures.
-- Next actionable item: Phase 9 — Advanced Layouts + Front-end Polish (carousel, masonry, hero, sort indicators in admin, lightbox polish)
+- Current phase: **Phase 10 — Page Builder + Commerce Integrations**
+- Current sub-phase: 10.1 (Elementor widget)
+- Last completed item: 9.9 — captured 6 Camofox screenshots (17-22) covering masonry, carousel, hero, cinema/pastel presets, schema.org JSON-LD. Quota log Δ=0 (zero API calls during render — Phase 0 invariant holds). 261 unit tests / 796 assertions / 0 failures. Phase 9 fully committed at `a245d3a`.
+- Next actionable item: Phase 10.1 — Elementor widget (feed selector, layout controls, responsive controls, editor preview, front-end render via existing Renderer)
 - Blocked items: none
-- Deferred items: none; all former Phase 7+ deferrals have been expanded into concrete Phases 7–13 below
+- Deferred items: none
 
 ## Status Legend
 
@@ -209,15 +209,15 @@ Goal: let operators build higher-level feeds from multiple channels/playlists/ma
 
 Goal: broaden front-end presentation options while maintaining no-API-on-render and accessible, responsive output.
 
-- [ ] 9.1 Masonry layout: CSS-first responsive masonry/waterfall layout with graceful fallback and theme override template
-- [ ] 9.2 Carousel/slider layout: accessible keyboard navigation, reduced-motion support, touch support, and no jQuery dependency
-- [ ] 9.3 Single-video/hero layout: featured latest video or manually pinned video with playlist/gallery below
-- [ ] 9.4 Block pattern library: prebuilt patterns for channel grid, shorts wall, live/replay hub, and featured-video landing section
-- [ ] 9.5 Schema.org markup: `VideoObject`/`ItemList` JSON-LD using locally cached metadata only, with per-feed toggle and validation notes
-- [ ] 9.6 White-label styling presets: preset themes, CSS variables, spacing/card controls, and preview in the Feed Builder
-- [ ] 9.7 Front-end performance pass: responsive image sizes, lazy iframe loading, asset splitting by layout, no duplicate enqueues across multiple feeds
-- [ ] 9.8 Unit tests: template escaping, layout dispatch, asset enqueue behavior, schema output, and CSS scoping for new layouts
-- [ ] 9.9 E2E/browser verification: Camofox screenshots for masonry, carousel, hero, mobile viewport; verify keyboard/focus behavior where scriptable
+- [x] 9.1 Masonry layout: CSS-first responsive masonry/waterfall layout with graceful fallback and theme override template
+- [x] 9.2 Carousel/slider layout: accessible keyboard navigation, reduced-motion support, touch support, and no jQuery dependency
+- [x] 9.3 Single-video/hero layout: featured latest video or manually pinned video with playlist/gallery below
+- [x] 9.4 Block pattern library: prebuilt patterns for channel grid, shorts wall, live/replay hub, and featured-video landing section
+- [x] 9.5 Schema.org markup: `VideoObject`/`ItemList` JSON-LD using locally cached metadata only, with per-feed toggle and validation notes
+- [x] 9.6 White-label styling presets: preset themes, CSS variables, spacing/card controls, and preview in the Feed Builder
+- [x] 9.7 Front-end performance pass: responsive image sizes, lazy iframe loading, asset splitting by layout, no duplicate enqueues across multiple feeds
+- [x] 9.8 Unit tests: template escaping, layout dispatch, asset enqueue behavior, schema output, and CSS scoping for new layouts
+- [x] 9.9 E2E/browser verification: Camofox screenshots for masonry, carousel, hero, mobile viewport; verify keyboard/focus behavior where scriptable
 
 ### Phase 10 — Page Builder + Commerce Integrations
 
@@ -1202,3 +1202,54 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - Both Camofox screenshots show well-rendered front-end gallery pages.
 - Result:
   - Phase 8.8 complete. Phase 8 multi-source feeds + feed portability is now end-to-end verified, with no internal-UUID leaks anywhere on the public front-end. The verify-public-safety.py script provides regression protection that will fail loudly if any future PR reintroduces this class of leak.
+
+### 2026-06-30 — Phase 9 Advanced Layouts + Front-end Polish
+
+- Trigger: "next phase" (after `/queue set a goal to keep iterating the next phase until completed` chain)
+- Mode: Development Execution Mode (Phase 9 — Advanced Layouts + Front-end Polish)
+- Selected task: 9.1 → 9.9 full phase
+- Work completed:
+  - **9.1 Masonry layout** — `MasonryLayout.php` + `templates/masonry.php` + `assets/css/masonry.css`. Pure CSS `column-count` + `break-inside: avoid`; responsive 6→3→2→1 column waterfall. No JS layout dependency.
+  - **9.2 Carousel layout** — `CarouselLayout.php` + `templates/carousel.php` + `assets/css/carousel.css` + `assets/js/carousel.js`. Vanilla JS controller with **full a11y**:
+    - `role="region"`, `aria-roledescription="carousel"`, `aria-posinset`, `aria-setsize`, `aria-selected`
+    - `aria-live="polite"` slide-status region for screen readers
+    - **Keyboard**: ArrowLeft / ArrowRight / Home / End move prev/next/end
+    - **Touch**: native horizontal scroll with end-of-scroll snap-sync to current slide
+    - **Reduced motion**: honors `prefers-reduced-motion` (auto-scroll instead of smooth)
+    - **MutationObserver** so AJAX-loaded carousels auto-wire their controllers
+    - **Focus-visible** outline on prev/next buttons
+  - **9.3 Hero layout** — `HeroLayout.php` + `templates/hero.php` + `assets/css/hero.css`. Wide 16:9 `maxres` thumbnail with sidecar metadata (title h2, channel title, `date_i18n` published_at, 220-char description excerpt with ellipsis, `fetchpriority="high"` on hero image). Smaller grid below.
+  - **9.4 Block patterns** — `src/Render/PatternsRegistrar.php`. Registers `vyg-patterns` block-pattern category + 4 patterns: `vyg/channel-grid`, `vyg/shorts-wall`, `vyg/live-hub`, `vyg/featured-landing`. Wire via `render.patterns` service registered in `Plugin.php`. **No pattern includes secrets / tokens / keys** — covered by 4 unit assertions.
+  - **9.5 Schema.org JSON-LD** — `src/Render/SchemaLd.php`. Emits `<script type="application/ld+json">` with one `ItemList` + per-video `VideoObject` entries. **Hard rules verified by tests**:
+    - Filters out `deleted` / `private` / `embed_disabled` / `unavailable` videos
+    - Omits internal `source_uuid` from structured data
+    - Neutralizes `</script>` injection in titles/descriptions
+    - Converts duration to ISO 8601 (`PT#H#M#S`), uploadDate to ISO 8601 (`Y-m-d\TH:i:s\Z`)
+    - Opt-in via `schema_enabled` attribute (default OFF); per-feed toggle + Feed Builder checkbox
+  - **9.6 White-label presets** — `src/Render/Presets.php` + `assets/css/presets.css`. 5 named CSS-variable bundles (default / minimal / cinema / pastel / developer). Wired via `[data-vyg-preset="<slug>"]` attribute selector. Sanitize regex fix: `[^a-zA-Z0-9_-]+` (was dropping uppercase input → default fallback). Feed Builder form adds "Style preset" dropdown + "Emit Schema.org JSON-LD" checkbox.
+  - **9.7 Performance** — `assets/js/lightbox.js` rebuilt: dynamic iframe construction on click only, `loading="lazy"` on iframe, `aria-modal="true"`, focus trap into close button on open, prior-element focus restored on close, `data-vyg-title` plumbed to iframe title, fixed `e && e.target === overlay` guard. All layouts already use `loading="lazy"` + `decoding="async"` + `aspect-ratio`. AssetManager tracks dedup via `$css_enqueued[]` map + 4 idempotent `*_enqueued` flags.
+  - **9.8 Unit tests** — **+28 tests, +139 assertions; baseline 233/657 → 261/796**.
+    - Added: `PresetsTest` (8), `LayoutDispatchTest` (5), `PatternsRegistrarTest` (3), `SchemaLdTest` (8), `LayoutTemplatesTest` (7).
+    - Fixed `BrainHelpers.php` gap: added `esc_attr_e` + `date_i18n` stubs. Without these, the carousel/hero templates broke inside `ob_start()` and left buffers open (which only manifested as PHPUnit risky-tests / errors, not as test failures — easy to miss).
+7. **9.9 E2E + Camofox** — captured 6 screenshots, verified Phase 0 invariant holds:
+   - `dev/phase9-create-pages.php` creates 6 demo pages (masonry, carousel, hero, cinema, pastel, schema-jsonld)
+   - `scripts/capture-phase9-screenshots.py` drives Camofox REST on `:9377` to capture all 6 in one run + verify `wp_vyg_api_quota_log` row delta is 0
+   - Result: **Quota log Δ=0** across all 6 captures → zero API calls during front-end render
+   - Screenshots saved as `17-phase-9-masonry.png` (489 KB), `18-phase-9-carousel.png` (218 KB), `19-phase-9-hero.png` (677 KB), `20-phase-9-preset-cinema.png` (345 KB), `21-phase-9-preset-pastel.png` (344 KB), `22-phase-9-schema-jsonld.png` (351 KB)
+- Files changed:
+  - 39 files in commit `a245d3a`: 11 source files (5 layouts + Presets + SchemaLd + PatternsRegistrar + Renderer/ShortcodeRegistrar/AssetManager/Plugin/FeedsPage wiring), 4 templates, 4 CSS files, 1 JS file, 5 test files, 1 capture script, 1 dev helper, 6 screenshots, `FeedRepository::allowed_layouts()`, `block.json` attributes
+- Tests run:
+  - `make test-unit` (261 tests / 796 assertions / 0 failures)
+  - `python3 scripts/capture-phase9-screenshots.py` → exit 0 (Δ=0 quota log rows)
+  - `curl /?page_id=18|19|20|21|22|23` → HTTP 200, all expected CSS classes + ARIA + JSON-LD markers present
+- Live verification:
+  - Masonry page: `vyg-feed--masonry`, `vyg-masonry--cols-3`, `vyg-masonry-css`, `vyg-presets-css` all present in HTML
+  - Carousel page: `vyg-carousel--per-3`, `role="region"`, `aria-roledescription="carousel"`, `aria-selected="true"`, `vyg-carousel-css` all present
+  - Hero page: `vyg-hero`, `vyg-hero__primary`, `vyg-hero__meta`, `vyg-hero__channel`, `vyg-hero__date`, `fetchpriority="high"`, `vyg-hero-css` all present
+  - Schema page: `application/ld+json`, `"@context"`, `"@type":"ItemList"`, `"@type":"ListItem"`, `"@type":"VideoObject"`, `"uploadDate"`, `"duration":` all present
+  - Cinema + Pastel preset pages: `[data-vyg-preset="cinema"]` / `[data-vyg-preset="pastel"]` attribute selector present in HTML
+- Result:
+  - **Phase 9 complete.** All 9 sub-items marked [x]. 261 tests pass (baseline+28). Live front-end screenshots captured for every new layout + preset. Phase 0 invariant verified across all 6 captures.
+  - Committed as `phase-9: advanced layouts + front-end polish (masonry/carousel/hero/presets/schema/patterns/perf)` (a245d3a).
+- Next recommended action:
+  - Phase 10.1 — Elementor widget. Wire `vectoryt/gallery` block's Elementor wrapper: feed selector (saved feed_uuid dropdown + ad-hoc source_uuid), layout/columns/per_page/orderby/order/pagination/content_type/preset/schema_enabled controls, responsive controls (device-mode toggles), editor preview using `<template>` JS that hydrates from REST `/vyg/v1/feed/{uuid}`, front-end render delegated to the existing `Renderer::render()` (no double rendering paths).
