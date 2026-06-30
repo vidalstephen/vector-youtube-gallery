@@ -118,8 +118,10 @@ class FeedQuery {
                        v.duration_iso, v.thumbnail_default, v.thumbnail_medium, v.thumbnail_high,
                        v.thumbnail_standard, v.thumbnail_maxres, v.content_type, v.live_status,
                        v.availability_status, v.published_at, v.view_count, v.actual_start_at,
-                       v.actual_end_at, v.scheduled_start_at
+                       v.actual_end_at, v.scheduled_start_at,
+                       s.title AS youtube_channel_title
                 FROM {$videos_table} v
+                LEFT JOIN {$sources_table} s ON s.youtube_channel_id = v.youtube_channel_id
                 {$joins}
                 WHERE 1=1 {$where_extra}
                 ORDER BY v.{$orderby} {$order}
@@ -403,6 +405,7 @@ class FeedQuery {
             return array();
         }
         $table = $wpdb->prefix . 'vyg_videos';
+        $sources_table = $wpdb->prefix . 'vyg_sources';
         $placeholders = implode( ',', array_fill( 0, count( $ids ), '%s' ) );
         $params = $ids;
         $where = "WHERE v.youtube_video_id IN ($placeholders)";
@@ -416,8 +419,11 @@ class FeedQuery {
                        v.duration_iso, v.thumbnail_default, v.thumbnail_medium, v.thumbnail_high,
                        v.thumbnail_standard, v.thumbnail_maxres, v.content_type, v.live_status,
                        v.availability_status, v.published_at, v.view_count, v.actual_start_at,
-                       v.actual_end_at, v.scheduled_start_at
-                FROM {$table} v {$where}
+                       v.actual_end_at, v.scheduled_start_at,
+                       s.title AS youtube_channel_title
+                FROM {$table} v
+                LEFT JOIN {$sources_table} s ON s.youtube_channel_id = v.youtube_channel_id
+                {$where}
                 ORDER BY v.published_at DESC
                 LIMIT 200";
         $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
