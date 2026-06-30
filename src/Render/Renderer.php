@@ -82,7 +82,8 @@ final class Renderer {
             if ( '' !== $source_uuid ) {
                 $args['source_uuid'] = $source_uuid;
             } elseif ( ! empty( $source_cfg['sources'][0]['source_uuid'] ) ) {
-                $args['source_uuid'] = (string) $source_cfg['sources'][0]['source_uuid'];
+                $source_uuid = (string) $source_cfg['sources'][0]['source_uuid'];
+                $args['source_uuid'] = $source_uuid;
             }
         }
 

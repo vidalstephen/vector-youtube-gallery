@@ -293,7 +293,13 @@ if (class_exists('\Elementor\Widget_Base')) {
             // resolve WooCommerce CTA mappings (Phase 10.3.1) without the
             // widget having to re-read the feed row.
             if ('' !== ($args['feed_uuid'] ?? '')) {
-                $args['feed_config'] = $this->load_feed_config((string) $args['feed_uuid']);
+                $feed_config = $this->load_feed_config((string) $args['feed_uuid']);
+                if (array() !== $feed_config) {
+                    $args['feed_config'] = $feed_config;
+                    $args['source_config'] = isset($feed_config['source']) && is_array($feed_config['source'])
+                        ? $feed_config['source']
+                        : array();
+                }
             }
 
             $container = \VectorYT\Gallery\Plugin::container();
@@ -370,7 +376,7 @@ if (class_exists('\Elementor\Widget_Base')) {
                 /** @var \VectorYT\Gallery\Repository\FeedRepository $feeds */
                 $feeds = $container->get('repo.feeds');
                 $row   = $feeds->find_by_uuid($feed_uuid);
-                return is_array($row) ? $row : array();
+                return is_array($row) ? \VectorYT\Gallery\Repository\FeedRepository::decode_config($row) : array();
             } catch (\Throwable $e) {
                 return array();
             }

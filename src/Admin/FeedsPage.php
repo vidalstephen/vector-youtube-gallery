@@ -84,7 +84,7 @@ final class FeedsPage {
                 $id = $this->feeds->create( $data );
                 $status = array( 'ok' => $id > 0, 'message' => $id > 0 ? __( 'Feed created.', 'vector-youtube-gallery' ) : __( 'Failed to create feed.', 'vector-youtube-gallery' ) );
                 if ( $id > 0 ) {
-                    wp_safe_redirect( add_query_arg( array( 'page' => AdminMenu::PARENT_SLUG . '-feeds', 'action' => 'edit', 'id' => $id, 'vyg_msg' => rawurlencode( $status['message'] ) ), admin_url( 'admin.php' ) ) );
+                    wp_safe_redirect( add_query_arg( array( 'page' => AdminMenu::PARENT_SLUG . '-feeds', 'vyg_msg' => rawurlencode( $status['message'] ) ), admin_url( 'admin.php' ) ) );
                     exit;
                 }
             } else {

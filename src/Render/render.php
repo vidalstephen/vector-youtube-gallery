@@ -33,15 +33,17 @@ function render_block_vectoryt_gallery(array $attributes): string {
     $feed_uuid   = sanitize_text_field((string) ($attributes['feed_uuid'] ?? ''));
     $source_uuid = sanitize_text_field((string) ($attributes['source_uuid'] ?? ''));
 
-    // Resolve feed_config (Phase 10.3) when a saved feed is selected.
+    // Resolve feed_config + source_config (Phase 10.3/10.4) when a saved feed is selected.
     $feed_config = array();
+    $source_config = null;
     if ('' !== $feed_uuid) {
         $row = $feeds->find_by_uuid($feed_uuid);
         if (null === $row) {
             // Saved feed was deleted between block creation and render.
             return '<p>' . esc_html__('Saved feed not found.', 'vector-youtube-gallery') . '</p>';
         }
-        $feed_config = is_array($row) ? $row : array();
+        $feed_config = is_array($row) ? \VectorYT\Gallery\Repository\FeedRepository::decode_config($row) : array();
+        $source_config = isset($feed_config['source']) && is_array($feed_config['source']) ? $feed_config['source'] : null;
     } elseif ('' === $source_uuid) {
         return '<p>' . esc_html__('Vector YouTube Gallery: pick a saved feed or paste a source UUID in the block settings.', 'vector-youtube-gallery') . '</p>';
     }
@@ -56,6 +58,7 @@ function render_block_vectoryt_gallery(array $attributes): string {
         'source_uuid'    => ('' !== $feed_uuid) ? '' : $source_uuid,
         'feed_uuid'      => $feed_uuid,
         'feed_config'    => $feed_config,
+        'source_config'  => $source_config,
         'layout'         => $layout_slug,
         'content_type'   => (string) ($attributes['content_type'] ?? ''),
         'orderby'        => sanitize_key((string) ($attributes['orderby'] ?? 'published_at')),
