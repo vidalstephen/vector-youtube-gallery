@@ -73,3 +73,10 @@ if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
 if ( ! defined( 'ARRAY_A' ) ) {
     define( 'ARRAY_A', 'ARRAY_A' );
 }
+
+// Phase 12.4: the NetworkPolicy code references the VYG_PLUGIN_BASENAME
+// constant defined in the main plugin file. Unit tests do not load the
+// main file, so we stub the constant here.
+if ( ! defined( 'VYG_PLUGIN_BASENAME' ) ) {
+    define( 'VYG_PLUGIN_BASENAME', 'vector-youtube-gallery/vector-youtube-gallery.php' );
+}

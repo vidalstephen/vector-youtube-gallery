@@ -175,6 +175,94 @@ final class Command {
     }
 
     /**
+     * Phase 12.4: print a per-site diagnostic summary across the
+     * multisite network. On a single-site install returns the same
+     * shape as `wp vyg diagnostics` for the current site.
+     *
+     * ## EXAMPLES
+     *
+     *     wp vyg network-diagnostics
+     *     wp vyg network-diagnostics --format=json
+     *
+     * @subcommand network-diagnostics
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function network_diagnostics( array $args, array $assoc_args ): void {
+        $rows = \VectorYT\Gallery\Multisite\NetworkPolicy::network_diagnostics();
+        if ( 'json' === ( $assoc_args['format'] ?? '' ) ) {
+            \WP_CLI::line( wp_json_encode( $rows, JSON_PRETTY_PRINT ) );
+            return;
+        }
+        $flat = array();
+        foreach ( $rows as $row ) {
+            $counts = (array) ( $row['counts'] ?? array() );
+            $flat[] = array(
+                'site_id'    => (int) ( $row['site_id'] ?? 0 ),
+                'site_url'   => (string) ( $row['site_url'] ?? '' ),
+                'vyg_active' => ( $row['vyg_active'] ?? false ) ? 'yes' : 'no',
+                'sources'    => (int) ( $counts['sources'] ?? 0 ),
+                'feeds'      => (int) ( $counts['feeds'] ?? 0 ),
+                'videos'     => (int) ( $counts['videos'] ?? 0 ),
+                'jobs'       => (int) ( $counts['jobs'] ?? 0 ),
+            );
+        }
+        if ( empty( $flat ) ) {
+            \WP_CLI::line( 'No sites reported diagnostics.' );
+            return;
+        }
+        $this->format_items( 'table', $flat, array( 'site_id', 'site_url', 'vyg_active', 'sources', 'feeds', 'videos', 'jobs' ) );
+    }
+
+    /**
+     * Phase 12.4: drop every VYG table + option + cron event for the
+     * current site (or for the site id passed as the first positional
+     * arg). Refuses to run unless `--yes` is supplied so an operator
+     * cannot accidentally nuke a site's data.
+     *
+     * ## OPTIONS
+     *
+     * [--site-id=<id>]
+     * : Optional site id to clean up. Defaults to the current site.
+     *
+     * [--yes]
+     * : Skip the safety confirmation.
+     *
+     * ## EXAMPLES
+     *
+     *     wp vyg site-cleanup
+     *     wp vyg site-cleanup --site-id=2 --yes
+     *
+     * @subcommand site-cleanup
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function site_cleanup( array $args, array $assoc_args ): void {
+        $site_id = isset( $assoc_args['site-id'] ) ? (int) $assoc_args['site-id'] : 0;
+        $confirm = isset( $assoc_args['yes'] );
+
+        if ( ! $confirm ) {
+            \WP_CLI::error( 'Refusing to run without --yes; this is a destructive operation.' );
+            return;
+        }
+
+        $original = function_exists( 'get_current_blog_id' ) ? (int) get_current_blog_id() : 0;
+        if ( $site_id > 0 && function_exists( 'switch_to_blog' ) ) {
+            switch_to_blog( $site_id );
+        }
+        try {
+            $dropped = \VectorYT\Gallery\Multisite\NetworkPolicy::site_uninstall();
+            \WP_CLI::success( sprintf( 'Dropped %d table(s) and cleared VYG options + cron for the site.', $dropped ) );
+        } finally {
+            if ( $site_id > 0 && $original && function_exists( 'restore_current_blog' ) ) {
+                restore_current_blog();
+            }
+        }
+    }
+
+    /**
      * List sync jobs.
      *
      * ## OPTIONS

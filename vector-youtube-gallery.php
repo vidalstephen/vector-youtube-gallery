@@ -79,3 +79,13 @@ register_activation_hook( __FILE__, array( \VectorYT\Gallery\Plugin::class, 'on_
  * (data removal is a separate, explicit user action via Privacy & Compliance).
  */
 register_deactivation_hook( __FILE__, array( \VectorYT\Gallery\Plugin::class, 'on_deactivate' ) );
+
+/**
+ * Phase 12.4: when the plugin is network-activated, WordPress does not
+ * fire the per-site activation hook. We register a separate callback
+ * that walks every site and runs `Plugin::on_activate()` against it.
+ * On a single-site install this is a no-op.
+ */
+if ( function_exists( 'is_multisite' ) && is_multisite() ) {
+    add_action( 'activate_' . plugin_basename( __FILE__ ), array( \VectorYT\Gallery\Multisite\NetworkPolicy::class, 'on_network_activate' ), 20 );
+}

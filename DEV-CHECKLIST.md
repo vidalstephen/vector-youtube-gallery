@@ -13,9 +13,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 12 — Operations, Scale, and Multisite**
-- Current sub-phase: 12.4 — Multisite network tools
-- Last completed item: 12.3 — `FeedQueryCache` extends `FeedQuery` (drop-in decorator), multisite-safe keys (blog id + version counter for invalidation when no `wp_cache_flush_group` available), `wp vyg cache` + `wp vyg cache-flush`, diagnostics now shows a Cache section. Live smoke confirmed: first call = 3 DB queries, cached call = 0 queries, post-flush = 2 queries. 19 new unit tests (361 / 1013 / 0 / 3 skipped).
-- Next actionable item: 12.4 — Multisite network tools: network activation behavior, per-site tables/options policy, network diagnostics, and site-level cleanup
+- Current sub-phase: 12.5 — Log rotation and configurable log levels
+- Last completed item: 12.4 — `Multisite\NetworkPolicy` with network activation hook walking every site, `wp vyg network-diagnostics`, `wp vyg site-cleanup --yes` (destructive), idempotent re-seed. 8 new unit tests (369 / 1027 / 0 / 3 skipped).
+- Next actionable item: 12.5 — Log rotation + configurable log levels: admin controls, redaction validation, max file size, and optional centralized shipping hook
 - Blocked items: none
 - Deferred items: 10.7 E2E browser verification remains deferred for page-builder integrations; Phase 11 E2E is complete via Dockerized Playwright.
 
@@ -251,7 +251,7 @@ Goal: harden the plugin for larger libraries, multisite installs, and operator a
 - [x] 12.1 WP-CLI command suite: sync source/feed, list jobs, retry failed jobs, export/import feeds, run retention, diagnostics snapshot
 - [x] 12.2 Action Scheduler adapter for sync jobs with migration path from WP-Cron and feature flag fallback to current scheduler
 - [x] 12.3 Advanced object-cache support: `FeedQueryCache` extends `FeedQuery` (decorator pattern, drop-in), uses `wp_cache_*` with multisite-safe keys (blog id + cache-version counter for invalidation when no `wp_cache_flush_group` is available). New `cache_enabled` + `cache_ttl_seconds` settings. `wp vyg cache` and `wp vyg cache-flush` subcommands; `wp vyg diagnostics` now shows a Cache section. 19 new unit tests (361 / 1013 / 0 / 3 skipped).
-- [ ] 12.4 Multisite network tools: network activation behavior, per-site tables/options policy, network diagnostics, and site-level cleanup
+- [x] 12.4 Multisite network tools: new `VectorYT\Gallery\Multisite\NetworkPolicy` (single source of truth for per-site policy). On `activate_*` (network activation), the hook walks every site via `switch_to_blog`/`restore_current_blog` and runs `Plugin::on_activate()` per site. New `wp vyg network-diagnostics` (per-site row table + JSON). New `wp vyg site-cleanup [--site-id=N] --yes` (drops vyg_* tables, options, cron, transients; refuses to run without `--yes`). Idempotent re-seed script `dev/reseed-phase12.php` for local-only data. 8 new unit tests (369 / 1027 / 0 / 3 skipped).
 - [ ] 12.5 Log rotation and configurable log levels: admin controls, redaction validation, max file size, and optional centralized shipping hook
 - [ ] 12.6 Large-library performance: query indexes review, pagination strategy, batch sizes, memory limits, and admin list-table performance
 - [ ] 12.7 CI smoke hardening: install WordPress in Docker, activate plugin, run migrations, hit key admin/front-end pages, and run `make test-unit`
