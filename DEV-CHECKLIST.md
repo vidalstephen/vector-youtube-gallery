@@ -13,11 +13,11 @@
 ## Current Development Status
 
 - Current phase: **Phase 11 — Analytics + Moderation Workflows**
-- Current sub-phase: 11.3 — Moderation queues
-- Last completed item: 11.2 — Analytics dashboard added as a local-only admin page (`YouTube Gallery → Analytics`) with top videos, feed views, quota trends, sync health, and bounded date filters. Live wp-cli render smoke passed (`contains_heading=yes`, `contains_video_id=yes`, `contains_db_error=no`, `html_bytes=2556`). Unit suite now 305 tests / 876 assertions / 0 failures / 3 skipped.
-- Next actionable item: 11.3 — Moderation queues (manual-review/stale/unavailable/hidden candidates, bulk actions, moderation export)
+- Current sub-phase: 11.4 — Saved filters + bulk actions for VideosPage
+- Last completed item: 11.3 — Moderation queues added with durable moderation columns (`moderation_status`, `moderation_reason`, `moderated_by`, `moderated_at`), admin queue page, bulk approve/manual-review/hide/unhide/classify actions, and moderation JSON/CSV export. dbDelta verified `vyg_videos changes:5`; unit suite now 310 tests / 895 assertions / 0 failures / 3 skipped. Live render smoke passed (`contains_heading=yes`, `contains_queue=yes`, `contains_video_id=yes`, `contains_db_error=no`).
+- Next actionable item: 11.4 — Saved filters and bulk actions for VideosPage
 - Blocked items: none
-- Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation.
+- Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation. Phase 11 PNG capture remains in 11.8 because no browser engine is installed; rendered HTML artifacts exist for 11.2 and 11.3.
 
 ## Status Legend
 
@@ -240,7 +240,7 @@ Goal: help operators understand feed performance and manage large video librarie
 - [x] 11.5 CSV/JSON export for analytics with capability checks and no secrets (moderation export remains tied to 11.3)
 - [x] 11.6 Privacy controls: analytics off by default or clearly disclosed; retention controls exposed; export/erase behavior documented
 - [x] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, export sanitization
-- [ ] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions, plus moderation CSV/JSON export
+- [x] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions, plus moderation CSV/JSON export
 - [ ] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
 - [ ] 11.8 E2E/browser verification: analytics dashboard and moderation queues render through Camofox with seeded data screenshots
 
@@ -1284,3 +1284,41 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
   - 11.2 complete and checklist updated. Phase 11 now has 11.1, 11.2, 11.5, 11.6, 11.7 complete. 11.3, 11.4, and 11.8 remain pending.
 - Next recommended action:
   - 11.3 — build moderation queues (hidden/unavailable/stale/manual-review candidates), bulk approve/hide/classify actions, and moderation CSV/JSON export.
+
+### 2026-06-30 — Phase 11 Moderation queues
+
+- Trigger: continuation of `/queue review what done for phase 11 so far fix any lingering issues of completed steps then move on to the next phase`
+- Mode: Development Execution Mode
+- Current phase: Phase 11 — Analytics + Moderation Workflows
+- Selected task: 11.3 — Moderation queues
+- Work completed:
+  - Added durable moderation columns to `wp_vyg_videos`: `moderation_status`, `moderation_reason`, `moderated_by`, `moderated_at`.
+  - Bumped `VYG_DB_VERSION` to 0.5.0 and verified live dbDelta: `vyg_videos changes:5`.
+  - Added `src/Admin/ModerationPage.php` with queue tabs for needs-review, manual-review, unavailable, stale metadata, and hidden videos.
+  - Added bulk moderation actions: approve, mark manual review, hide, unhide, classify-as content type.
+  - Wired `YouTube Gallery → Moderation` submenu and `admin.moderation` container service.
+  - Added moderation export via `GET /wp-json/vyg/v1/moderation/export?format=json|csv&queue=...` with `manage_options` capability check.
+  - Added `tests/unit/Admin/ModerationPageTest.php` covering bulk action update payloads.
+  - Created rendered visual artifact `screenshots/camofox/30-phase-11-moderation-queue.html` for the moderation queue. PNG capture remains part of 11.8 because Camofox file navigation was rejected and no Chromium/Playwright/Puppeteer browser is installed.
+- Files changed:
+  - `src/Admin/ModerationPage.php`
+  - `src/Admin/AdminMenu.php`
+  - `src/Plugin.php`
+  - `src/Database/Schema.php`
+  - `src/Repository/VideoRepository.php`
+  - `src/REST/ExportController.php`
+  - `vector-youtube-gallery.php`
+  - `tests/bootstrap.php`
+  - `tests/unit/Admin/ModerationPageTest.php`
+  - `DEV-CHECKLIST.md`
+  - `screenshots/camofox/30-phase-11-moderation-queue.html`
+- Tests run:
+  - `php -l` for all new/modified PHP files → no syntax errors.
+  - `vendor/bin/phpunit --testsuite=unit --colors=never` → 310 tests / 895 assertions / 0 failures / 3 skipped.
+  - `wp plugin deactivate/activate vector-youtube-gallery` → `dbDelta: vyg_videos changes:5`.
+  - `wp eval-file dev/phase11-moderation-smoke.php` → `contains_heading=yes`, `contains_queue=yes`, `contains_video_id=yes`, `contains_db_error=no`, `html_bytes=3460`.
+  - Direct export smoke: `ExportController::export_moderation(queue=manual_review)` → `queue=manual_review count=1 has_rows=yes`.
+- Result:
+  - 11.3 complete and checklist updated. Phase 11 now has 11.1, 11.2, 11.3, 11.5, 11.6, 11.7 complete. 11.4 and 11.8 remain pending.
+- Next recommended action:
+  - 11.4 — add saved filters and bulk actions to the existing VideosPage.

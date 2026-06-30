@@ -169,7 +169,7 @@ class VideoRepository {
         $int_cols = array(
             'id', 'duration_seconds', 'view_count', 'like_count', 'comment_count',
             'is_short', 'is_live', 'is_deleted', 'is_hidden', 'is_pinned',
-            'concurrent_viewers', 'source_id',
+            'concurrent_viewers', 'source_id', 'moderated_by',
         );
         return in_array( $col, $int_cols, true ) ? '%d' : '%s';
     }

@@ -321,6 +321,7 @@ final class Plugin {
                 $c->get( 'admin.diagnostics' ),
                 $c->get( 'admin.videos' ),
                 $c->get( 'admin.analytics' ),
+                $c->get( 'admin.moderation' ),
                 $c->get( 'admin.system_info' ),
                 $c->get( 'admin.feeds' ),
                 $c->get( 'admin.privacy' ),
@@ -330,6 +331,7 @@ final class Plugin {
 
         $c->set( 'admin.dashboard_stats', static fn(): DashboardStats => new DashboardStats() );
         $c->set( 'admin.analytics', static fn(): \VectorYT\Gallery\Admin\AnalyticsPage => new \VectorYT\Gallery\Admin\AnalyticsPage() );
+        $c->set( 'admin.moderation', static fn( Container $c ): \VectorYT\Gallery\Admin\ModerationPage => new \VectorYT\Gallery\Admin\ModerationPage( $c->get( 'repo.videos' ) ) );
         $c->set(
             'admin.dashboard_widget',
             static fn( Container $c ): DashboardWidget => new DashboardWidget( $c->get( 'admin.dashboard_stats' ) )

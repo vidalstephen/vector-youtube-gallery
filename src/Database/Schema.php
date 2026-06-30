@@ -126,6 +126,10 @@ final class Schema {
             manual_content_type varchar(32) DEFAULT NULL,
             manual_content_source varchar(190) DEFAULT NULL,
             manual_reason varchar(500) DEFAULT NULL,
+            moderation_status varchar(32) NOT NULL DEFAULT 'approved',
+            moderation_reason varchar(500) DEFAULT NULL,
+            moderated_by bigint(20) unsigned DEFAULT NULL,
+            moderated_at datetime DEFAULT NULL,
             last_checked_at datetime DEFAULT NULL,
             last_success_at datetime DEFAULT NULL,
             api_data_expires_at datetime DEFAULT NULL,
@@ -139,6 +143,7 @@ final class Schema {
             KEY live_status (live_status),
             KEY availability_status (availability_status),
             KEY is_hidden (is_hidden),
+            KEY moderation_status (moderation_status),
             KEY api_data_expires_at (api_data_expires_at)
         ) {$c};";
     }
