@@ -207,13 +207,31 @@ final class Renderer {
         $public_safe = ! empty( $args['public_safe'] );
         $preset     = \VectorYT\Gallery\Render\Presets::sanitize_slug( (string) ( $args['preset'] ?? 'default' ) );
 
+        // Phase 10.7: allow third-party code (e.g. the Phase 10.3
+        // product mapping, or a custom WooCommerce bridge) to merge
+        // a `products` array into feed_config. Without this hook,
+        // a feed row has no top-level place to store the
+        // `{video_id => product_id}` mapping (the row's JSON
+        // columns are layout-only).
+        $feed_config = (array) ( $args['feed_config'] ?? array() );
+        if ( '' !== $feed_uuid && ! isset( $feed_config['products'] ) ) {
+            $injected = apply_filters(
+                'vyg_phase10_7_product_map_for_feed',
+                array(),
+                $feed_uuid
+            );
+            if ( is_array( $injected ) && ! empty( $injected ) ) {
+                $feed_config['products'] = $injected;
+            }
+        }
+
         $ctx = array(
             'source'       => $source,
             'videos'       => $videos,
             'renderer'     => $this->video_renderer,
             'wrapper_id'   => $wrapper_id,
             'feed_uuid'    => $feed_uuid,
-            'feed_config'  => (array) ( $args['feed_config'] ?? array() ),
+            'feed_config'  => $feed_config,
             'preset'       => $preset,
             'attrs'        => array_merge( $args, array(
                 'layout'      => $layout_slug,

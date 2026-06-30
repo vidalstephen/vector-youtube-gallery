@@ -37,6 +37,15 @@ if ( ! $container instanceof Container ) {
 }
 
 // 1. The container hands out a FeedQueryCache for `render.feed`.
+$settings = $container->get( 'settings' );
+$original_cache_enabled = (bool) $settings->get( 'cache_enabled', true );
+if ( ! $original_cache_enabled ) {
+    $settings->set( 'cache_enabled', true );
+}
+register_shutdown_function( static function () use ( $settings, $original_cache_enabled ): void {
+    $settings->set( 'cache_enabled', $original_cache_enabled );
+} );
+
 $cache = $container->get( 'render.feed' );
 echo "cache_class=" . get_class( $cache ) . PHP_EOL;
 if ( ! ( $cache instanceof FeedQueryCache ) ) {

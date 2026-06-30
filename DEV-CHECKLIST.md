@@ -12,12 +12,13 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 12 — Operations, Scale, and Multisite — COMPLETE**
-- Current sub-phase: **12.9 done; Phase 12 closed**
-- Last completed item: 12.9 — E2E summary script (7-row table per sub-phase) integrated into `make ci-smoke`. Final state: 423 tests / 1125 assertions / 0 failures / 3 skipped; all 5 phase 12.x live smokes pass; all 5 new CLI subcommands return exit 0; lint clean. Phase 12 fully closed.
-- Next actionable item: **Phase 13 — Packaging, Updates, and Commercial/Distribution Layer** (per the checklist).
+- Current phase: **Phase 12 — Operations, Scale, and Multisite — COMPLETE; Phase 10.7 integration backfill CLOSED**
+- Current sub-phase: **10.7 browser verification backfill done; Phase 12 remains closed**
+- Last completed item: 10.7 — Page-builder/browser verification backfill via `scripts/run-phase10-7-playwright.sh`; deterministic Elementor/WooCommerce/Gutenberg/Divi-fallback/Phase 9 hero screenshots captured under `screenshots/playwright/`; preflight verified shortcode + Elementor + Gutenberg render paths and `api_quota_delta=0`.
+- Next actionable item: **Dedicated visual/layout design brainstorm and front-end polish pass**, then Phase 13 Packaging/Distribution.
 - Blocked items: none
-- Deferred items: 10.7 E2E browser verification remains deferred for page-builder integrations; Phase 11 E2E is complete via Dockerized Playwright.
+- Deferred items: none
+- Phase 10.7 path note: Divi is a premium-only ThemeForest plugin and is not available from `downloads.wordpress.org`. 10.7's "Divi is installed" branch is covered by the stub-based unit tests in 10.6; the "Divi is NOT installed" branch is captured live (the shortcode fallback that runs in place of the Divi module) — that screenshot is the evidence. Elementor and WooCommerce ARE installed from WP.org.
 
 ## Status Legend
 
@@ -223,13 +224,13 @@ Goal: broaden front-end presentation options while maintaining no-API-on-render 
 
 Goal: make the plugin usable in common WordPress site-builder workflows without forcing manual shortcodes.
 
-- [ ] 10.1 Elementor widget: feed selector, layout controls, responsive controls, editor preview, and front-end render via existing Renderer
-- [ ] 10.2 Divi module: feed selector, layout/design controls, Visual Builder preview, and front-end render via existing Renderer
-- [ ] 10.3 WooCommerce/product CTA integration: optional per-video/per-feed CTA button, product link mapping, and compliance-safe local metadata usage
-- [ ] 10.4 Gutenberg block polish: feed picker UI, inspector controls matching Feed Builder options, server-rendered preview loading/error states
-- [ ] 10.5 Integration safety: all builder controls sanitize values, respect capabilities, and never expose API keys/tokens in editor payloads
-- [ ] 10.6 Unit/integration tests: widget registration guards when Elementor/Divi/WooCommerce are absent; render parity with shortcode/block
-- [ ] 10.7 E2E/browser verification: builder pages render when plugins are active or skip gracefully when not installed; capture screenshots for available integrations
+- [x] 10.1 Elementor widget: `src/Integrations/Elementor/{GalleryWidget.php, Bootstrap.php}` — feed picker (Select2 saved feeds + legacy source_uuid fallback), layout/columns/per_page/preset/schema_enabled controls, server-render delegates to existing `Renderer::render()` (no double-rendering paths), public_safe=true auto-set when feed_uuid selected, defensive class-double guard on `\Elementor\Widget_Base` AND `\Elementor\Plugin` (forked Elementor installs that ship one but not the other no-op cleanly). Shipped in commit `f3bc354`.
+- [x] 10.2 Divi module: `src/Integrations/Divi/{GalleryModule.php, Bootstrap.php}` — symmetric to Elementor; `$vb_support='on'` for Visual Builder, conditional class declaration gated on `class_exists('ET_Builder_Module')`, registers on both `et_builder_modules_loaded` AND `divi_modules` (Divi recommended belt-and-suspenders), zero side-effects when Divi not installed. Shipped in commit `f3bc354`.
+- [x] 10.3 WooCommerce product CTA: `src/Integrations/WooCommerce/ProductLink.php` + `src/compat.php` — `is_active()` checks `function_exists('wc_get_product')` AND `post_type_exists('product')`, `resolve_product_url()` reads `feed_config['products'][<vid>]` mapping, drops drafts/private/trash, `render_cta()` emits `<a class="vyg-card__cta">` with `rel="nofollow noopener"` + `aria-label` + price span, zero-footprint when WC inactive, global helpers `vyg_render_product_cta()` / `vyg_product_url()`. `feed_config` threaded through Renderer::emit_html, ShortcodeRegistrar, REST FeedController, Elementor widget, Divi module, Gutenberg block render.php. Shipped in commit `f3bc354`.
+- [x] 10.4 Gutenberg block polish: `block.json` adds `feed_uuid` attribute (Phase 10.4) + preset, Select2 picker, server-rendered preview with loading/error states, inspector controls mirror Feed Builder options one-for-one. Shipped in commit `f3bc354`.
+- [x] 10.5 Integration safety: all builder controls sanitize values via `sanitize_*`, respect `manage_options` capability, never expose API keys / OAuth tokens in editor payloads (the `vyg_settings` option does not hold secrets; secrets go through `SecretsRepository` autoload=no). Defensive class-double guards on every external class reference. Shipped in commit `f3bc354`.
+- [x] 10.6 Unit/integration tests: `tests/unit/Integration/PageBuilderIntegrationTest.php` (89 lines, widget registration guards when Elementor/Divi/WooCommerce are absent, render parity with shortcode/block), `tests/unit/Integration/ProductLinkTest.php` (100 lines, mapping sanitization + product URL resolution), `tests/unit/Render/GutenbergBlockTest.php` (expanded to 92 lines). Test stubs in `tests/stubs/{elementor-stubs.php, divi-stubs.php}`. Shipped in commit `f3bc354`.
+- [x] 10.7 E2E/browser verification: `scripts/run-phase10-7-playwright.sh` runs the Phase 11-style Docker browser capture pattern against a dev install with Elementor + WooCommerce installed (Divi skipped — premium-only ThemeForest plugin, not on downloads.wordpress.org; its skip-gracefully path is covered by the stub-based 10.6 tests). The runner seeds a deterministic Phase 10.7 feed/product/page set, installs a temporary MU product-map bridge, preflights shortcode + Elementor + Gutenberg render paths (`missing=no`, `cards=45`, `cta=yes` where applicable), and verifies `api_quota_delta=0`. Captures 5 screenshots: Elementor widget front-end render, WooCommerce product CTA on the shortcode/front-end fallback, Gutenberg block front-end render, Divi-absent shortcode fallback, and Phase 9 hero regression. Headless full Elementor/Gutenberg editors were not used as evidence because Chrome captures stalled on their JS loading shells; functional builder render paths are verified through preflight and front-end screenshots.
 
 ### Phase 11 — Analytics + Moderation Workflows
 

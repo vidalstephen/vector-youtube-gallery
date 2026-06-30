@@ -58,6 +58,12 @@ if ( ! defined( 'VYG_USE_MOCK' ) ) {
 $autoload = __DIR__ . '/vendor/autoload.php';
 if ( is_file( $autoload ) ) {
     require_once $autoload;
+    // Composer's PSR-4 autoloader doesn't load free-function files
+    // (compat.php exposes global helpers like vyg_render_product_cta
+    // and vyg_product_url). Require it explicitly so the front-end
+    // grid.php template can call the helper regardless of whether
+    // the autoloader is present.
+    require_once __DIR__ . '/src/compat.php';
 } else {
     // Minimal fallback — require the bootstrap classes by hand.
     require_once __DIR__ . '/src/Container.php';

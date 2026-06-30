@@ -28,8 +28,9 @@ final class GridLayout implements LayoutInterface {
             ->render( 'grid', array(
                 'source'    => $ctx['source'] ?? array(),
                 'videos'    => $ctx['videos'] ?? array(),
-                'attrs'     => $ctx['attrs'] ?? array(),
-                'renderer'  => $ctx['renderer'] ?? null,
+                'attrs'       => $ctx['attrs'] ?? array(),
+                'renderer'    => $ctx['renderer'] ?? null,
+                'feed_config' => $ctx['feed_config'] ?? array(),
             ) );
     }
 }
