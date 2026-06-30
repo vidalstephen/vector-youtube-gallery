@@ -110,4 +110,88 @@ final class SettingsRepositoryTest extends TestCase {
         $this->repo->reset_defaults();
         $this->assertSame( 60, $this->repo->get( 'shorts_max_duration_seconds' ) );
     }
+
+    // --- Phase 12.2: sync scheduler mode ---
+
+    public function test_phase12_sync_scheduler_mode_defaults_to_auto(): void {
+        $this->assertSame( 'auto', $this->repo->get( 'sync_scheduler_mode' ) );
+    }
+
+    public function test_phase12_sync_scheduler_mode_accepts_known_values(): void {
+        foreach ( array( 'auto', 'wp_cron', 'action_scheduler' ) as $mode ) {
+            $this->repo->save_posted( array( 'sync_scheduler_mode' => $mode ) );
+            $this->assertSame( $mode, $this->repo->get( 'sync_scheduler_mode' ) );
+        }
+    }
+
+    public function test_phase12_sync_scheduler_mode_rejects_unknown_value(): void {
+        $this->repo->save_posted( array( 'sync_scheduler_mode' => 'nonsense' ) );
+        $this->assertSame( 'auto', $this->repo->get( 'sync_scheduler_mode' ) );
+    }
+
+    // --- Phase 12.3: cache ---
+
+    public function test_phase12_cache_enabled_defaults_true(): void {
+        $this->assertTrue( $this->repo->get( 'cache_enabled' ) );
+    }
+
+    public function test_phase12_cache_ttl_seconds_defaults_3600(): void {
+        $this->assertSame( 3600, $this->repo->get( 'cache_ttl_seconds' ) );
+    }
+
+    public function test_phase12_cache_ttl_seconds_coerces_string_to_int(): void {
+        $this->repo->save_posted( array( 'cache_ttl_seconds' => '1800' ) );
+        $this->assertSame( 1800, $this->repo->get( 'cache_ttl_seconds' ) );
+    }
+
+    public function test_phase12_cache_ttl_seconds_negative_clamps_to_zero(): void {
+        $this->repo->save_posted( array( 'cache_ttl_seconds' => '-1' ) );
+        $this->assertSame( 0, $this->repo->get( 'cache_ttl_seconds' ) );
+    }
+
+    public function test_phase12_cache_enabled_can_be_disabled(): void {
+        $this->repo->save_posted( array( 'cache_enabled' => '0' ) );
+        $this->assertFalse( $this->repo->get( 'cache_enabled' ) );
+    }
+
+    // --- Phase 12.5: log level + rotation ---
+
+    public function test_phase12_log_level_defaults_to_info(): void {
+        $this->assertSame( 'info', $this->repo->get( 'log_level' ) );
+    }
+
+    public function test_phase12_log_level_accepts_known_values(): void {
+        foreach ( array( 'debug', 'info', 'warning', 'error' ) as $level ) {
+            $this->repo->save_posted( array( 'log_level' => $level ) );
+            $this->assertSame( $level, $this->repo->get( 'log_level' ) );
+        }
+    }
+
+    public function test_phase12_log_level_rejects_unknown_value(): void {
+        $this->repo->save_posted( array( 'log_level' => 'verbose' ) );
+        $this->assertSame( 'info', $this->repo->get( 'log_level' ) );
+    }
+
+    public function test_phase12_log_max_size_mb_defaults_5(): void {
+        $this->assertSame( 5, $this->repo->get( 'log_max_size_mb' ) );
+    }
+
+    public function test_phase12_log_max_files_defaults_5(): void {
+        $this->assertSame( 5, $this->repo->get( 'log_max_files' ) );
+    }
+
+    public function test_phase12_log_max_size_mb_coerces_string_to_int(): void {
+        $this->repo->save_posted( array( 'log_max_size_mb' => '12' ) );
+        $this->assertSame( 12, $this->repo->get( 'log_max_size_mb' ) );
+    }
+
+    public function test_phase12_log_max_files_coerces_string_to_int(): void {
+        $this->repo->save_posted( array( 'log_max_files' => '8' ) );
+        $this->assertSame( 8, $this->repo->get( 'log_max_files' ) );
+    }
+
+    public function test_phase12_log_max_size_mb_negative_clamps_to_zero(): void {
+        $this->repo->save_posted( array( 'log_max_size_mb' => '-5' ) );
+        $this->assertSame( 0, $this->repo->get( 'log_max_size_mb' ) );
+    }
 }

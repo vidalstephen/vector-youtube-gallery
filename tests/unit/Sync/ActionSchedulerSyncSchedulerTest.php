@@ -60,6 +60,78 @@ final class ActionSchedulerSyncSchedulerTest extends TestCase
         $this->assertFalse( $scheduler->action_scheduler_available() );
     }
 
+    public function test_unschedule_recurring_finds_existing_action_by_args(): void {
+        // The find_recurring_action_id path matches on (hook, args).
+        // We shim as_get_scheduled_actions to return the action id.
+        $this->shim_function_exists(true);
+        $invoker = $this->recordingInvoker();
+        $invoker->set_return_for( 'as_get_scheduled_actions', array( 77 ) );
+        $scheduler = new ActionSchedulerSyncScheduler( new RecordingSyncScheduler(), $invoker );
+        $result = $scheduler->unschedule_recurring( 'vyg_recurring_test', array( 'k' => 'v' ) );
+        $this->assertTrue( $result );
+        // Confirm the as_unschedule_action call targeted action 77.
+        $found = false;
+        foreach ( $invoker->calls as $call ) {
+            if ( 'as_unschedule_action' === $call[0] && in_array( 77, $call[1], true ) ) {
+                $found = true;
+            }
+        }
+        $this->assertTrue( $found, 'Expected as_unschedule_action(77) to be called.' );
+    }
+
+    public function test_unschedule_recurring_returns_false_when_no_match(): void {
+        $this->shim_function_exists(true);
+        $invoker = $this->recordingInvoker();
+        $invoker->set_return_for( 'as_get_scheduled_actions', array() ); // nothing scheduled
+        $scheduler = new ActionSchedulerSyncScheduler( new RecordingSyncScheduler(), $invoker );
+        $this->assertFalse( $scheduler->unschedule_recurring( 'vyg_recurring_test', array( 'k' => 'v' ) ) );
+    }
+
+    public function test_unschedule_all_uses_known_filter_args(): void {
+        $this->shim_function_exists(true);
+        $invoker = $this->recordingInvoker();
+        $scheduler = new ActionSchedulerSyncScheduler( new RecordingSyncScheduler(), $invoker );
+        $result = $scheduler->unschedule_all( 'vyg_test_hook' );
+        $this->assertSame( 1, $result );
+        // Verify the as_unschedule_all_actions call targeted our hook.
+        $found = false;
+        foreach ( $invoker->calls as $call ) {
+            if ( 'as_unschedule_all_actions' === $call[0] ) {
+                $args = $call[1];
+                if ( isset( $args[1]['hook'] ) && 'vyg_test_hook' === $args[1]['hook'] ) {
+                    $found = true;
+                }
+            }
+        }
+        $this->assertTrue( $found );
+    }
+
+    public function test_schedule_recurring_returns_false_when_invoker_returns_null(): void {
+        $this->shim_function_exists(true);
+        $invoker = $this->recordingInvoker();
+        $invoker->set_return_for( 'as_schedule_recurring_action', null );
+        $scheduler = new ActionSchedulerSyncScheduler( new RecordingSyncScheduler(), $invoker );
+        $this->assertFalse( $scheduler->schedule_recurring( 'vyg_test', array(), 600 ) );
+    }
+
+    public function test_schedule_recurring_uses_as_recurring_action_signature(): void {
+        $this->shim_function_exists(true);
+        $invoker = $this->recordingInvoker();
+        $scheduler = new ActionSchedulerSyncScheduler( new RecordingSyncScheduler(), $invoker );
+        $scheduler->schedule_recurring( 'vyg_rec', array( 'k' => 'v' ), 600 );
+        $found = false;
+        foreach ( $invoker->calls as $call ) {
+            if ( 'as_schedule_recurring_action' === $call[0] ) {
+                $args = $call[1];
+                // 0: timestamp, 1: interval, 2: hook, 3: args, 4: group.
+                $this->assertSame( 600, $args[1] );
+                $this->assertSame( 'vyg_rec', $args[2] );
+                $found = true;
+            }
+        }
+        $this->assertTrue( $found );
+    }
+
     public function test_backend_reports_action_scheduler_when_shimmed_in(): void {
         // Default in setUp: shim returns true.
         $scheduler = new ActionSchedulerSyncScheduler( new RecordingSyncScheduler() );

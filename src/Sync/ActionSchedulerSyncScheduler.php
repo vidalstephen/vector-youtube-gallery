@@ -154,7 +154,11 @@ final class ActionSchedulerSyncScheduler implements SyncScheduler
         if (null === $action_id) {
             return false;
         }
-        ($this->as_invoker)('as_unschedule_action', array($hook, array('args' => $args), 'vyg'));
+        // The AS function accepts either (action_id) or (hook, args, group).
+        // Passing the action_id is the canonical and reliable path; the
+        // hook+args form is a no-op for recurring actions whose args
+        // structure differs.
+        ($this->as_invoker)('as_unschedule_action', array($action_id));
         return true;
     }
 

@@ -132,4 +132,55 @@ final class NetworkPolicyTest extends TestCase
         $this->assertIsInt( $count );
         $this->assertGreaterThanOrEqual( 0, $count );
     }
+
+    public function test_is_network_active_returns_false_when_shim_returns_false(): void {
+        Functions\when( 'is_plugin_active_for_network' )->alias( static fn( string $p ): bool => false );
+        $this->assertFalse( NetworkPolicy::is_network_active() );
+    }
+
+    public function test_on_network_activate_walks_every_site(): void {
+        $this->site_ids_under_test = array( 10, 20 );
+        $visited = array();
+        Functions\when( 'switch_to_blog' )->alias( function ( int $id ) use ( &$visited ): void {
+            $visited[] = $id;
+        } );
+        Functions\when( 'restore_current_blog' )->alias( function (): void {
+            // No-op for the test.
+        } );
+        // Shim Plugin::on_activate to be a no-op. We can do this by
+        // calling on_network_activate inside a try/catch — Plugin's
+        // static on_activate may throw in a unit test environment
+        // because $wpdb is shimmed. The test asserts that
+        // switch_to_blog is invoked for every site.
+        try {
+            NetworkPolicy::on_network_activate();
+        } catch ( \Throwable $e ) {
+            // Acceptable: the test only cares about the loop visiting
+            // every site.
+        }
+        $this->assertContains( 10, $visited );
+        $this->assertContains( 20, $visited );
+    }
+
+    public function test_site_uninstall_clears_cache_version_option(): void {
+        Functions\when( 'is_multisite' )->alias( static fn(): bool => false );
+
+        // Seed an option that site_uninstall should drop.
+        $captured_options = array();
+        Functions\when( 'delete_option' )->alias( function ( $name ) use ( &$captured_options ) {
+            $captured_options[] = (string) $name;
+            return true;
+        } );
+
+        NetworkPolicy::site_uninstall();
+        $this->assertContains( 'vyg_feed_query_cache_version', $captured_options );
+    }
+
+    public function test_network_diagnostics_returns_site_url_for_current_site(): void {
+        Functions\when( 'is_multisite' )->alias( static fn(): bool => false );
+        $this->current_blog_id = 1;
+        $this->site_urls_under_test = array( 1 => 'http://primary.test' );
+        $rows = NetworkPolicy::network_diagnostics();
+        $this->assertSame( 'http://primary.test', $rows[0]['site_url'] );
+    }
 }

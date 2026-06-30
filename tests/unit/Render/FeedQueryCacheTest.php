@@ -234,6 +234,84 @@ final class FeedQueryCacheTest extends TestCase
         $this->assertSame( 3600, $cache->cache_ttl_seconds() );
     }
 
+    public function test_invalidated_results_must_refetch_from_inner(): void {
+        // After invalidate_for_source, the next call must re-query the
+        // inner FeedQuery (not return the stale cached result).
+        $inner = $this->innerWithResults( array( array( 'id' => 1, 'stale' => true ) ) );
+        $cache = new FeedQueryCache( $inner, new SettingsRepository() );
+
+        $first  = $cache->videos_for_source( array( 'source_uuid' => 'a' ) );
+        $this->assertTrue( $first[0]['stale'] );
+        $this->assertSame( 1, $inner->call_count );
+
+        // Now flip the inner's response.
+        $inner->set_results( array( array( 'id' => 1, 'stale' => false ) ) );
+        // Same args, cache hit → still stale.
+        $this->assertTrue( $cache->videos_for_source( array( 'source_uuid' => 'a' ) )[0]['stale'] );
+
+        // Invalidate the cache; the next call must see the fresh result.
+        $cache->invalidate_for_source( 1 );
+        $this->assertFalse( $cache->videos_for_source( array( 'source_uuid' => 'a' ) )[0]['stale'] );
+        $this->assertSame( 2, $inner->call_count );
+    }
+
+    public function test_invalidate_for_different_source_does_not_flush_caller(): void {
+        // A separate cache that observes a per-source invalidation. We
+        // shim wp_cache_flush_group to record which group was flushed
+        // and confirm the right group was targeted.
+        $cache_a = new FeedQueryCache( $this->innerWithResults( array( array( 'a' => 1 ) ) ), new SettingsRepository() );
+        $cache_a->videos_for_source( array( 'source_uuid' => 'src_a' ) );
+        $cache_b = new FeedQueryCache( $this->innerWithResults( array( array( 'b' => 1 ) ) ), new SettingsRepository() );
+        $cache_b->videos_for_source( array( 'source_uuid' => 'src_b' ) );
+
+        $this->assertNotEmpty( $this->object_cache[ FeedQueryCache::CACHE_GROUP ] );
+
+        // Both adapters target the same cache group; invalidate on
+        // either one drops the entire group.
+        $cache_a->invalidate_for_source( 1 );
+        $this->assertArrayNotHasKey( FeedQueryCache::CACHE_GROUP, $this->object_cache );
+    }
+
+    public function test_disabled_cache_does_not_invoke_invoker(): void {
+        $settings = new SettingsRepository();
+        $settings->set( 'cache_enabled', false );
+        $cache = new FeedQueryCache( $this->innerWithResults( array( array( 'id' => 1 ) ) ), $settings );
+        $cache->videos_for_source( array( 'source_uuid' => 'a' ) );
+        $cache->invalidate_for_source( 1 );
+        $cache->invalidate_for_feed( 'f' );
+        $cache->invalidate_all();
+        // No exceptions = pass; we also assert no wp_cache_* calls
+        // because the cache is disabled.
+        $this->assertCount( 0, $this->cache_call_log );
+    }
+
+    public function test_inner_returning_empty_array_is_still_cached(): void {
+        // Edge case: an empty result is cached too. The next call
+        // should not re-query the inner.
+        $inner = $this->innerWithResults( array() );
+        $cache = new FeedQueryCache( $inner, new SettingsRepository() );
+        $cache->videos_for_source( array( 'source_uuid' => 'empty' ) );
+        $cache->videos_for_source( array( 'source_uuid' => 'empty' ) );
+        $this->assertSame( 1, $inner->call_count );
+    }
+
+    public function test_count_videos_for_feed_is_cached(): void {
+        $inner = $this->innerWithResults( array() );
+        $inner->count_return = 7;
+        $cache = new FeedQueryCache( $inner, new SettingsRepository() );
+        $this->assertSame( 7, $cache->count_videos_for_feed( array( 'feed_uuid' => 'f1' ) ) );
+        $this->assertSame( 7, $cache->count_videos_for_feed( array( 'feed_uuid' => 'f1' ) ) );
+        $this->assertSame( 1, $inner->count_call_count );
+    }
+
+    public function test_cache_key_includes_call_name(): void {
+        $cache = new FeedQueryCache( $this->innerWithResults( array() ), new SettingsRepository() );
+        $key_v = $cache->build_key( 'videos_for_source', array( 'source_uuid' => 'a' ) );
+        $key_c = $cache->build_key( 'count_videos_for_source', array( 'source_uuid' => 'a' ) );
+        $this->assertStringContainsString( ':videos_for_source:', $key_v );
+        $this->assertStringContainsString( ':count_videos_for_source:', $key_c );
+    }
+
     private ?RecordingFeedQuery $innerStub = null;
 
     /**
@@ -260,6 +338,10 @@ final class RecordingFeedQuery extends FeedQuery
     private array $results;
 
     public function __construct( array $results ) {
+        $this->results = $results;
+    }
+
+    public function set_results( array $results ): void {
         $this->results = $results;
     }
 

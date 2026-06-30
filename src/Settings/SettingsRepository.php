@@ -122,6 +122,9 @@ class SettingsRepository {
             'data_hard_delete_after_days',
             'default_sync_interval_seconds',
             'metadata_refresh_batch_size',
+            'cache_ttl_seconds',
+            'log_max_size_mb',
+            'log_max_files',
         ) as $int_key ) {
             if ( array_key_exists( $int_key, $input ) ) {
                 $values[ $int_key ] = max( 0, (int) $input[ $int_key ] );
@@ -133,6 +136,7 @@ class SettingsRepository {
             'auto_classify_shorts',
             'auto_classify_live',
             'respect_manual_overrides',
+            'cache_enabled',
         ) as $bool_key ) {
             $values[ $bool_key ] = ! empty( $input[ $bool_key ] );
         }
@@ -151,6 +155,15 @@ class SettingsRepository {
             $values['sync_scheduler_mode'] = in_array( $mode, \VectorYT\Gallery\Sync\SchedulerResolver::VALID_MODES, true )
                 ? $mode
                 : self::DEFAULTS['sync_scheduler_mode'];
+        }
+
+        if ( array_key_exists( 'log_level', $input ) ) {
+            // Phase 12.5: log level filter. Logger owns the priority
+            // map; this only validates the string.
+            $level = sanitize_key( (string) $input['log_level'] );
+            $values['log_level'] = in_array( $level, array( 'debug', 'info', 'warning', 'error' ), true )
+                ? $level
+                : self::DEFAULTS['log_level'];
         }
 
         $this->save( $values );

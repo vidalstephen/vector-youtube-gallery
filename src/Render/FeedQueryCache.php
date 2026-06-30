@@ -151,6 +151,9 @@ class FeedQueryCache extends FeedQuery
      */
     public function invalidate_for_source(int $source_id): void
     {
+        if (!$this->is_enabled()) {
+            return;
+        }
         if (function_exists('wp_cache_flush_group')) {
             wp_cache_flush_group(self::CACHE_GROUP);
             return;
@@ -168,6 +171,9 @@ class FeedQueryCache extends FeedQuery
      */
     public function invalidate_for_feed(string $feed_uuid): void
     {
+        if (!$this->is_enabled()) {
+            return;
+        }
         if (function_exists('wp_cache_flush_group')) {
             wp_cache_flush_group(self::CACHE_GROUP);
             return;
@@ -181,6 +187,9 @@ class FeedQueryCache extends FeedQuery
      */
     public function invalidate_all(): void
     {
+        if (!$this->is_enabled()) {
+            return;
+        }
         if (function_exists('wp_cache_flush_group')) {
             wp_cache_flush_group(self::CACHE_GROUP);
             return;
