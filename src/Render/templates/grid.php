@@ -67,6 +67,18 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
                 </div>
                 <h3 class="vyg-card__title"><?php echo esc_html( (string) ( $video['title'] ?? '' ) ); ?></h3>
             </a>
+            <?php
+            // Phase 10.3 — WooCommerce product CTA (or other per-card CTA).
+            // Only renders when a feed-level mapping exists AND the linked
+            // product is still published. Safe no-op when WooCommerce is
+            // inactive or no mapping is configured.
+            $feed_cfg = isset( $feed_config ) && is_array( $feed_config ) ? $feed_config : array();
+            $video_id = (string) ( $video['youtube_video_id'] ?? '' );
+            if ( '' !== $video_id && function_exists( 'vyg_render_product_cta' ) ) {
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — helper escapes itself.
+                echo vyg_render_product_cta( $feed_cfg, $video_id );
+            }
+            ?>
         </article>
     <?php endforeach; ?>
 </div>

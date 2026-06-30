@@ -230,6 +230,10 @@ final class FeedController {
             // rendered attributes. The front-end JS only needs feed_uuid to
             // call back into this endpoint.
             'public_safe'   => true,
+            // Phase 10.3: thread the full feed config so templates can
+            // resolve CTA mappings (WooCommerce etc.) without re-reading
+            // the DB.
+            'feed_config'   => $config,
         ) );
 
         $next_offset = $offset + $per_page;

@@ -183,6 +183,7 @@ final class ShortcodeRegistrar {
             'custom_css'    => $inline_override,
             'schema_enabled' => ! empty( $atts['schema_enabled'] ),
             'preset'         => sanitize_key( (string) ( $atts['preset'] ?? 'default' ) ),
+            'feed_config'    => is_array( $config ?? null ) ? $config : array(),
         ) );
     }
 }

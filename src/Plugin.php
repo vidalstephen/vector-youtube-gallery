@@ -396,6 +396,21 @@ final class Plugin {
             'render.patterns',
             static fn(): PatternsRegistrar => new PatternsRegistrar()
         );
+        // Phase 10.1: Elementor widget integration. The Bootstrap registers
+        // a hook on `elementor/widgets/register`; the widget file is only
+        // required if that fires. If Elementor isn't installed, the hook
+        // never fires and nothing loads.
+        $c->set(
+            'integrations.elementor',
+            static fn(): \VectorYT\Gallery\Integrations\Elementor\Bootstrap
+                => new \VectorYT\Gallery\Integrations\Elementor\Bootstrap()
+        );
+        // Phase 10.2: Divi module integration. Symmetric to Elementor.
+        $c->set(
+            'integrations.divi',
+            static fn(): \VectorYT\Gallery\Integrations\Divi\Bootstrap
+                => new \VectorYT\Gallery\Integrations\Divi\Bootstrap()
+        );
         $c->set(
             'rest.feed',
             static fn( Container $c ): FeedController => new FeedController(
@@ -451,6 +466,12 @@ final class Plugin {
         $c->get( 'render.block' )->register();
         // Phase 9.4: register block patterns so editors see them in the inserter.
         $c->get( 'render.patterns' )->register();
+        // Phase 10.1/10.2: register page-builder integrations.
+        // Elementor hooks fire on `elementor/widgets/register`; Divi hooks
+        // fire on `et_builder_modules_loaded`. Both classes are guards
+        // themselves — they no-op when Elementor/Divi isn't active.
+        $c->get( 'integrations.elementor' )->register_hooks();
+        $c->get( 'integrations.divi' )->register_hooks();
         $c->get( 'rest.feed' )->register_routes();
         $c->get( 'rest.admin' )->register_routes();
 

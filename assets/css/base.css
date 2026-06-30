@@ -79,3 +79,48 @@
     cursor: pointer;
     padding: 0.2em 0.5em;
 }
+
+/* Phase 10.3 — per-card CTA (WooCommerce product link).
+ * Scoped by .vyg-feed * above, so this only ever applies inside a
+ * Vector YouTube Gallery render. The button is keyboard-focusable,
+ * has visible focus, and never anchors to the lightbox by accident.
+ */
+.vyg-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    margin-top: 0.5em;
+    padding: 0.45em 0.85em;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid currentColor;
+    color: inherit;
+    transition: background-color 0.15s ease;
+}
+.vyg-card__cta:hover,
+.vyg-card__cta:focus {
+    background: rgba(0, 0, 0, 0.12);
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+.vyg-card__cta-price {
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+/* Phase 10 — Elementor editor placeholder (no API call, no DOM mutation). */
+.vyg-elementor-editor-placeholder {
+    border: 1px dashed rgba(0, 0, 0, 0.25);
+    padding: 1em;
+    text-align: center;
+    color: #555;
+    background: rgba(0, 0, 0, 0.02);
+}
+.vyg-elementor-editor-placeholder__hint {
+    margin-top: 0.4em;
+    font-size: 0.85em;
+    color: #777;
+}

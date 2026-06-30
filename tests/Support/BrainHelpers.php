@@ -87,10 +87,26 @@ final class BrainHelpers {
             return gmdate( $fmt, $ts ?? time() );
         } );
         Functions\when( 'mysql2date' )->alias( static function ( string $format, string $date ): string {
-            $ts = strtotime( $date . ' UTC' );
-            return $ts ? gmdate( $format, $ts ) : $date;
+            return gmdate( $format, strtotime( $date ) ?: time() );
         } );
     }
+
+    /**
+     * Stubs for renderer / integration code that calls WP functions
+     * outside the typical `esc_*` / `sanitize_*` set. These let unit
+     * tests run code paths that touch WordPress internals (post-type
+     * existence, plugin-conditional integrations) without bootstrapping
+     * a real WP install.
+     */
+    public static function stubIntegrationFunctions(): void {
+        // Default: post type does NOT exist. Specific tests can override
+        // with their own Brain Monkey alias.
+        Functions\when('post_type_exists')->alias(static fn(string $slug): bool => false);
+        Functions\when('wc_get_product')->alias(static fn($id) => null);
+        Functions\when('get_post_status')->alias(static fn(int $id): string => 'publish');
+        Functions\when('get_permalink')->alias(static fn(int $id): string => 'https://example.test/?p=' . $id);
+    }
+
 
     /**
      * Stub the WP option helpers via the OptionsBag.

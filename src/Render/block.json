@@ -18,6 +18,10 @@
         }
     },
     "attributes": {
+        "feed_uuid": {
+            "type": "string",
+            "default": ""
+        },
         "source_uuid": {
             "type": "string",
             "default": ""
@@ -53,8 +57,12 @@
         "schema_enabled": {
             "type": "boolean",
             "default": false
+        },
+        "preset": {
+            "type": "string",
+            "default": "default"
         }
     },
-    "editorScript": "file:./index.js",
+    "editorScript": "vyg-editor",
     "render": "file:./render.php"
 }

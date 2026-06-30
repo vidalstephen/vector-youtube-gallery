@@ -62,6 +62,8 @@ if ( is_file( $autoload ) ) {
     // Minimal fallback — require the bootstrap classes by hand.
     require_once __DIR__ . '/src/Container.php';
     require_once __DIR__ . '/src/Plugin.php';
+    require_once __DIR__ . '/src/Integrations/WooCommerce/ProductLink.php'; // Phase 10.3
+    require_once __DIR__ . '/src/compat.php'; // Phase 10.3 — global helpers
 }
 
 add_action( 'plugins_loaded', array( \VectorYT\Gallery\Plugin::class, 'boot' ) );

@@ -207,13 +207,14 @@ final class Renderer {
         $preset     = \VectorYT\Gallery\Render\Presets::sanitize_slug( (string) ( $args['preset'] ?? 'default' ) );
 
         $ctx = array(
-            'source'     => $source,
-            'videos'     => $videos,
-            'renderer'   => $this->video_renderer,
-            'wrapper_id' => $wrapper_id,
-            'feed_uuid'  => $feed_uuid,
-            'preset'     => $preset,
-            'attrs'      => array_merge( $args, array(
+            'source'       => $source,
+            'videos'       => $videos,
+            'renderer'     => $this->video_renderer,
+            'wrapper_id'   => $wrapper_id,
+            'feed_uuid'    => $feed_uuid,
+            'feed_config'  => (array) ( $args['feed_config'] ?? array() ),
+            'preset'       => $preset,
+            'attrs'        => array_merge( $args, array(
                 'layout'      => $layout_slug,
                 'offset'      => $offset,
                 'total'       => $total,
