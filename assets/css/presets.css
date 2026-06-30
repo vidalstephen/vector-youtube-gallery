@@ -16,16 +16,21 @@
     --vyg-card-radius:           8px;
     --vyg-card-bg:               transparent;
     --vyg-card-shadow:           none;
+    --vyg-card-shadow-hover:     0 4px 10px rgba(0, 0, 0, 0.08);
     --vyg-card-border:           0 solid transparent;
+    --vyg-card-padding:          0.9rem;
     --vyg-card-title-weight:     600;
     --vyg-card-title-size:       0.95em;
     --vyg-card-title-color:      inherit;
+    --vyg-card-meta-size:        0.8125rem;
+    --vyg-card-meta-color:       rgba(0, 0, 0, 0.6);
     --vyg-grid-gap:              1rem;
     --vyg-duration-bg:           rgba(0, 0, 0, 0.78);
     --vyg-duration-color:        #fff;
     --vyg-pill-bg:               rgba(0, 0, 0, 0.78);
     --vyg-pill-color:            #fff;
     --vyg-card-thumb-bg:         #000;
+    --vyg-verified-color:        #1a73e8;
 }
 
 .vyg-feed .vyg-card {
