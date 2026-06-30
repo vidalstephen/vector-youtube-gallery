@@ -49,7 +49,7 @@ if ( ! defined( 'VYG_USE_MOCK' ) ) {
     define( 'VYG_USE_MOCK', true );
 }
 if ( ! defined( 'VYG_DB_VERSION' ) ) {
-    define( 'VYG_DB_VERSION', '0.3.0' );
+    define( 'VYG_DB_VERSION', '0.4.0' );
 }
 if ( ! defined( 'VYG_MIN_PHP' ) ) {
     define( 'VYG_MIN_PHP', '8.1' );

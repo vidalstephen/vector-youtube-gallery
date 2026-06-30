@@ -68,6 +68,21 @@
             frame.removeChild(frame.firstChild);
         }
         frame.insertBefore(iframe, closeBtn);
+        // Phase 11.1: dispatch lightbox_open event so analytics.js can record it.
+        // The card is found by walking up from the click target (we don't have
+        // a direct ref here — the listener binds it via closest('.vyg-card')).
+        var anchor = document.activeElement;
+        var card   = anchor && anchor.closest && anchor.closest('.vyg-card');
+        var videoId = card && card.getAttribute ? card.getAttribute('data-video-id') : '';
+        var wrapper = card && card.closest ? card.closest('.vyg-feed') : null;
+        try {
+            document.dispatchEvent(new CustomEvent('vyg:lightbox-open', {
+                detail: {
+                    videoId:   videoId || '',
+                    wrapperId: wrapper && wrapper.id ? wrapper.id : ''
+                }
+            }));
+        } catch (e) { /* analytics is best-effort */ }
         overlay.classList.add('is-open');
         document.body.style.overflow = 'hidden';
         previouslyFocused = document.activeElement;

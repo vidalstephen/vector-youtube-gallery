@@ -26,6 +26,7 @@ final class AssetManager {
     private bool $load_more_enqueued = false;
     private bool $carousel_enqueued = false;
     private bool $presets_enqueued = false;
+    private bool $analytics_enqueued = false;
     /** @var array<string,bool> */
     private array $css_enqueued = array();
 
@@ -85,6 +86,9 @@ final class AssetManager {
         if ('carousel' === $layout_slug) {
             $this->enqueue_carousel();
         }
+
+        // Phase 11.1 — analytics capture (no-op when disabled).
+        $this->enqueue_analytics();
     }
 
     public function maybe_enqueue_presets(): void {
@@ -114,6 +118,39 @@ final class AssetManager {
         );
         wp_enqueue_script(self::HANDLE_BASE . '-carousel');
         $this->carousel_enqueued = true;
+    }
+
+    /**
+     * Phase 11.1 — enqueue analytics capture script + inline settings.
+     * No-op when analytics is disabled (privacy by default).
+     */
+    public function enqueue_analytics(): void {
+        if ($this->analytics_enqueued) {
+            return;
+        }
+        if (! \VectorYT\Gallery\Analytics\EventRepository::is_enabled()) {
+            // Mark enqueued so we don't re-check on every feed render.
+            $this->analytics_enqueued = true;
+            return;
+        }
+        wp_register_script(
+            self::HANDLE_BASE . '-analytics',
+            $this->url('js/analytics.js'),
+            array(),
+            self::VERSION,
+            true
+        );
+        wp_localize_script(
+            self::HANDLE_BASE . '-analytics',
+            'VYG_ANALYTICS',
+            array(
+                'enabled'  => true,
+                'restRoot' => esc_url_raw(rest_url('vyg/v1/')),
+                'nonce'    => wp_create_nonce('wp_rest'),
+            )
+        );
+        wp_enqueue_script(self::HANDLE_BASE . '-analytics');
+        $this->analytics_enqueued = true;
     }
 
     public function enqueue_lightbox(): void {

@@ -429,6 +429,24 @@ final class Plugin {
                 $c->get( 'repo.import_log' )
             )
         );
+        // Phase 11.1 — public events ingestion endpoint.
+        $c->set(
+            'rest.analytics',
+            static fn(): \VectorYT\Gallery\REST\AnalyticsController
+                => new \VectorYT\Gallery\REST\AnalyticsController()
+        );
+        // Phase 11.1 — daily retention cron handler.
+        $c->set(
+            'analytics.retention',
+            static fn(): \VectorYT\Gallery\Analytics\AnalyticsRetentionJob
+                => new \VectorYT\Gallery\Analytics\AnalyticsRetentionJob()
+        );
+        // Phase 11.5 — CSV/JSON export.
+        $c->set(
+            'rest.export',
+            static fn(): \VectorYT\Gallery\REST\ExportController
+                => new \VectorYT\Gallery\REST\ExportController()
+        );
     }
 
     /**
@@ -474,6 +492,13 @@ final class Plugin {
         $c->get( 'integrations.divi' )->register_hooks();
         $c->get( 'rest.feed' )->register_routes();
         $c->get( 'rest.admin' )->register_routes();
+        // Phase 11.1: analytics routes MUST register on rest_api_init
+        // (WordPress requirement). The other controllers happen to work
+        // because they internally hook rest_api_init themselves;
+        // analytics uses direct registration so we wire it here.
+        add_action( 'rest_api_init', static fn() => $c->get( 'rest.analytics' )->register_routes() );
+        // Phase 11.5 — analytics export. Same rest_api_init hook.
+        add_action( 'rest_api_init', static fn() => $c->get( 'rest.export' )->register_routes() );
 
         // Phase 6: settings export admin-post handler.
         add_action( 'admin_post_vyg_export_settings', static function () use ( $c ): void {
@@ -500,6 +525,9 @@ final class Plugin {
         // Phase 6: daily retention sweep via WP-Cron.
         add_action( 'vyg_cron_data_retention', static function () use ( $c ): void {
             $c->get( 'compliance.retention' )->run_sweep();
+            // Phase 11.1 — analytics events are pruned on the same daily
+            // tick so the operator doesn't need to schedule two sweeps.
+            $c->get( 'analytics.retention' )->handle();
         } );
 
         // Cron tick: queue incremental syncs for every active source.

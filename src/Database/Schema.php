@@ -37,6 +37,7 @@ final class Schema {
             'vyg_api_quota_log'        => self::api_quota_log(),
             'vyg_previous_streams'     => self::previous_streams(),
             'vyg_import_log'           => self::import_log(),
+            'vyg_events'               => self::events(),
         );
     }
 
@@ -378,6 +379,52 @@ final class Schema {
             KEY user_id (user_id),
             KEY ok_flag (ok_flag),
             KEY created_at (created_at)
+        ) {$c};";
+    }
+
+    /**
+     * Phase 11.1 — local analytics events.
+     *
+     * One row per event (impression / play / lightbox_open / load_more_click).
+     * Privacy defaults OFF: no rows are written unless the operator enables
+     * `vyg_analytics_enabled`. Even when ON, IPs and User-Agents are
+     * SHA-256-hashed before storage; raw values are never written.
+     *
+     * Retention: rows older than `vyg_analytics_retention_days` are pruned
+     * by AnalyticsRetentionJob (daily cron) and on plugin upgrade.
+     *
+     * Indexed for the Phase 11.2 dashboard's typical queries:
+     *   - top videos by event_type over a date range
+     *   - per-feed breakdown (feed_uuid)
+     *   - per-source breakdown (source_id)
+     *   - daily timeline rollups
+     */
+    public static function events(): string {
+        global $wpdb;
+        $t = self::table( 'vyg_events' );
+        $c = $wpdb->get_charset_collate();
+        return "CREATE TABLE {$t} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            event_type varchar(32) NOT NULL,
+            youtube_video_id varchar(16) DEFAULT NULL,
+            source_id bigint(20) unsigned DEFAULT NULL,
+            feed_uuid char(36) DEFAULT NULL,
+            wrapper_id varchar(64) DEFAULT NULL,
+            session_hash char(64) DEFAULT NULL,
+            ip_hash char(64) DEFAULT NULL,
+            user_agent_hash char(64) DEFAULT NULL,
+            event_data_json longtext DEFAULT NULL,
+            created_at datetime NOT NULL,
+            PRIMARY KEY  (id),
+            KEY event_type (event_type),
+            KEY youtube_video_id (youtube_video_id),
+            KEY source_id (source_id),
+            KEY feed_uuid (feed_uuid),
+            KEY wrapper_id (wrapper_id),
+            KEY created_at (created_at),
+            KEY event_type_created_at (event_type, created_at),
+            KEY feed_uuid_created_at (feed_uuid, created_at),
+            KEY youtube_video_id_created_at (youtube_video_id, created_at)
         ) {$c};";
     }
 

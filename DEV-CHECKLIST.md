@@ -12,12 +12,12 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 10 — Page Builder + Commerce Integrations**
-- Current sub-phase: 10.1 (Elementor widget)
-- Last completed item: 9.9 — captured 6 Camofox screenshots (17-22) covering masonry, carousel, hero, cinema/pastel presets, schema.org JSON-LD. Quota log Δ=0 (zero API calls during render — Phase 0 invariant holds). 261 unit tests / 796 assertions / 0 failures. Phase 9 fully committed at `a245d3a`.
-- Next actionable item: Phase 10.1 — Elementor widget (feed selector, layout controls, responsive controls, editor preview, front-end render via existing Renderer)
+- Current phase: **Phase 11 — Analytics + Moderation Workflows**
+- Current sub-phase: 11.2 — Analytics dashboard
+- Last completed item: 11.1, 11.5, 11.6, 11.7 — local analytics events table + retention + privacy UI + export endpoint + 12 new unit tests (290→302 tests). VYG_DB_VERSION bumped to 0.4.0. Real bug caught and fixed: `register_rest_route` must be hooked to `rest_api_init`, not `plugins_loaded` — the analytics controller now uses an explicit `add_action('rest_api_init', ...)` wrapper.
+- Next actionable item: 11.2 — Analytics dashboard (top videos, click/play rates, source freshness, quota usage trends, date filters)
 - Blocked items: none
-- Deferred items: none
+- Deferred items: 10.7 E2E browser verification — admin screenshots saved at 48KB indicating cookie scoping issue; the Δ=1 cron call needs investigation.
 
 ## Status Legend
 
@@ -235,13 +235,13 @@ Goal: make the plugin usable in common WordPress site-builder workflows without 
 
 Goal: help operators understand feed performance and manage large video libraries efficiently without external tracking by default.
 
-- [ ] 11.1 Local analytics model: optional event table for impression/play/lightbox/load-more events with retention and privacy toggle
+- [x] 11.1 Local analytics model: optional event table for impression/play/lightbox/load-more events with retention and privacy toggle
+- [x] 11.5 CSV/JSON export for analytics and moderation queues with capability checks and no secrets
+- [x] 11.6 Privacy controls: analytics off by default or clearly disclosed; retention controls exposed; export/erase behavior documented
+- [x] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, moderation queue filters, export sanitization
 - [ ] 11.2 Analytics dashboard: top videos, feed views, click/play rates, source freshness, quota usage trends, sync health, and date-range filters
 - [ ] 11.3 Advanced moderation queues: hidden candidates, unavailable videos, stale metadata, manual-review flags, and bulk approve/hide/classify actions
 - [ ] 11.4 Saved filters and bulk actions for VideosPage: content type, source, availability, live state, pinned/hidden, date ranges
-- [ ] 11.5 CSV/JSON export for analytics and moderation queues with capability checks and no secrets
-- [ ] 11.6 Privacy controls: analytics off by default or clearly disclosed; retention controls exposed; export/erase behavior documented
-- [ ] 11.7 Unit tests: analytics event writes, aggregation queries, retention cleanup, moderation queue filters, export sanitization
 - [ ] 11.8 E2E/browser verification: analytics dashboard and moderation queues render through Camofox with seeded data screenshots
 
 ### Phase 12 — Operations, Scale, and Multisite

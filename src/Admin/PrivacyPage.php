@@ -93,6 +93,25 @@ final class PrivacyPage {
             return __( 'Clean-uninstall preference saved.', 'vector-youtube-gallery' );
         }
 
+        if ( 'save_analytics' === $op ) {
+            $enabled = ! empty( $_POST['analytics_enabled'] ) ? '1' : '0';
+            $days    = isset( $_POST['analytics_retention_days'] )
+                ? max( 1, min( 3650, absint( wp_unslash( $_POST['analytics_retention_days'] ) ) ) )
+                : 30;
+            update_option( 'vyg_analytics_enabled', $enabled, false );
+            update_option( 'vyg_analytics_retention_days', (string) $days, false );
+            return __( 'Analytics preference saved.', 'vector-youtube-gallery' );
+        }
+
+        if ( 'wipe_analytics' === $op ) {
+            $deleted = \VectorYT\Gallery\Analytics\EventRepository::wipe_all();
+            return sprintf(
+                /* translators: %d: rows deleted */
+                __( 'Analytics history wiped: %d rows deleted.', 'vector-youtube-gallery' ),
+                (int) $deleted
+            );
+        }
+
         if ( 'disconnect' === $op ) {
             $result = $this->disconnector->disconnect_all();
             return sprintf(
@@ -220,6 +239,36 @@ final class PrivacyPage {
                 <input type="hidden" name="vyg_privacy_op" value="import_settings" />
                 <textarea name="import_json" rows="6" class="large-text code" placeholder="<?php echo esc_attr__( 'Paste settings JSON here…', 'vector-youtube-gallery' ); ?>"></textarea>
                 <p><button type="submit" class="button"><?php echo esc_html__( 'Import settings JSON', 'vector-youtube-gallery' ); ?></button></p>
+            </form>
+
+            <h2><?php echo esc_html__( 'Local analytics (Phase 11)', 'vector-youtube-gallery' ); ?></h2>
+            <p><?php echo esc_html__( 'Captures anonymous front-end events (impressions, play clicks, lightbox opens, load-more clicks) for operator dashboards. Analytics is OFF by default — turn it on only if you intend to use the dashboard.', 'vector-youtube-gallery' ); ?></p>
+            <p><?php echo esc_html__( 'Stored data: hashed (SHA-256) IP + User-Agent + event metadata. No raw IP, no User-Agent string, no cookies used for cross-site tracking. Retention prunes old rows automatically.', 'vector-youtube-gallery' ); ?></p>
+            <form method="post">
+                <?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD ); ?>
+                <input type="hidden" name="vyg_privacy_op" value="save_analytics" />
+                <p>
+                    <label>
+                        <input type="checkbox" name="analytics_enabled" value="1" <?php checked( \VectorYT\Gallery\Analytics\EventRepository::is_enabled() ); ?> />
+                        <?php echo esc_html__( 'Enable local analytics', 'vector-youtube-gallery' ); ?>
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        <?php echo esc_html__( 'Retention (days):', 'vector-youtube-gallery' ); ?>
+                        <input type="number" name="analytics_retention_days" min="1" max="3650" value="<?php echo esc_attr( (string) \VectorYT\Gallery\Analytics\EventRepository::retention_days() ); ?>" />
+                    </label>
+                </p>
+                <p>
+                    <button type="submit" class="button button-primary"><?php echo esc_html__( 'Save analytics preference', 'vector-youtube-gallery' ); ?></button>
+                </p>
+            </form>
+
+            <form method="post" onsubmit="return confirm('<?php echo esc_js( __( 'This permanently deletes all analytics rows. Continue?', 'vector-youtube-gallery' ) ); ?>');">
+                <?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD ); ?>
+                <input type="hidden" name="vyg_privacy_op" value="wipe_analytics" />
+                <button type="submit" class="button button-secondary"><?php echo esc_html__( 'Wipe analytics history now', 'vector-youtube-gallery' ); ?></button>
+                <span class="description"><?php echo esc_html__( 'Truncates the wp_vyg_events table. Useful before re-enabling analytics in production.', 'vector-youtube-gallery' ); ?></span>
             </form>
 
             <h2><?php echo esc_html__( 'Suggested privacy policy text', 'vector-youtube-gallery' ); ?></h2>
