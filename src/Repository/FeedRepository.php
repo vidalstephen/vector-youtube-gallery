@@ -47,6 +47,56 @@ class FeedRepository {
     }
 
     /**
+     * Allow-list of keys that may appear in `display_config_json`.
+     *
+     * Phase 13.1 grid redesign added the `density`, `header_*`, `show_*`,
+     * `product_cta_visible`, `trust_strip`, and `card_radius` keys. Anything
+     * outside this set is dropped on save — defense in depth so a feed row
+     * cannot be tricked into storing a non-standard key that the templates
+     * don't know how to render.
+     *
+     * @return array<int,string>
+     */
+    public static function allowed_display_keys(): array {
+        return array(
+            // Existing pre-Phase-13.1 keys (kept for back-compat).
+            'columns',
+            'per_page',
+            'preset',
+            'lightbox',
+            'load_more',
+            'schema_enabled',
+            'player_mode',
+            // Phase 13.1 — density.
+            'density',
+            // Phase 13.1 — section header.
+            'header_title',
+            'header_subtitle',
+            'header_columns_visible',
+            'header_cta_label',
+            'header_cta_url',
+            // Phase 13.1 — card.
+            'show_channel_avatar',
+            'show_channel_name',
+            'show_subscriber_count',
+            'show_verified_badge',
+            'show_views_and_time',
+            'product_cta_visible',
+            'card_radius',
+            // Phase 13.1 — footer.
+            'trust_strip',
+        );
+    }
+
+    /**
+     * Allow-list of values for the `density` attribute.
+     * @return array<int,string>
+     */
+    public static function allowed_densities(): array {
+        return array( 'compact', 'comfortable', 'editorial' );
+    }
+
+    /**
      * @param array<string,mixed> $data
      */
     public function create( array $data ): int {
@@ -286,11 +336,23 @@ class FeedRepository {
             if ( isset( $data[ $json_col ] ) ) {
                 $raw = $data[ $json_col ];
                 if ( is_array( $raw ) ) {
-                    $out[ $json_col ] = wp_json_encode( $raw );
+                    // Phase 13.1: the display config allow-list sanitizes
+                    // every key (drops unknowns) and coerces booleans / density
+                    // before encoding. Other JSON columns keep their prior
+                    // passthrough behavior.
+                    if ( 'display_config_json' === $json_col ) {
+                        $out[ $json_col ] = wp_json_encode( self::sanitize_display_config( $raw ) );
+                    } else {
+                        $out[ $json_col ] = wp_json_encode( $raw );
+                    }
                 } elseif ( is_string( $raw ) ) {
                     // Re-validate as JSON to prevent injection.
                     $decoded = json_decode( $raw, true );
-                    $out[ $json_col ] = ( null === $decoded && json_last_error() !== JSON_ERROR_NONE ) ? null : wp_json_encode( $decoded );
+                    if ( 'display_config_json' === $json_col && is_array( $decoded ) ) {
+                        $out[ $json_col ] = wp_json_encode( self::sanitize_display_config( $decoded ) );
+                    } else {
+                        $out[ $json_col ] = ( null === $decoded && json_last_error() !== JSON_ERROR_NONE ) ? null : wp_json_encode( $decoded );
+                    }
                 } else {
                     $out[ $json_col ] = null;
                 }
@@ -316,6 +378,90 @@ class FeedRepository {
             $out['status'] = in_array( $st, array( 'draft', 'published', 'archived' ), true ) ? $st : 'draft';
         }
         return $out;
+    }
+
+    /**
+     * Filter a `display_config_json` payload through the allow-list and
+     * coerce each value to the right type.
+     *
+     * Defense in depth: even though the source is operator-controlled, an
+     * attacker who can write to the DB directly could plant arbitrary keys.
+     * Allow-listing means the templates never see a key they don't have CSS
+     * or markup for.
+     *
+     * @param array<string,mixed> $raw
+     * @return array<string,mixed>
+     */
+    public static function sanitize_display_config( array $raw ): array {
+        $allowed = array_flip( self::allowed_display_keys() );
+        $out = array();
+        foreach ( $raw as $key => $value ) {
+            if ( ! is_string( $key ) || ! isset( $allowed[ $key ] ) ) {
+                continue;
+            }
+            $out[ $key ] = self::coerce_display_value( $key, $value );
+        }
+        return $out;
+    }
+
+    /**
+     * Coerce a single `display_config_json` value to its expected type.
+     *
+     * @param string $key
+     * @param mixed  $value
+     * @return mixed
+     */
+    private static function coerce_display_value( string $key, $value ) {
+        switch ( $key ) {
+            case 'density':
+                $candidate = is_string( $value ) ? strtolower( trim( $value ) ) : '';
+                return in_array( $candidate, self::allowed_densities(), true ) ? $candidate : 'comfortable';
+
+            case 'header_title':
+            case 'header_subtitle':
+            case 'header_cta_label':
+            case 'card_radius':
+                return sanitize_text_field( (string) $value );
+
+            case 'header_cta_url':
+                return esc_url_raw( (string) $value );
+
+            case 'columns':
+                $n = (int) $value;
+                if ( $n < 1 ) { return 1; }
+                if ( $n > 6 ) { return 6; }
+                return $n;
+
+            case 'per_page':
+                $n = (int) $value;
+                if ( $n < 1 ) { return 1; }
+                if ( $n > 200 ) { return 200; }
+                return $n;
+
+            case 'preset':
+            case 'player_mode':
+                $candidate = sanitize_key( (string) $value );
+                return $candidate;
+
+            // All known booleans go through filter_var so truthy strings
+            // ("yes", "true", "1") and ints coerce predictably.
+            case 'header_columns_visible':
+            case 'show_channel_avatar':
+            case 'show_channel_name':
+            case 'show_subscriber_count':
+            case 'show_verified_badge':
+            case 'show_views_and_time':
+            case 'product_cta_visible':
+            case 'trust_strip':
+            case 'lightbox':
+            case 'load_more':
+            case 'schema_enabled':
+                return filter_var( $value, FILTER_VALIDATE_BOOLEAN );
+
+            default:
+                // Unknown allowed key — keep the value as-is.
+                return $value;
+        }
     }
 
     /**
