@@ -93,6 +93,12 @@
                 return { value: slug, label: slug.charAt(0).toUpperCase() + slug.slice(1) };
             } );
 
+            var densityOptions = [
+                { value: "compact", label: __( "Compact", "vector-youtube-gallery" ) },
+                { value: "comfortable", label: __( "Comfortable (default)", "vector-youtube-gallery" ) },
+                { value: "editorial", label: __( "Editorial", "vector-youtube-gallery" ) }
+            ];
+
             var presetOptions = [ "default", "minimal", "cinema", "pastel", "developer" ].map( function ( slug ) {
                 return { value: slug, label: slug.charAt(0).toUpperCase() + slug.slice(1) };
             } );
@@ -125,6 +131,13 @@
                         options: layoutOptions,
                         onChange: function ( v ) { setAttrs( { layout: v } ); }
                     } ),
+                    el( SelectControl, {
+                        label: __( "Density", "vector-youtube-gallery" ),
+                        value: attrs.density || "comfortable",
+                        options: densityOptions,
+                        onChange: function ( v ) { setAttrs( { density: v } ); },
+                        help: __( "Compact = tighter cards. Editorial = larger spacing, deeper shadow.", "vector-youtube-gallery" )
+                    } ),
                     el( RangeControl, {
                         label: __( "Columns", "vector-youtube-gallery" ),
                         value: Number( attrs.columns || 3 ),
@@ -136,6 +149,79 @@
                         value: Number( attrs.per_page || 12 ),
                         min: 1, max: 200,
                         onChange: function ( v ) { setAttrs( { per_page: v } ); }
+                    } )
+                ),
+                el( PanelBody, { title: __( "Header", "vector-youtube-gallery" ), initialOpen: false },
+                    el( TextControl, {
+                        label: __( "Header title", "vector-youtube-gallery" ),
+                        value: attrs.header_title || "",
+                        onChange: function ( v ) { setAttrs( { header_title: v } ); },
+                        help: __( "Leave empty to hide the section header.", "vector-youtube-gallery" )
+                    } ),
+                    el( TextControl, {
+                        label: __( "Header subtitle", "vector-youtube-gallery" ),
+                        value: attrs.header_subtitle || "",
+                        onChange: function ( v ) { setAttrs( { header_subtitle: v } ); }
+                    } ),
+                    el( ToggleControl, {
+                        label: __( "Show column count in header", "vector-youtube-gallery" ),
+                        checked: !! attrs.header_columns_visible,
+                        onChange: function ( v ) { setAttrs( { header_columns_visible: !! v } ); }
+                    } ),
+                    el( TextControl, {
+                        label: __( "CTA label", "vector-youtube-gallery" ),
+                        value: attrs.header_cta_label || "",
+                        onChange: function ( v ) { setAttrs( { header_cta_label: v } ); }
+                    } ),
+                    el( TextControl, {
+                        label: __( "CTA URL", "vector-youtube-gallery" ),
+                        value: attrs.header_cta_url || "",
+                        onChange: function ( v ) { setAttrs( { header_cta_url: v } ); },
+                        type: "url"
+                    } )
+                ),
+                el( PanelBody, { title: __( "Card", "vector-youtube-gallery" ), initialOpen: false },
+                    el( ToggleControl, {
+                        label: __( "Show channel name", "vector-youtube-gallery" ),
+                        checked: !! attrs.show_channel_name,
+                        onChange: function ( v ) { setAttrs( { show_channel_name: !! v } ); }
+                    } ),
+                    el( ToggleControl, {
+                        label: __( "Show channel avatar (Phase 13.2)", "vector-youtube-gallery" ),
+                        checked: !! attrs.show_channel_avatar,
+                        onChange: function ( v ) { setAttrs( { show_channel_avatar: !! v } ); }
+                    } ),
+                    el( ToggleControl, {
+                        label: __( "Show verified badge (Phase 13.2)", "vector-youtube-gallery" ),
+                        checked: !! attrs.show_verified_badge,
+                        onChange: function ( v ) { setAttrs( { show_verified_badge: !! v } ); }
+                    } ),
+                    el( ToggleControl, {
+                        label: __( "Show subscriber count (Phase 13.2)", "vector-youtube-gallery" ),
+                        checked: !! attrs.show_subscriber_count,
+                        onChange: function ( v ) { setAttrs( { show_subscriber_count: !! v } ); }
+                    } ),
+                    el( ToggleControl, {
+                        label: __( "Show views and time", "vector-youtube-gallery" ),
+                        checked: !! attrs.show_views_and_time,
+                        onChange: function ( v ) { setAttrs( { show_views_and_time: !! v } ); }
+                    } ),
+                    el( ToggleControl, {
+                        label: __( "Show product cart CTA (when mapped)", "vector-youtube-gallery" ),
+                        checked: !! attrs.product_cta_visible,
+                        onChange: function ( v ) { setAttrs( { product_cta_visible: !! v } ); }
+                    } ),
+                    el( TextControl, {
+                        label: __( "Card border radius (CSS value)", "vector-youtube-gallery" ),
+                        value: attrs.card_radius || "12px",
+                        onChange: function ( v ) { setAttrs( { card_radius: v } ); }
+                    } )
+                ),
+                el( PanelBody, { title: __( "Footer", "vector-youtube-gallery" ), initialOpen: false },
+                    el( ToggleControl, {
+                        label: __( "Show trust-badges strip (Lazy Loaded / Privacy Safe / Accessible / Builder Ready)", "vector-youtube-gallery" ),
+                        checked: !! attrs.trust_strip,
+                        onChange: function ( v ) { setAttrs( { trust_strip: !! v } ); }
                     } )
                 ),
                 el( PanelBody, { title: __( "Filter & sort", "vector-youtube-gallery" ), initialOpen: false },

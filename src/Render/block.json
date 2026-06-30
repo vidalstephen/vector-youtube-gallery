@@ -61,6 +61,62 @@
         "preset": {
             "type": "string",
             "default": "default"
+        },
+        "density": {
+            "type": "string",
+            "default": "comfortable"
+        },
+        "header_title": {
+            "type": "string",
+            "default": ""
+        },
+        "header_subtitle": {
+            "type": "string",
+            "default": ""
+        },
+        "header_columns_visible": {
+            "type": "boolean",
+            "default": true
+        },
+        "header_cta_label": {
+            "type": "string",
+            "default": ""
+        },
+        "header_cta_url": {
+            "type": "string",
+            "default": ""
+        },
+        "show_channel_avatar": {
+            "type": "boolean",
+            "default": true
+        },
+        "show_channel_name": {
+            "type": "boolean",
+            "default": true
+        },
+        "show_subscriber_count": {
+            "type": "boolean",
+            "default": false
+        },
+        "show_verified_badge": {
+            "type": "boolean",
+            "default": false
+        },
+        "show_views_and_time": {
+            "type": "boolean",
+            "default": true
+        },
+        "product_cta_visible": {
+            "type": "boolean",
+            "default": true
+        },
+        "trust_strip": {
+            "type": "boolean",
+            "default": false
+        },
+        "card_radius": {
+            "type": "string",
+            "default": "12px"
         }
     },
     "editorScript": "vyg-editor",

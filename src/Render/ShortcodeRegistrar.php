@@ -73,6 +73,21 @@ final class ShortcodeRegistrar {
                 'wrapper_id'   => '',
                 'schema_enabled' => false,
                 'preset'         => 'default',
+                // Phase 13.1 — grid redesign.
+                'density'                => 'comfortable',
+                'header_title'           => '',
+                'header_subtitle'        => '',
+                'header_columns_visible' => true,
+                'header_cta_label'       => '',
+                'header_cta_url'         => '',
+                'show_channel_avatar'    => true,
+                'show_channel_name'      => true,
+                'show_subscriber_count'  => false,
+                'show_verified_badge'    => false,
+                'show_views_and_time'    => true,
+                'product_cta_visible'    => true,
+                'trust_strip'            => false,
+                'card_radius'            => '12px',
             ),
             $atts,
             self::TAG
@@ -184,6 +199,21 @@ final class ShortcodeRegistrar {
             'schema_enabled' => ! empty( $atts['schema_enabled'] ),
             'preset'         => sanitize_key( (string) ( $atts['preset'] ?? 'default' ) ),
             'feed_config'    => is_array( $config ?? null ) ? $config : array(),
+            // Phase 13.1 — grid redesign.
+            'density'                => sanitize_key( (string) ( $atts['density'] ?? 'comfortable' ) ),
+            'header_title'           => sanitize_text_field( (string) ( $atts['header_title'] ?? '' ) ),
+            'header_subtitle'        => sanitize_text_field( (string) ( $atts['header_subtitle'] ?? '' ) ),
+            'header_columns_visible' => ! empty( $atts['header_columns_visible'] ),
+            'header_cta_label'       => sanitize_text_field( (string) ( $atts['header_cta_label'] ?? '' ) ),
+            'header_cta_url'         => esc_url_raw( (string) ( $atts['header_cta_url'] ?? '' ) ),
+            'show_channel_avatar'    => ! empty( $atts['show_channel_avatar'] ),
+            'show_channel_name'      => ! empty( $atts['show_channel_name'] ),
+            'show_subscriber_count'  => ! empty( $atts['show_subscriber_count'] ),
+            'show_verified_badge'    => ! empty( $atts['show_verified_badge'] ),
+            'show_views_and_time'    => ! empty( $atts['show_views_and_time'] ),
+            'product_cta_visible'    => ! empty( $atts['product_cta_visible'] ),
+            'trust_strip'            => ! empty( $atts['trust_strip'] ),
+            'card_radius'            => sanitize_text_field( (string) ( $atts['card_radius'] ?? '12px' ) ),
         ) );
     }
 }
