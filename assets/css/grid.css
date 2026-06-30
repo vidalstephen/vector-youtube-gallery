@@ -1,71 +1,211 @@
-/* Grid layout — responsive card grid. */
+/* Vector YouTube Gallery — grid layout (Phase 13.1 redesign)
+ *
+ * Tokens (declared on .vyg-feed and overridden by the density class):
+ *   --vyg-grid-gap          gap between cards
+ *   --vyg-card-padding      padding inside the card body
+ *   --vyg-card-radius       border radius
+ *   --vyg-card-shadow       resting shadow
+ *   --vyg-card-shadow-hover hovered shadow
+ *   --vyg-card-title-size   title font size
+ *   --vyg-card-title-weight title font weight
+ *   --vyg-card-meta-size    meta-row font size
+ *   --vyg-card-meta-color   meta-row text color
+ *
+ * The 5 white-label presets (default / minimal / cinema / pastel / developer)
+ * live in assets/css/presets.css and override the same variables; presets win
+ * for visual tokens like --vyg-card-bg, density wins for layout tokens like
+ * --vyg-grid-gap.
+ */
+
 .vyg-feed--grid.vyg-grid {
-    display: grid;
-    gap: 1rem;
+    display: block; /* the header sits outside the cards grid */
+    gap: var(--vyg-grid-gap);
 }
 
-.vyg-feed--grid.vyg-grid--cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-.vyg-feed--grid.vyg-grid--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.vyg-feed--grid.vyg-grid--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.vyg-feed--grid.vyg-grid--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.vyg-feed--grid.vyg-grid--cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.vyg-feed--grid.vyg-grid--cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.vyg-feed--grid.vyg-grid--cols-1 .vyg-grid__cards { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.vyg-feed--grid.vyg-grid--cols-2 .vyg-grid__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vyg-feed--grid.vyg-grid--cols-3 .vyg-grid__cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vyg-feed--grid.vyg-grid--cols-4 .vyg-grid__cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.vyg-feed--grid.vyg-grid--cols-5 .vyg-grid__cards { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.vyg-feed--grid.vyg-grid--cols-6 .vyg-grid__cards { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+.vyg-grid__cards {
+    display: grid;
+    gap: var(--vyg-grid-gap);
+}
 
 @media (max-width: 600px) {
-    .vyg-feed--grid.vyg-grid--cols-3,
-    .vyg-feed--grid.vyg-grid--cols-4,
-    .vyg-feed--grid.vyg-grid--cols-5,
-    .vyg-feed--grid.vyg-grid--cols-6 {
+    .vyg-feed--grid.vyg-grid--cols-3 .vyg-grid__cards,
+    .vyg-feed--grid.vyg-grid--cols-4 .vyg-grid__cards,
+    .vyg-feed--grid.vyg-grid--cols-5 .vyg-grid__cards,
+    .vyg-feed--grid.vyg-grid--cols-6 .vyg-grid__cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
 @media (max-width: 380px) {
-    .vyg-feed--grid.vyg-grid {
-        grid-template-columns: 1fr;
+    .vyg-grid__cards {
+        grid-template-columns: 1fr !important;
+    }
+    .vyg-grid--density-comfortable { /* auto-collapse the most common density to compact on small phones */
+        --vyg-grid-gap: 0.75rem;
+        --vyg-card-padding: 0.6rem;
     }
 }
 
-.vyg-card {
-    background: transparent;
-    border-radius: 8px;
+/* ---- Section header ---------------------------------------------------- */
+
+.vyg-grid__header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin: 0 0 1.25rem;
+    padding: 0;
+}
+
+.vyg-grid__header-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.vyg-grid__header-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.vyg-grid__header-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: inherit;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vyg-grid__header-subtitle {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--vyg-card-meta-color, rgba(0, 0, 0, 0.65));
+    font-size: 0.875rem;
+}
+
+.vyg-grid__header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 0 0 auto;
+}
+
+.vyg-grid__header-cols {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: inherit;
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.vyg-grid__header-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: #ff0000;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+.vyg-grid__header-cta:hover,
+.vyg-grid__header-cta:focus {
+    background: #cc0000;
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+/* ---- Card --------------------------------------------------------------- */
+
+.vyg-card {
     display: flex;
     flex-direction: column;
+    background: var(--vyg-card-bg);
+    border-radius: var(--vyg-card-radius);
+    box-shadow: var(--vyg-card-shadow);
+    border: var(--vyg-card-border);
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vyg-card:hover {
+    box-shadow: var(--vyg-card-shadow-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vyg-card,
+    .vyg-card:hover {
+        transition: none;
+        transform: none;
+    }
+}
+
+.vyg-card:focus-within {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
+.vyg-card__link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.vyg-card__link:focus-visible {
+    outline: none;
 }
 
 .vyg-card__thumb-wrap {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    background: #000;
+    background: var(--vyg-card-thumb-bg, #000);
     overflow: hidden;
-    border-radius: 8px;
 }
 
 .vyg-card__thumb {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
 }
 
 .vyg-card__duration {
     position: absolute;
     bottom: 6px;
     right: 6px;
-    background: rgba(0, 0, 0, 0.78);
-    color: #fff;
+    background: var(--vyg-duration-bg, rgba(0, 0, 0, 0.78));
+    color: var(--vyg-duration-color, #fff);
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 12px;
     font-weight: 600;
+    line-height: 1.3;
 }
 
 .vyg-card__badge--live {
     position: absolute;
     top: 6px;
     left: 6px;
-    background: #d00;
-    color: #fff;
+    background: var(--vyg-pill-bg, #d00);
+    color: var(--vyg-pill-color, #fff);
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 11px;
@@ -73,13 +213,153 @@
     letter-spacing: 0.05em;
 }
 
+.vyg-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: var(--vyg-card-padding, 0.9rem);
+    position: relative;
+}
+
 .vyg-card__title {
-    margin: 0.6em 0 0;
-    font-size: 0.95em;
+    margin: 0;
+    font-size: var(--vyg-card-title-size, 0.95rem);
+    font-weight: var(--vyg-card-title-weight, 600);
     line-height: 1.3;
-    font-weight: 600;
+    color: var(--vyg-card-title-color, inherit);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+/* Channel row (avatar reserved for Phase 13.2). */
+.vyg-card__channel {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--vyg-card-meta-size, 0.8125rem);
+    color: var(--vyg-card-meta-color, rgba(0, 0, 0, 0.7));
+    min-width: 0;
+}
+
+.vyg-card__channel-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vyg-card__verified {
+    color: var(--vyg-verified-color, #1a73e8);
+    font-size: 0.85em;
+    line-height: 1;
+}
+
+/* Meta row (views + relative time). */
+.vyg-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--vyg-card-meta-size, 0.8125rem);
+    color: var(--vyg-card-meta-color, rgba(0, 0, 0, 0.6));
+}
+
+.vyg-card__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.vyg-card__meta-sep {
+    opacity: 0.5;
+}
+
+.vyg-card__meta .vyg-icon {
+    flex: 0 0 auto;
+    opacity: 0.85;
+}
+
+/* Per-card CTA (Phase 10.3 hook). The helper escapes itself; we just provide
+   the visual treatment. */
+.vyg-card__cta-wrap {
+    margin-top: 0.25rem;
+}
+
+/* ---- Trust strip -------------------------------------------------------- */
+
+.vyg-grid__trust-strip {
+    list-style: none;
+    margin: 2rem auto 0;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 2.5rem;
+    max-width: 960px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 0.85rem;
+    color: var(--vyg-card-meta-color, rgba(0, 0, 0, 0.7));
+}
+
+.vyg-grid__trust-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.vyg-grid__trust-icon {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.05);
+    color: inherit;
+    flex: 0 0 auto;
+}
+
+.vyg-grid__trust-text {
+    font-weight: 500;
+}
+
+@media print {
+    .vyg-grid__trust-strip { display: none; }
+}
+
+/* ---- Density tokens ----------------------------------------------------- */
+
+.vyg-grid--density-compact {
+    --vyg-grid-gap: 0.75rem;
+    --vyg-card-padding: 0.6rem;
+    --vyg-card-radius: 8px;
+    --vyg-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --vyg-card-shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.08);
+    --vyg-card-title-size: 0.875rem;
+    --vyg-card-title-weight: 600;
+    --vyg-card-meta-size: 0.75rem;
+}
+
+.vyg-grid--density-comfortable {
+    --vyg-grid-gap: 1.25rem;
+    --vyg-card-padding: 0.9rem;
+    --vyg-card-radius: 12px;
+    --vyg-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --vyg-card-shadow-hover: 0 8px 18px rgba(0, 0, 0, 0.10);
+    --vyg-card-title-size: 0.95rem;
+    --vyg-card-title-weight: 600;
+    --vyg-card-meta-size: 0.8125rem;
+}
+
+.vyg-grid--density-editorial {
+    --vyg-grid-gap: 2rem;
+    --vyg-card-padding: 1.25rem;
+    --vyg-card-radius: 16px;
+    --vyg-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --vyg-card-shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.14);
+    --vyg-card-title-size: 1.05rem;
+    --vyg-card-title-weight: 700;
+    --vyg-card-meta-size: 0.875rem;
 }
