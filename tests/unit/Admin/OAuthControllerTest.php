@@ -70,6 +70,14 @@ final class OAuthControllerTest extends TestCase {
         $this->assertTrue( $this->tokens->consume_state( 'generated-state' ) );
     }
 
+    public function test_connect_redirect_allows_google_oauth_host_for_wp_safe_redirect(): void {
+        $hosts = $this->controller->allow_google_oauth_redirect_host( array( 'example.test' ) );
+
+        $this->assertContains( 'example.test', $hosts );
+        $this->assertContains( 'accounts.google.com', $hosts );
+        $this->assertSame( $hosts, array_values( array_unique( $hosts ) ) );
+    }
+
     public function test_callback_rejects_invalid_state_before_token_exchange(): void {
         $redirect = $this->controller->callback_redirect_url( array( 'state' => 'bad', 'code' => 'auth-code' ) );
 

@@ -83,6 +83,22 @@ final class OAuthController {
     }
 
     /**
+     * Allow the external Google OAuth authorization host for the connect redirect.
+     *
+     * WordPress's wp_safe_redirect() intentionally rejects hosts outside the
+     * current site. The OAuth connect step must leave wp-admin and go to
+     * accounts.google.com, so the connect handler installs this narrow
+     * allowlist filter immediately before redirecting.
+     *
+     * @param array<int,string> $hosts
+     * @return array<int,string>
+     */
+    public function allow_google_oauth_redirect_host( array $hosts ): array {
+        $hosts[] = 'accounts.google.com';
+        return array_values( array_unique( $hosts ) );
+    }
+
+    /**
      * Process sanitized callback params and return the admin redirect URL.
      *
      * @param array<string,mixed> $query Usually wp_unslash($_GET).
@@ -159,6 +175,7 @@ final class OAuthController {
         }
 
         try {
+            add_filter( 'allowed_redirect_hosts', array( $this, 'allow_google_oauth_redirect_host' ) );
             wp_safe_redirect( $this->authorization_redirect_url() );
         } catch ( ApiException $e ) {
             $this->logger->error( 'OAuth connect failed before redirect', array(
