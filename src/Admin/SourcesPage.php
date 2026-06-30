@@ -19,6 +19,7 @@ use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Sync\InitialImportJob;
+use VectorYT\Gallery\Sync\SyncScheduler;
 use VectorYT\Gallery\YouTube\ApiException;
 use VectorYT\Gallery\YouTube\ChannelResolver;
 use VectorYT\Gallery\YouTube\PlaylistResolver;
@@ -42,6 +43,7 @@ final class SourcesPage {
         private readonly SecretsRepository $secrets,
         private readonly OAuthTokenRepository $oauth_tokens,
         private readonly SettingsRepository $settings,
+        private readonly SyncScheduler $scheduler,
     ) {}
 
     public function render(): void {
@@ -114,10 +116,12 @@ final class SourcesPage {
                     break;
                 case 'sync':
                     $job_id = $this->logs->create_job( 'initial', $id );
-                    wp_schedule_single_event( time() + 5, 'vyg_sync_source_initial', array(
+                    // Phase 12.2: route through SyncScheduler so AS or
+                    // WP-Cron both work transparently.
+                    $this->scheduler->schedule_once( 'vyg_sync_source_initial', array(
                         'vyg_job_id' => $job_id,
                         'source_id'  => $id,
-                    ) );
+                    ), time() + 5 );
                     ++$count;
                     break;
                 case 'delete':
@@ -207,10 +211,12 @@ final class SourcesPage {
 
         // Queue an initial import job.
         $job_id = $this->logs->create_job( 'initial_import', $source_id );
-        wp_schedule_single_event( time() + 5, InitialImportJob::class === InitialImportJob::class ? 'vyg_sync_source_initial' : 'vyg_sync_source_initial', array(
+        // Phase 12.2: route through SyncScheduler so the add-source path
+        // uses the configured backend (WP-Cron or Action Scheduler).
+        $this->scheduler->schedule_once( 'vyg_sync_source_initial', array(
             'vyg_job_id' => $job_id,
             'source_id'  => $source_id,
-        ) );
+        ), time() + 5 );
 
         $this->logger->info( 'Source created + initial import scheduled', array(
             'source_id' => $source_id,
@@ -247,10 +253,12 @@ final class SourcesPage {
         set_transient( 'vyg_sync_last_' . $user_id . '_' . $id, time(), self::RATE_LIMIT_PER_USER_SECONDS * 2 );
 
         $job_id = $this->logs->create_job( 'initial_import', $id );
-        wp_schedule_single_event( time() + 5, 'vyg_sync_source_initial', array(
+        // Phase 12.2: route through SyncScheduler so the manual "Sync
+        // now" button honors the configured backend.
+        $this->scheduler->schedule_once( 'vyg_sync_source_initial', array(
             'vyg_job_id' => $job_id,
             'source_id'  => $id,
-        ) );
+        ), time() + 5 );
         $this->logger->info( 'Manual sync queued', array( 'source_id' => $id, 'job_id' => $job_id ) );
         $this->redirect_with_notice( 'sync_queued' );
     }

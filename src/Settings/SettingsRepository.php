@@ -52,6 +52,11 @@ class SettingsRepository {
 
         // API credential mode. `api_key` remains the default; `oauth` is available from Phase 7 onward.
         'api_mode'                      => 'api_key',
+
+        // Phase 12.2: sync scheduler backend. `auto` picks Action Scheduler
+        // when the library is available, otherwise falls back to WP-Cron.
+        // `wp_cron` / `action_scheduler` force a specific backend.
+        'sync_scheduler_mode'           => 'auto',
     );
 
     /** @var array<string,mixed>|null Cached values. */
@@ -121,6 +126,16 @@ class SettingsRepository {
         if ( array_key_exists( 'api_mode', $input ) ) {
             $mode = sanitize_key( (string) $input['api_mode'] );
             $values['api_mode'] = in_array( $mode, array( 'api_key', 'oauth' ), true ) ? $mode : self::DEFAULTS['api_mode'];
+        }
+
+        if ( array_key_exists( 'sync_scheduler_mode', $input ) ) {
+            // Phase 12.2: scheduler backend picker. The resolver is the
+            // source of truth for the whitelist (it owns the valid-mode
+            // list); this call only sanitizes + defaults.
+            $mode = sanitize_key( (string) $input['sync_scheduler_mode'] );
+            $values['sync_scheduler_mode'] = in_array( $mode, \VectorYT\Gallery\Sync\SchedulerResolver::VALID_MODES, true )
+                ? $mode
+                : self::DEFAULTS['sync_scheduler_mode'];
         }
 
         $this->save( $values );

@@ -16,7 +16,9 @@ use VectorYT\Gallery\Container;
 use VectorYT\Gallery\Repository\FeedRepository;
 use VectorYT\Gallery\Repository\SourceRepository;
 use VectorYT\Gallery\Repository\SyncLogRepository;
+use VectorYT\Gallery\Sync\SchedulerResolver;
 use VectorYT\Gallery\Sync\SyncJobRunner;
+use VectorYT\Gallery\Sync\SyncScheduler;
 
 use function absint;
 use function do_action;
@@ -60,6 +62,7 @@ final class Command {
             'plugin_version' => defined( 'VYG_VERSION' ) ? VYG_VERSION : 'unknown',
             'db_version' => defined( 'VYG_DB_VERSION' ) ? VYG_DB_VERSION : 'unknown',
             'site_url' => function_exists( 'home_url' ) ? home_url() : '',
+            'scheduler' => $this->scheduler_snapshot(),
             'counts' => array(
                 'sources' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}vyg_sources" ),
                 'feeds' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}vyg_feeds" ),
@@ -83,8 +86,43 @@ final class Command {
             $rows[] = array( 'metric' => $key, 'value' => $value );
         }
         $this->format_items( 'table', $rows, array( 'metric', 'value' ) );
+        \WP_CLI::line( 'Scheduler:' );
+        $this->format_items( 'table', $snapshot['scheduler'], array( 'metric', 'value' ) );
         \WP_CLI::line( 'Cron:' );
         $this->format_items( 'table', $snapshot['cron'], array( 'hook', 'next_run' ) );
+    }
+
+    /**
+     * Show the configured sync scheduler backend and its actual runtime
+     * mode. Useful for verifying Phase 12.2 routing without poking the
+     * container by hand.
+     *
+     * ## EXAMPLES
+     *
+     *     wp vyg scheduler
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function scheduler( array $args, array $assoc_args ): void {
+        $rows = $this->scheduler_snapshot();
+
+        if ( 'json' === ( $assoc_args['format'] ?? '' ) ) {
+            $payload = array();
+            foreach ( $rows as $row ) {
+                $payload[ $row['metric'] ] = $row['value'];
+            }
+            \WP_CLI::line( wp_json_encode( $payload, JSON_PRETTY_PRINT ) );
+            return;
+        }
+
+        $this->format_items( 'table', $rows, array( 'metric', 'value' ) );
+
+        /** @var SchedulerResolver $resolver */
+        $resolver = $this->container->get( 'sync.scheduler.resolver' );
+        if ( $resolver->has_misconfiguration() ) {
+            \WP_CLI::warning( 'sync_scheduler_mode is "action_scheduler" but the Action Scheduler library is not loaded; jobs will fall back to WP-Cron.' );
+        }
     }
 
     /**
@@ -222,7 +260,11 @@ final class Command {
             $payload['source_id'] = $source_id;
         }
         if ( isset( $assoc_args['enqueue'] ) ) {
-            wp_schedule_single_event( time() + 1, $hook, array( $payload ) );
+            // Phase 12.2: route through the configured SyncScheduler so
+            // CLI `wp vyg sync ... --enqueue` honors the operator's
+            // scheduler preference.
+            $scheduler = $this->container->get( 'sync.scheduler' );
+            $scheduler->schedule_once( $hook, $payload, time() + 1 );
             \WP_CLI::success( sprintf( 'Queued %s job #%d on %s.', $job_type, $job_id, $hook ) );
             return;
         }
@@ -354,6 +396,49 @@ final class Command {
             );
         }
         return $rows;
+    }
+
+    /**
+     * Phase 12.2: snapshot the active scheduler for `wp vyg diagnostics`
+     * and `wp vyg scheduler`. Includes the configured mode, the actual
+     * backend in use, the AS-availability flag, and a
+     * misconfiguration warning so operators don't silently fall back
+     * to WP-Cron when they thought they had AS enabled.
+     *
+     * @return array<int,array<string,string>>
+     */
+    private function scheduler_snapshot(): array {
+        /** @var SchedulerResolver $resolver */
+        $resolver = $this->container->get( 'sync.scheduler.resolver' );
+
+        $as_loaded = (bool) (
+            function_exists( 'as_schedule_single_action' )
+            && function_exists( 'as_schedule_recurring_action' )
+            && function_exists( 'as_unschedule_action' )
+        );
+
+        return array(
+            array(
+                'metric' => 'configured_mode',
+                'value'  => $resolver->resolve_mode(),
+            ),
+            array(
+                'metric' => 'effective_backend',
+                'value'  => $resolver->effective_backend(),
+            ),
+            array(
+                'metric' => 'action_scheduler_loaded',
+                'value'  => $as_loaded ? 'yes' : 'no',
+            ),
+            array(
+                'metric' => 'misconfiguration',
+                'value'  => $resolver->has_misconfiguration() ? 'yes (forced AS without library)' : 'no',
+            ),
+            array(
+                'metric' => 'scheduler_class',
+                'value'  => get_class( $resolver->resolve() ),
+            ),
+        );
     }
 
     /** @return array<int,array<string,mixed>> */

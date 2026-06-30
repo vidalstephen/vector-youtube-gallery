@@ -48,12 +48,15 @@ use VectorYT\Gallery\REST\FeedController;
 use VectorYT\Gallery\Settings\OAuthTokenRepository;
 use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
+use VectorYT\Gallery\Sync\ActionSchedulerSyncScheduler;
 use VectorYT\Gallery\Sync\DeletedVideoDetector;
 use VectorYT\Gallery\Sync\IncrementalSyncJob;
 use VectorYT\Gallery\Sync\InitialImportJob;
 use VectorYT\Gallery\Sync\LiveStatusPollJob;
 use VectorYT\Gallery\Sync\MetadataRefreshJob;
 use VectorYT\Gallery\Sync\RetryPolicy;
+use VectorYT\Gallery\Sync\SchedulerResolver;
+use VectorYT\Gallery\Sync\SyncScheduler;
 use VectorYT\Gallery\Sync\WpCronSyncScheduler;
 use VectorYT\Gallery\YouTube\ApiClientInterface;
 use VectorYT\Gallery\YouTube\ApiKeyClient;
@@ -109,20 +112,27 @@ final class Plugin {
         $installer = self::$container->get( 'installer' );
         $installer->install();
 
-        // Schedule default cron events (idempotent — uses wp_schedule_event which no-ops on dupe).
+        // Phase 12.2: route recurring event registration through the
+        // SyncScheduler abstraction. The scheduler's recurring-event
+        // call is idempotent in WP-Cron (it checks wp_next_scheduled)
+        // and in Action Scheduler (it checks as_get_scheduled_actions
+        // before scheduling). For the WP-Cron implementation we still
+        // need wp_next_scheduled as a guard so activation stays
+        // idempotent on every reactivation.
+        $scheduler = self::$container->get( 'sync.scheduler' );
         if ( ! wp_next_scheduled( 'vyg_cron_incremental_all' ) ) {
-            wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'vyg_cron_incremental_all' );
+            $scheduler->schedule_recurring( 'vyg_cron_incremental_all', array(), HOUR_IN_SECONDS );
         }
         if ( ! wp_next_scheduled( 'vyg_cron_metadata_refresh' ) ) {
-            wp_schedule_event( time() + DAY_IN_SECONDS, 'twicedaily', 'vyg_cron_metadata_refresh' );
+            $scheduler->schedule_recurring( 'vyg_cron_metadata_refresh', array(), 12 * HOUR_IN_SECONDS );
         }
         // Phase 5 — live status poll runs every 5 minutes by default.
         if ( ! wp_next_scheduled( 'vyg_cron_live_poll' ) ) {
-            wp_schedule_event( time() + MINUTE_IN_SECONDS, 'vyg_five_minutes', 'vyg_cron_live_poll' );
+            $scheduler->schedule_recurring( 'vyg_cron_live_poll', array(), 5 * MINUTE_IN_SECONDS );
         }
         // Phase 6 — daily retention sweep.
         if ( ! wp_next_scheduled( 'vyg_cron_data_retention' ) ) {
-            wp_schedule_event( time() + DAY_IN_SECONDS, 'daily', 'vyg_cron_data_retention' );
+            $scheduler->schedule_recurring( 'vyg_cron_data_retention', array(), DAY_IN_SECONDS );
         }
     }
 
@@ -260,6 +270,18 @@ final class Plugin {
             )
         );
 
+        // --- Sync scheduler (Phase 12.2) ---
+        // Both implementations are registered so callers (and the
+        // resolver) can pick one. `sync.scheduler` is the resolved
+        // SyncScheduler used by cron ticks, SourcesPage, and CLI.
+        $c->set( 'sync.scheduler.wp_cron', static fn(): WpCronSyncScheduler => new WpCronSyncScheduler() );
+        $c->set( 'sync.scheduler.action_scheduler', static fn( Container $c ): ActionSchedulerSyncScheduler => new ActionSchedulerSyncScheduler( $c->get( 'sync.scheduler.wp_cron' ) ) );
+        $c->set( 'sync.scheduler.resolver', static fn( Container $c ): SchedulerResolver => new SchedulerResolver( $c->get( 'settings' ), $c->get( 'sync.scheduler.action_scheduler' ) ) );
+        $c->set(
+            'sync.scheduler',
+            static fn( Container $c ): SyncScheduler => $c->get( 'sync.scheduler.resolver' )->resolve()
+        );
+
         // --- Admin pages ---
         $c->set(
             'admin.settings',
@@ -292,7 +314,11 @@ final class Plugin {
                 $c->get( 'logger' ),
                 $c->get( 'secrets' ),
                 $c->get( 'oauth.tokens' ),
-                $c->get( 'settings' )
+                $c->get( 'settings' ),
+                // Phase 12.2: SyncScheduler abstraction for cron-side
+                // scheduling. The resolver picks WP-Cron or Action
+                // Scheduler based on the configured mode + AS presence.
+                $c->get( 'sync.scheduler' )
             )
         );
         $c->set(
@@ -544,12 +570,16 @@ final class Plugin {
             $sources = $c->get( 'repo.sources' );
             /** @var SyncLogRepository $logs */
             $logs = $c->get( 'repo.logs' );
+            // Phase 12.2: route through the SyncScheduler abstraction so
+            // WP-Cron and Action Scheduler backends both receive these
+            // single-shot jobs through the same call site.
+            $scheduler = $c->get( 'sync.scheduler' );
             foreach ( $sources->list( array( 'status' => 'active' ) ) as $source ) {
                 $job_id = $logs->create_job( 'incremental', (int) $source['id'] );
-                wp_schedule_single_event( time() + 60, 'vyg_sync_source_incremental', array(
+                $scheduler->schedule_once( 'vyg_sync_source_incremental', array(
                     'vyg_job_id' => $job_id,
                     'source_id'  => (int) $source['id'],
-                ) );
+                ), time() + 60 );
             }
         } );
 
@@ -557,11 +587,12 @@ final class Plugin {
         add_action( 'vyg_cron_metadata_refresh', static function () use ( $c ): void {
             /** @var SyncLogRepository $logs */
             $logs = $c->get( 'repo.logs' );
+            $scheduler = $c->get( 'sync.scheduler' );
             $job_id = $logs->create_job( 'metadata_refresh' );
-            wp_schedule_single_event( time() + 60, 'vyg_refresh_video_batch', array(
+            $scheduler->schedule_once( 'vyg_refresh_video_batch', array(
                 'vyg_job_id'  => $job_id,
                 'max_videos'  => 100,
-            ) );
+            ), time() + 60 );
         } );
 
         // Cron tick: Phase 5 live-status poll.

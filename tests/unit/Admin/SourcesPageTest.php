@@ -21,6 +21,7 @@ use VectorYT\Gallery\Settings\SecretsRepository;
 use VectorYT\Gallery\Settings\SettingsRepository;
 use VectorYT\Gallery\Sync\InitialImportJob;
 use VectorYT\Gallery\Sync\RetryPolicy;
+use VectorYT\Gallery\Sync\WpCronSyncScheduler;
 use VectorYT\Gallery\Tests\Support\BrainHelpers;
 use VectorYT\Gallery\Tests\Support\OptionsBag;
 use VectorYT\Gallery\YouTube\ApiClientInterface;
@@ -75,7 +76,11 @@ final class SourcesPageTest extends TestCase {
             $logger,
             $this->secrets,
             $this->oauth,
-            $this->settings
+            $this->settings,
+            // Phase 12.2: SyncScheduler dep. Use a recording fake so tests
+            // can assert the page routed through the abstraction instead
+            // of calling wp_schedule_single_event directly.
+            new SourcesPageRecordingScheduler()
         );
     }
 
@@ -117,4 +122,33 @@ final class SourcesPageFakeApi implements ApiClientInterface {
     public function videos_list( array $params ): array { return array( 'items' => array() ); }
     public function revoke_token( string $token ): bool { return true; }
     public function mode(): string { return 'fake'; }
+}
+
+/**
+ * Phase 12.2: a SyncScheduler that records every call into a public
+ * $calls array. The SourcesPage routes its schedule_once() invocations
+ * through the SyncScheduler dep, so tests can assert the abstraction is
+ * used (and that wp_schedule_single_event is NOT called directly).
+ */
+final class SourcesPageRecordingScheduler implements \VectorYT\Gallery\Sync\SyncScheduler {
+    /** @var array<int,array{string,array<string,mixed>,?int}> */
+    public array $calls = array();
+
+    public function schedule_once( string $hook, array $args, ?int $when = null ): bool {
+        $this->calls[] = array( $hook, $args, $when );
+        return true;
+    }
+
+    public function schedule_recurring( string $hook, array $args, int $interval_seconds ): bool {
+        $this->calls[] = array( 'recurring:' . $hook, $args, $interval_seconds );
+        return true;
+    }
+
+    public function unschedule_recurring( string $hook, array $args ): bool {
+        return true;
+    }
+
+    public function unschedule_all( string $hook, array $args_subset = array() ): int {
+        return 0;
+    }
 }

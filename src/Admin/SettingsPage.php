@@ -481,6 +481,19 @@ final class SettingsPage {
                 <h2><?php echo esc_html__( 'Sync Intervals & Retention', 'vector-youtube-gallery' ); ?></h2>
                 <table class="form-table" role="presentation">
                     <tr>
+                        <th scope="row"><label for="sync_scheduler_mode"><?php echo esc_html__( 'Scheduler backend', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <select name="sync_scheduler_mode" id="sync_scheduler_mode">
+                                <option value="auto" <?php selected( 'auto', (string) $s['sync_scheduler_mode'] ); ?>><?php echo esc_html__( 'Auto (use Action Scheduler when available, otherwise WP-Cron)', 'vector-youtube-gallery' ); ?></option>
+                                <option value="wp_cron" <?php selected( 'wp_cron', (string) $s['sync_scheduler_mode'] ); ?>><?php echo esc_html__( 'WP-Cron only', 'vector-youtube-gallery' ); ?></option>
+                                <option value="action_scheduler" <?php selected( 'action_scheduler', (string) $s['sync_scheduler_mode'] ); ?>><?php echo esc_html__( 'Action Scheduler only (requires the library)', 'vector-youtube-gallery' ); ?></option>
+                            </select>
+                            <p class="description">
+                                <?php echo esc_html__( 'Phase 12.2: choose where scheduled sync jobs run. Action Scheduler is shipped with WooCommerce and several popular plugins; if it is loaded, "Auto" uses it for richer queue management, retries, and observability. WP-Cron remains the default fallback for self-hosted installs.', 'vector-youtube-gallery' ); ?>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row"><label for="default_sync_interval_seconds"><?php echo esc_html__( 'Default source sync interval (seconds)', 'vector-youtube-gallery' ); ?></label></th>
                         <td><input name="default_sync_interval_seconds" id="default_sync_interval_seconds" type="number" min="3600" max="2592000" value="<?php echo (int) $s['default_sync_interval_seconds']; ?>" /></td>
                     </tr>

@@ -5,6 +5,7 @@
         "gmdate",
         "is_readable",
         "file_exists",
-        "md5"
+        "md5",
+        "function_exists"
     ]
 }
