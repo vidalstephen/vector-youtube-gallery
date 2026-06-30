@@ -155,3 +155,45 @@ The trust strip is hidden in print and does not duplicate on load-more.
 - Trust strip is one-time at the bottom (~400 bytes).
 - The bundled CSS file (`assets/css/grid.css`) is enqueued lazily — only when a
   grid shortcode/block actually fires on the page.
+
+## Visual Verification — Phase 13.1 Captures
+
+The redesign was verified against 6 deterministic Playwright captures under
+`screenshots/phase13/`. All captures were taken with zero YouTube API quota
+burned (`api_quota_delta=0`) and 12 cards rendered per feed in preflight.
+
+| Capture | Viewport | Density | Purpose |
+|---|---|---|---|
+| `grid-comfortable-desktop.png` | 1280×900 | comfortable (3-col) | Default desktop render — the baseline |
+| `grid-comfortable-mobile.png` | 380×800 | comfortable (1-col) | Mobile stack — responsive collapse |
+| `grid-compact-desktop.png` | 1280×900 | compact (4-col) | Dense-list alternative — tighter cards |
+| `grid-editorial-desktop.png` | 1280×1200 | editorial (2-col) | Magazine-style — looser, larger |
+| `grid-with-header-cta-trust.png` | 1280×1400 | comfortable | Full mockup replica — section header, "View on YouTube" CTA, trust strip |
+| `grid-card-zoom.png` | element clip | comfortable | Single-card anatomy — all 27 visible elements |
+
+![Comfortable desktop (3-col default)](../screenshots/phase13/grid-comfortable-desktop.png)
+
+![Comfortable mobile (1-col stack)](../screenshots/phase13/grid-comfortable-mobile.png)
+
+![Compact desktop (4-col tight)](../screenshots/phase13/grid-compact-desktop.png)
+
+![Editorial desktop (2-col loose)](../screenshots/phase13/grid-editorial-desktop.png)
+
+![Full mockup — header + CTA + trust strip](../screenshots/phase13/grid-with-header-cta-trust.png)
+
+![Single card anatomy](../screenshots/phase13/grid-card-zoom.png)
+
+## Re-generating captures
+
+```bash
+cd /path/to/vector-youtube-gallery
+bash scripts/run-phase13-1-playwright.sh
+```
+
+Requires: `vyg-wp` Docker container running, Playwright Docker image reachable
+(default `mcr.microsoft.com/playwright:v1.45.0-jammy`). No npm install on the
+host. No YouTube API quota burned.
+
+The script re-seeds the data, runs the preflight, captures 6 PNGs, then cleans
+up its temporary login MU-plugin. Exit code 0 + `api_quota_delta=0` is the
+green light.

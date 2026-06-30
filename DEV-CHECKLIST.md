@@ -12,12 +12,12 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 13.1 — Grid layout redesign — IN PROGRESS**
-- Current sub-phase: **13.1 docs contract landed; template + CSS + tests in flight**
-- Last completed item: 13.1 (partial) — `docs/grid-layout.md` published; remaining sub-tasks (TDD template, CSS, shortcode/block attrs, FeedsPage form, Playwright captures) tracked under `## Phase 13.1` below.
-- Next actionable item: Complete Phase 13.1 sub-tasks, then Phase 13 Packaging/Distribution.
+- Current phase: **Phase 13.1 — Grid layout redesign — COMPLETE** ✅
+- Current sub-phase: **Phase 13.2 — Channel metadata sync (avatar / verified / subscriber count)**
+- Last completed item: 13.1 — 6 Playwright captures under `screenshots/phase13/`; 482 PHPUnit tests pass, 1341 assertions, 0 failures; 12 commits on `main` ahead of `origin/main`.
+- Next actionable item: Phase 13.2 (data-layer extension for channel metadata; then toggle the corresponding `show_*` Inspector controls back on by default).
 - Blocked items: none
-- Deferred items: Channel avatar / verified badge / subscriber count data layer (Phase 13.2); interactive column switcher (Phase 13.5).
+- Deferred items: Interactive column switcher (Phase 13.5); packaging & distribution (Phase 13 Packaging).
 - Phase 10.7 path note: Divi is a premium-only ThemeForest plugin and is not available from `downloads.wordpress.org`. 10.7's "Divi is installed" branch is covered by the stub-based unit tests in 10.6; the "Divi is NOT installed" branch is captured live (the shortcode fallback that runs in place of the Divi module) — that screenshot is the evidence. Elementor and WooCommerce ARE installed from WP.org.
 
 ## Status Legend
@@ -1419,23 +1419,64 @@ Goal: prepare the plugin for real distribution while keeping the core usable for
 ### 2026-06-30 — Phase 13.1 Grid layout redesign
 
 - Trigger: "kick off execution now" against `.hermes/plans/2026-06-30_213645-grid-layout-redesign.md`.
-- Mode: Development Execution Mode (TDD, subagent-driven via local loop).
+- Mode: Development Execution Mode (TDD, executed directly — no subagent delegation; the subagent harness wasn't available in this profile and the tasks were small enough that a tight direct loop was the right call).
 - Plan: `/root/projects/vector-youtube-gallery/.hermes/plans/2026-06-30_213645-grid-layout-redesign.md` (13 tasks).
-- Scope:
-  - New template `src/Render/templates/grid.php` — section header, redesigned card, density classes, opt-in trust strip, Phase 10.3 product-CTA hook.
-  - New `assets/css/grid.css` — 3 density presets, focus-visible, `prefers-reduced-motion`, 380/600/1200 breakpoints.
-  - New helper `src/Render/RelativeTime.php` and `VideoRenderer::format_view_count()`.
-  - `FeedQuery` left-join to `vyg_sources` for `youtube_channel_title`.
-  - `FeedRepository` allow-list for new `display_config_json` keys.
-  - Shortcode / `block.json` / `index.js` Inspector panels.
-  - `FeedsPage` form fields.
-  - Playwright captures under `screenshots/phase13/`.
-  - Docs: `docs/grid-layout.md` (already published).
+- Scope delivered:
+  - **Helper class** `src/Render/RelativeTime.php` (pure function, no WP deps, bucket-based "just now / N min ago / N hours ago / N days ago / N weeks ago / N months ago / N years ago"; future timestamps return `""`).
+  - **`VideoRenderer::format_view_count(int)`** — floor-based rounding (`999 → "999"`, `1,234 → "1.2K"`, `38,450 → "38K"`, `1,200,000 → "1.2M"`).
+  - **Redesigned template** `src/Render/templates/grid.php` — section header (title / subtitle / column-selector toggle / "View more on YouTube" CTA), card body (thumbnail → duration badge → product cart-CTA icon → title → channel name + ✓ verified → view count + relative time), opt-in trust badges footer, density wrapper class.
+  - **New CSS** `assets/css/grid.css` — `--vyg-grid-density` token with three presets (`compact` 4-col, `comfortable` 3-col, `editorial` 2-col), responsive at 380/600/1200, focus-visible, `prefers-reduced-motion` honor.
+  - **Density tokens** in `assets/css/presets.css` plus `--vyg-verified-color` accent.
+  - **`FeedQuery` LEFT JOIN** to `vyg_sources` for `youtube_channel_title` (was a column-alias fallback in templates before).
+  - **`FeedRepository::ALLOWED_DISPLAY_KEYS` + `sanitize_display_config()`** allow-list of 13 new keys with type coercion (string / int / bool / density enum).
+  - **Shortcode attrs** (`density`, `header_title`, `header_subtitle`, `header_columns_visible`, `header_cta_label`, `header_cta_url`, `show_channel_avatar`, `show_channel_name`, `show_subscriber_count`, `show_verified_badge`, `show_views_and_time`, `product_cta_visible`, `trust_strip`, `card_radius`).
+  - **Block JSON + Inspector** — three new `PanelBody` groups (Header / Card / Footer) in `index.js`.
+  - **FeedsPage form** — grouped fieldsets in `src/Admin/FeedsPage.php` under "Grid layout (Phase 13.1)".
+  - **Renderer wiring** — `Renderer::emit_html()` now merges saved `feed_config['display']` (per-feed defaults) with inline shortcode/block attrs (inline wins), then the template's `$attrs` reads from the merged map.
+  - **Playwright captures** under `screenshots/phase13/`:
+    - `grid-comfortable-desktop.png` (1280×900, 3-col)
+    - `grid-comfortable-mobile.png` (380×800, 1-col stack)
+    - `grid-compact-desktop.png` (1280×900, 4-col, tight)
+    - `grid-editorial-desktop.png` (1280×1200, 2-col, loose)
+    - `grid-with-header-cta-trust.png` (1280×1400, full mockup replica — header + view-CTA + trust strip)
+    - `grid-card-zoom.png` (single card, ~620×520 crop)
+  - **Docs** — `docs/grid-layout.md` (158 lines, public attribute reference + density matrix) and this DEV-CHECKLIST close-out.
 - Open questions (deferred, not blockers):
-  - Channel avatar / verified badge / subscriber count data layer (Phase 13.2).
-  - Interactive "3 columns ▾" header control (Phase 13.5).
-- Files changed in this sub-step:
-  - `docs/grid-layout.md` (created)
-  - `DEV-CHECKLIST.md` (this entry)
-- Validation: see individual sub-task entries below as they land.
-- Result: 13.1 docs sub-step complete. Sub-tasks 13.1.1 through 13.1.11 tracked below.
+  - Channel avatar / verified badge / subscriber count data layer (Phase 13.2). Toggles default to `false`; channel name renders from `vyg_sources.title` until 13.2 adds the columns.
+  - Interactive "3 columns ▾" header control (Phase 13.5) — the column-selector currently only DISPLAYS the count; the dropdown UI is deferred.
+  - Product-CTA map population (Phase 10.3 + Phase 10.7 hooks) — the template's `product_cta_visible` toggle works; the underlying feed→product mapping is the existing Phase 10.7 surface.
+- Files changed in this phase (all on `main`, 12 commits ahead of `origin/main`):
+  - `docs/grid-layout.md` (new, 158 lines)
+  - `src/Render/RelativeTime.php` (new, 95 lines)
+  - `src/Render/VideoRenderer.php` (modified — added `format_view_count()`)
+  - `src/Render/FeedQuery.php` (modified — LEFT JOIN to `vyg_sources` in `videos_for_source()` and `videos_for_ids()`)
+  - `src/Repository/FeedRepository.php` (modified — `ALLOWED_DISPLAY_KEYS` constant + `sanitize_display_config()` + new keys accepted in `insert()`/`update()`)
+  - `src/Render/templates/grid.php` (rewritten, 248 lines)
+  - `src/Render/ShortcodeRegistrar.php` (modified — new shortcode attrs forwarded to renderer)
+  - `src/Render/block.json` (modified — 13 new attributes)
+  - `src/Render/index.js` (modified — 3 new Inspector PanelBody groups)
+  - `src/Render/Renderer.php` (modified — `emit_html()` merges saved display + inline attrs)
+  - `src/Admin/FeedsPage.php` (modified — Phase 13.1 form fieldsets)
+  - `assets/css/grid.css` (rewritten, 308 lines)
+  - `assets/css/presets.css` (modified — density tokens + verified color)
+  - `dev/seed-phase13-1.php` (new — 12-video, 4-feed seed for screenshots)
+  - `dev/preflight-phase13-1.php` (new — preflight checks for the capture script)
+  - `scripts/run-phase13-1-playwright.sh` (new — capture wrapper)
+  - `scripts/cdp-screenshot-viewport.js` (new — variable-viewport CDP helper)
+  - `scripts/cdp-screenshot-card.js` (new — element-clip CDP helper)
+  - `scripts/run-phpunit.sh` (new — dockerized phpunit wrapper)
+  - `tests/unit/Render/RelativeTimeTest.php` (new, 18 tests)
+  - `tests/unit/Render/VideoRendererViewCountTest.php` (new, 8 tests)
+  - `tests/unit/Render/FeedQueryChannelTitleTest.php` (new, 3 tests)
+  - `tests/unit/Render/GridTemplateTest.php` (new, 15 tests)
+  - `tests/unit/Render/ShortcodeNewAttributesTest.php` (new, 3 tests)
+  - `tests/unit/Render/RendererWiringTest.php` (new, 4 tests)
+  - `tests/unit/Repository/FeedRepositoryDisplayConfigTest.php` (new, 5 tests)
+  - `tests/unit/Admin/FeedsPageDisplayConfigTest.php` (new, 2 tests)
+  - `screenshots/phase13/grid-*.png` (6 captures)
+- Validation:
+  - `scripts/run-phpunit.sh --testsuite=unit` → **482 tests / 1341 assertions / 0 failures / 3 skipped** (pre-existing skipped tests; new tests added: +58).
+  - `bash scripts/run-phase13-1-playwright.sh` → 12 cards render per feed in preflight; 6 PNGs written; `api_quota_delta=0` (no YouTube quota burned during capture); visual inspection of all 6 captures confirmed.
+  - Visual review: comfortable/compact/editorial densities all distinct; mobile stacks to 1 column; header+CTA+trust-strip page renders the full mockup replica; card-zoom shows full card anatomy with 27 visible elements.
+- Result: **Phase 13.1 complete** ✅. Status block at the top of this file updated to reflect.
+- Next recommended action: **Phase 13.2 — Channel metadata sync** (add `vyg_videos.channel_thumbnail_url`, `subscriber_count`, `is_verified` columns; new sync job via `channels.list?part=snippet,statistics`; flip `show_*` toggles to `true` by default once data is reliable).
