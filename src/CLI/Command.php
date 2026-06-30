@@ -263,6 +263,63 @@ final class Command {
     }
 
     /**
+     * Phase 12.5: show the log rotation snapshot, the active log
+     * level, and the segments directory state.
+     *
+     * ## EXAMPLES
+     *
+     *     wp vyg log
+     *     wp vyg log --format=json
+     *
+     * @subcommand log
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function log( array $args, array $assoc_args ): void {
+        $rotator  = $this->container->get( 'log.rotator' );
+        $settings = $this->container->get( 'settings' );
+
+        $rows = array(
+            array( 'metric' => 'log_level', 'value' => (string) $settings->get( 'log_level', 'info' ) ),
+            array( 'metric' => 'log_max_size_mb', 'value' => (string) $rotator->max_size_bytes() / 1024 / 1024 ),
+            array( 'metric' => 'log_max_files', 'value' => (string) $rotator->max_files() ),
+            array( 'metric' => 'log_file', 'value' => $rotator->log_file_path() ),
+            array( 'metric' => 'segments_dir', 'value' => $rotator->segments_dir() ),
+            array( 'metric' => 'segments_count', 'value' => (string) count( $rotator->segments() ) ),
+        );
+        if ( 'json' === ( $assoc_args['format'] ?? '' ) ) {
+            $payload = array();
+            foreach ( $rows as $row ) {
+                $payload[ $row['metric'] ] = $row['value'];
+            }
+            \WP_CLI::line( wp_json_encode( $payload, JSON_PRETTY_PRINT ) );
+            return;
+        }
+        $this->format_items( 'table', $rows, array( 'metric', 'value' ) );
+    }
+
+    /**
+     * Phase 12.5: force a log rotation pass, regardless of file
+     * size. The rotator is a no-op when the file is below the
+     * configured threshold.
+     *
+     * @subcommand log-rotate
+     *
+     * @param array<int,string> $args
+     * @param array<string,mixed> $assoc_args
+     */
+    public function log_rotate( array $args, array $assoc_args ): void {
+        $rotator = $this->container->get( 'log.rotator' );
+        $rotated = $rotator->rotate();
+        if ( $rotated > 0 ) {
+            \WP_CLI::success( 'Rotated log file.' );
+        } else {
+            \WP_CLI::line( 'No rotation needed (file below threshold).' );
+        }
+    }
+
+    /**
      * List sync jobs.
      *
      * ## OPTIONS

@@ -65,6 +65,13 @@ class SettingsRepository {
         // (a TTL > 0 in the cache layer is the real kill switch).
         'cache_enabled'                 => true,
         'cache_ttl_seconds'             => 3600,
+
+        // Phase 12.5: log level + rotation policy. `log_level` is the
+        // minimum severity the Logger will accept (debug/info/warning/error).
+        // `log_max_size_mb` + `log_max_files` control the LogRotator.
+        'log_level'                     => 'info',
+        'log_max_size_mb'               => 5,
+        'log_max_files'                 => 5,
     );
 
     /** @var array<string,mixed>|null Cached values. */

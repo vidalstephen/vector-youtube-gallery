@@ -169,9 +169,52 @@ final class Plugin {
     private static function register_services( Container $c ): void {
         // --- Core ---
         $c->set( 'logger',   static fn(): Logger => new Logger() );
+
+        // Phase 12.5: wire the log level from settings into the
+        // Logger. Sinks (centralized shipping hooks) are attached
+        // separately by application code or tests. We do this after
+        // the services are registered so the settings service is
+        // resolvable; the logger itself is a singleton.
         $c->set( 'secrets',  static fn(): SecretsRepository => new SecretsRepository() );
         $c->set( 'oauth.tokens', static fn(): OAuthTokenRepository => new OAuthTokenRepository() );
         $c->set( 'settings', static fn(): SettingsRepository => new SettingsRepository() );
+
+        // Phase 12.5: read the log level from settings and push it
+        // into the logger. This is done once on first use of the
+        // logger.
+        add_action(
+            'init',
+            static function () use ( $c ): void {
+                $settings = $c->get( 'settings' );
+                $level    = (string) $settings->get( 'log_level', 'info' );
+                $logger   = $c->get( 'logger' );
+                if ( $logger instanceof Logger ) {
+                    $logger->set_min_level( $level );
+                }
+            }
+        );
+
+        // Phase 12.5: log rotation. The rotator runs on a daily
+        // cron event AND on demand via `wp vyg log rotate`. It is
+        // a no-op when the active log file is below the configured
+        // size threshold.
+        $c->set(
+            'log.rotator',
+            static fn( Container $c ): \VectorYT\Gallery\Logging\LogRotator => new \VectorYT\Gallery\Logging\LogRotator(
+                $c->get( 'settings' ),
+                (string) ( defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/debug.log' : sys_get_temp_dir() . '/vyg-debug.log' ),
+                (string) ( defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR . '/vyg-logs' : sys_get_temp_dir() . '/vyg-logs' )
+            )
+        );
+        if ( function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'vyg_cron_log_rotation' ) ) {
+            wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'vyg_cron_log_rotation' );
+        }
+        add_action(
+            'vyg_cron_log_rotation',
+            static function () use ( $c ): void {
+                $c->get( 'log.rotator' )->rotate();
+            }
+        );
         $c->set( 'quota',    static fn(): QuotaTracker => new QuotaTracker() );
         $c->set( 'retry',    static fn(): RetryPolicy => new RetryPolicy() );
 

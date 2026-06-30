@@ -22,9 +22,63 @@ defined( 'ABSPATH' ) || exit;
 
 final class Logger {
 
+    public const LEVEL_DEBUG   = 'debug';
     public const LEVEL_INFO    = 'info';
     public const LEVEL_WARNING = 'warning';
     public const LEVEL_ERROR   = 'error';
+
+    /**
+     * Numeric severity for each level. Used by the level filter to
+     * decide whether a given entry should be persisted.
+     */
+    public const LEVEL_PRIORITY = array(
+        self::LEVEL_DEBUG   => 10,
+        self::LEVEL_INFO    => 20,
+        self::LEVEL_WARNING => 30,
+        self::LEVEL_ERROR   => 40,
+    );
+
+    /** Optional level filter. When non-null, entries with a lower
+     * priority are dropped before they are written or shipped. The
+     * Plugin's container wires this in from `log_level` setting. */
+    private ?string $min_level = null;
+
+    /** Optional list of log sinks called after a successful write.
+     * Each sink is a callable accepting the structured entry array.
+     * Tests + Phase 12.5 ship hook use this for centralized shipping. */
+    /** @var array<int,\Closure(array<string,mixed>):void> */
+    private array $sinks = array();
+
+    public function set_min_level(?string $level): void
+    {
+        if (null === $level || '' === $level) {
+            $this->min_level = null;
+            return;
+        }
+        if (isset(self::LEVEL_PRIORITY[$level])) {
+            $this->min_level = $level;
+        }
+    }
+
+    public function min_level(): ?string
+    {
+        return $this->min_level;
+    }
+
+    public function add_sink(\Closure $sink): void
+    {
+        $this->sinks[] = $sink;
+    }
+
+    public function is_enabled(string $level): bool
+    {
+        if (null === $this->min_level) {
+            return true;
+        }
+        $min = self::LEVEL_PRIORITY[$this->min_level] ?? 0;
+        $cur = self::LEVEL_PRIORITY[$level] ?? 0;
+        return $cur >= $min;
+    }
 
     /**
      * Keys whose values are always redacted from the context array.
@@ -49,6 +103,10 @@ final class Logger {
      * @param array<string, mixed> $context Optional structured context.
      */
     public function log( string $level, string $message, array $context = array() ): void {
+        // Phase 12.5: drop entries below the configured min level.
+        if ( ! $this->is_enabled( $level ) ) {
+            return;
+        }
         $entry = array(
             'ts'      => gmdate( 'c' ),
             'level'   => $level,
@@ -65,6 +123,18 @@ final class Logger {
         // WP's default handler writes to wp-content/debug.log when WP_DEBUG_LOG is true.
         // In docker-compose we bind-mount dev/logs/ to that path.
         error_log( $line );
+
+        // Phase 12.5: dispatch to any registered sinks. Sinks see
+        // the structured $entry (post-redaction) so a centralized
+        // shipping hook never sees raw secrets.
+        foreach ( $this->sinks as $sink ) {
+            try {
+                $sink( $entry );
+            } catch ( \Throwable $e ) {
+                // A misbehaving sink must never break logging.
+                error_log( sprintf( '[vyg][logging] sink error: %s', $e->getMessage() ) );
+            }
+        }
     }
 
     public function info( string $message, array $context = array() ): void {
