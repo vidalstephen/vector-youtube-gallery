@@ -27,6 +27,7 @@ final class AssetManager {
     private bool $carousel_enqueued = false;
     private bool $presets_enqueued = false;
     private bool $analytics_enqueued = false;
+    private bool $card_enqueued = false;
     /** @var array<string,bool> */
     private array $css_enqueued = array();
 
@@ -68,12 +69,20 @@ final class AssetManager {
         if (! isset($map[$layout_slug])) {
             return;
         }
+
+        // Phase C1 — the shared card system is used by every layout.
+        // Register + enqueue the shared `vyg-card` handle once per
+        // request so card.css is always available alongside the
+        // layout-specific CSS. enqueue_card_assets() is itself
+        // idempotent and depends on the base `vyg` handle.
+        $this->enqueue_card_assets();
+
         $handle = self::HANDLE_BASE . '-' . $layout_slug;
         if (isset($this->css_enqueued[$handle])) {
             $this->maybe_enqueue_presets();
             return;
         }
-        wp_register_style($handle, $this->url($map[$layout_slug]), array(self::HANDLE_BASE), self::VERSION);
+        wp_register_style($handle, $this->url($map[$layout_slug]), array(self::HANDLE_BASE, 'vyg-card'), self::VERSION);
         wp_enqueue_style($handle);
         $this->css_enqueued[$handle] = true;
 
@@ -89,6 +98,32 @@ final class AssetManager {
 
         // Phase 11.1 — analytics capture (no-op when disabled).
         $this->enqueue_analytics();
+    }
+
+    /**
+     * Phase C1 — enqueue the shared card stylesheet.
+     *
+     * Every layout that uses the shared card system (all 8 currently
+     * in the map: grid, list, featured, shorts, live, masonry,
+     * carousel, hero) calls this method. It registers and enqueues
+     * the `vyg-card` handle (assets/css/card.css) once per request.
+     *
+     * The handle depends on the base `vyg` handle (per the project's
+     * naming convention — `vyg-base`, `vyg-presets`, `vyg-grid`, etc.)
+     * so card.css always loads after base.css.
+     *
+     * Idempotent: wp_register_style + wp_enqueue_style are themselves
+     * idempotent in WordPress, and we additionally short-circuit when
+     * the local $card_enqueued flag is set, so repeated calls within
+     * a single request cost nothing.
+     */
+    public function enqueue_card_assets(): void {
+        if ($this->card_enqueued) {
+            return;
+        }
+        wp_register_style('vyg-card', $this->url('css/card.css'), array(self::HANDLE_BASE), self::VERSION);
+        wp_enqueue_style('vyg-card');
+        $this->card_enqueued = true;
     }
 
     public function maybe_enqueue_presets(): void {

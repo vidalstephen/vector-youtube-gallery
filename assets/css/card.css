@@ -1,0 +1,551 @@
+/* Vector YouTube Gallery — shared card stylesheet (Phase C1).
+ *
+ * This file holds the visual rules for the shared video card
+ * anatomy emitted by src/Render/templates/partials/video-card.php
+ * (via the CardRenderer). Every layout that renders shared cards
+ * (grid, list, featured, shorts, live, masonry, carousel, hero)
+ * enqueues this stylesheet through AssetManager::enqueue_card_assets().
+ *
+ * Scope of this file:
+ *   - Base card (`.vyg-card`, hover, focus-within, link).
+ *   - Card BEM regions: media, thumb-wrap, thumb, duration, badges,
+ *     body, title, channel, verified, meta, description, footer, CTA,
+ *     actions.
+ *   - Mode variants (9): standard, compact, media-row, hero-primary,
+ *     hero-secondary, short-vertical, live-status, overlay,
+ *     minimal-thumb.
+ *   - Card style variants (5): bordered, elevated, flat, minimal,
+ *     commerce.
+ *   - Density variants (3): compact, comfortable, editorial — these
+ *     override the body padding / gap / type sizes.
+ *   - Thumbnail ratio variants (5): 16-9, 4-3, 1-1, 9-16, auto.
+ *
+ * Cascade contract (plan §16.5):
+ *   Every visual value is a CSS variable. presets.css defines
+ *   defaults on `.vyg-feed` (so every preset can override them in
+ *   one place); this file references those variables, with sensible
+ *   fallbacks on `.vyg-card` for any that are not yet covered by
+ *   presets.css. presets.css remains the single override point for
+ *   white-label theming.
+ *
+ * File order:
+ *   1. Variable defaults (on `.vyg-card`) — fallbacks for vars
+ *      presets.css does not yet define.
+ *   2. Base card.
+ *   3. Link / focus.
+ *   4. Media region (thumb wrap, thumb, duration, badges).
+ *   5. Body region (title, channel, meta, description).
+ *   6. Footer region (CTA, actions).
+ *   7. Mode variants.
+ *   8. Card style variants.
+ *   9. Density variants.
+ *  10. Thumbnail ratio variants.
+ */
+
+/* ---- 1. Variable defaults --------------------------------------------- *
+ * These are local fallbacks only. presets.css on .vyg-feed defines the
+ * canonical defaults that presets/themes override; we inherit from
+ * .vyg-feed via the cascade and only set the few that are not yet
+ * covered (internal card body gap, title line-height, thumb radius,
+ * CTA palette). All of these can still be overridden by a child theme
+ * by setting the same variable on .vyg-card or any ancestor.
+ */
+.vyg-card {
+    --vyg-card-gap:        0.3rem;          /* gap between body regions (title, channel, meta) */
+    --vyg-title-size:      inherit;         /* mirrors --vyg-card-title-size from presets.css */
+    --vyg-title-line-height: 1.25;
+    --vyg-title-lines:     2;
+    --vyg-thumb-radius:    inherit;         /* mirrors the existing thumb-wrap shape */
+    --vyg-cta-bg:          rgba(0, 0, 0, 0.06);
+    --vyg-cta-color:       inherit;
+    --vyg-cta-radius:      999px;
+}
+
+/* ---- 2. Base card --------------------------------------------------- */
+
+.vyg-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--vyg-card-bg, #fff);
+    border-radius: var(--vyg-card-radius);
+    box-shadow: var(--vyg-card-shadow);
+    border: var(--vyg-card-border, 1px solid #e5e5e5);
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vyg-card:hover {
+    box-shadow: var(--vyg-card-shadow-hover, 0 4px 10px rgba(0, 0, 0, 0.08));
+}
+
+.vyg-card:focus-within {
+    outline: 2px solid #0f0f0f;
+    outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vyg-card,
+    .vyg-card:hover {
+        transition: none;
+        transform: none;
+    }
+}
+
+/* ---- 3. Link / focus ------------------------------------------------ */
+
+.vyg-card__link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.vyg-card__link:focus-visible {
+    outline: none;
+}
+
+/* Title is also a clickable link (the spec wires both the thumb and
+ * the title to the watch URL). Style it as a continuation of the body
+ * so the cursor / hover state is consistent. */
+.vyg-card__title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.vyg-card__title-link:focus-visible {
+    outline: 2px solid #0f0f0f;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* ---- 4. Media region (thumb wrap, thumb, duration, badges) ---------- */
+
+.vyg-card__media {
+    position: relative;
+    width: 100%;
+}
+
+.vyg-card__thumb-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--vyg-card-thumb-bg, #000);
+    overflow: hidden;
+    border-radius: var(--vyg-thumb-radius, 0);
+}
+
+.vyg-card__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.vyg-card__duration {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: var(--vyg-duration-bg, rgba(0, 0, 0, 0.8));
+    color: var(--vyg-duration-color, #fff);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+/* Status badges (LIVE / UPCOMING / FEATURED) sit absolutely on the
+ * media region. Default to top-left; position modifiers below move
+ * them around the wrap. */
+.vyg-card__badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: var(--vyg-pill-bg, #ff0000);
+    color: var(--vyg-pill-color, #fff);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.vyg-card__badge--live {
+    background: var(--vyg-pill-bg, #ff0000);
+    color: var(--vyg-pill-color, #fff);
+}
+
+.vyg-card__badge--upcoming {
+    /* Default upcoming pill uses the same pill palette as live;
+     * presets.css can override --vyg-pill-bg per use case. */
+    background: var(--vyg-pill-bg, #ff0000);
+    color: var(--vyg-pill-color, #fff);
+}
+
+.vyg-card__badge--featured {
+    /* Featured (commerce) pill defaults to a slightly darker pill. */
+    background: var(--vyg-pill-bg, #ff0000);
+    color: var(--vyg-pill-color, #fff);
+}
+
+/* ---- 5. Body region (title, channel, meta, description) -------------- */
+
+.vyg-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--vyg-card-gap);
+    padding: var(--vyg-card-padding);
+    position: relative;
+}
+
+.vyg-card__title {
+    margin: 0;
+    font-size: var(--vyg-card-title-size, var(--vyg-title-size));
+    font-weight: var(--vyg-card-title-weight, 600);
+    line-height: var(--vyg-title-line-height);
+    color: var(--vyg-card-title-color, #0f0f0f);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Title line-clamp variants (set by the partial based on title_lines
+ * setting: --1 / --2 / --3 / --unlimited). */
+.vyg-card__title--1 {
+    -webkit-line-clamp: 1;
+}
+.vyg-card__title--2 {
+    -webkit-line-clamp: 2;
+}
+.vyg-card__title--3 {
+    -webkit-line-clamp: 3;
+}
+.vyg-card__title--unlimited {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    display: block;
+}
+
+.vyg-card__channel {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: var(--vyg-card-meta-size);
+    color: var(--vyg-card-meta-color, #606060);
+    min-width: 0;
+}
+
+.vyg-card__channel-avatar {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.vyg-card__channel-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: var(--vyg-card-meta-color, #606060);
+}
+
+.vyg-card__channel-subs {
+    font-size: 0.85em;
+    opacity: 0.8;
+    color: var(--vyg-card-meta-color, #606060);
+}
+
+.vyg-card__verified {
+    color: var(--vyg-verified-color, #606060);
+    font-size: 12px;
+    line-height: 1;
+    flex: 0 0 auto;
+}
+
+.vyg-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--vyg-card-meta-size);
+    color: var(--vyg-card-meta-color, #606060);
+}
+
+.vyg-card__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.vyg-card__meta-sep {
+    opacity: 0.6;
+}
+
+.vyg-card__meta .vyg-icon {
+    flex: 0 0 auto;
+    opacity: 0.8;
+}
+
+.vyg-card__description {
+    margin: 0;
+    color: var(--vyg-card-meta-color, #606060);
+    font-size: var(--vyg-card-meta-size);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+}
+
+/* ---- 6. Footer region (CTA, actions) -------------------------------- */
+
+.vyg-card__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 var(--vyg-card-padding) var(--vyg-card-padding);
+    border-top: 1px solid var(--vyg-card-border, #e5e5e5);
+    padding-top: 0.5rem;
+}
+
+.vyg-card__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.45em 0.85em;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: var(--vyg-cta-radius, 999px);
+    background: var(--vyg-cta-bg, rgba(0, 0, 0, 0.06));
+    color: var(--vyg-cta-color, inherit);
+    border: 1px solid currentColor;
+    transition: background-color 0.15s ease;
+}
+
+.vyg-card__cta:hover,
+.vyg-card__cta:focus {
+    background: rgba(0, 0, 0, 0.12);
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.vyg-card__cta-price {
+    font-weight: 400;
+    opacity: 0.85;
+}
+
+.vyg-card__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.vyg-card__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    border-radius: 50%;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 0.15s ease;
+}
+
+.vyg-card__action:hover,
+.vyg-card__action:focus-visible {
+    background: rgba(0, 0, 0, 0.06);
+    outline: none;
+}
+
+.vyg-card__action .vyg-icon {
+    color: inherit;
+}
+
+/* ---- 7. Mode variants ------------------------------------------------ */
+
+/* Standard — the default card shape. */
+.vyg-card--standard {
+    /* No overrides; inherit base. */
+}
+
+/* Compact — tighter body padding, smaller title. */
+.vyg-card--compact {
+    --vyg-card-padding: 0.5rem;
+    --vyg-card-gap: 0.2rem;
+}
+
+/* Media-row — horizontal layout (used by List layout). */
+.vyg-card--media-row {
+    flex-direction: row;
+}
+.vyg-card--media-row .vyg-card__media {
+    flex: 0 0 40%;
+    max-width: 40%;
+}
+.vyg-card--media-row .vyg-card__thumb-wrap {
+    aspect-ratio: 16 / 9;
+    height: 100%;
+    border-radius: 0;
+}
+.vyg-card--media-row .vyg-card__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.vyg-card--media-row .vyg-card__footer {
+    flex-basis: 100%;
+    margin-top: 0;
+}
+
+/* Hero-primary — large media, big title, used by Hero layout for
+ * the first card. */
+.vyg-card--hero-primary .vyg-card__title {
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+.vyg-card--hero-primary .vyg-card__body {
+    padding: 1.25rem 1.5rem;
+}
+
+/* Hero-secondary — paired with hero-primary; smaller title. */
+.vyg-card--hero-secondary .vyg-card__title {
+    font-size: 1.05rem;
+}
+
+/* Short-vertical — paired with the 9:16 thumb ratio. */
+.vyg-card--short-vertical .vyg-card__thumb-wrap {
+    aspect-ratio: 9 / 16;
+}
+
+/* Live-status — emphasises the LIVE pill (no extra rules needed; the
+ * pill variant .vyg-card__badge--live provides the colour, and any
+ * layout that needs a "live" outline can extend from here). */
+.vyg-card--live-status .vyg-card__badge--live {
+    /* Future hook: pulse animation lives here. */
+}
+
+/* Overlay — title + meta render on top of the media. The body floats
+ * over the thumb via absolute positioning. */
+.vyg-card--overlay {
+    position: relative;
+}
+.vyg-card--overlay .vyg-card__body {
+    position: absolute;
+    inset: auto 0 0 0;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.85));
+    color: #fff;
+    padding: 1.5rem 1rem 1rem;
+    z-index: 1;
+}
+.vyg-card--overlay .vyg-card__title,
+.vyg-card--overlay .vyg-card__meta,
+.vyg-card--overlay .vyg-card__channel,
+.vyg-card--overlay .vyg-card__channel-name,
+.vyg-card--overlay .vyg-card__description {
+    color: #fff;
+}
+.vyg-card--overlay .vyg-card__footer {
+    border-top-color: rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+}
+
+/* Minimal-thumb — for masonry / dense grids that don't want a shadow
+ * or border around the card body. */
+.vyg-card--minimal-thumb .vyg-card__thumb-wrap {
+    border-radius: var(--vyg-thumb-radius, 0);
+}
+.vyg-card--minimal-thumb {
+    border: 0;
+    box-shadow: none;
+}
+
+/* ---- 8. Card style variants ----------------------------------------- */
+
+.vyg-card--bordered {
+    /* Default — same as base. */
+    border: var(--vyg-card-border, 1px solid #e5e5e5);
+}
+
+.vyg-card--elevated {
+    border: 0;
+    box-shadow: var(--vyg-card-shadow, 0 4px 10px rgba(0, 0, 0, 0.08));
+}
+
+.vyg-card--flat {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+.vyg-card--minimal {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    /* No border, no shadow — the card blends with the feed background. */
+}
+
+.vyg-card--commerce {
+    /* Commerce cards: soft elevation, prominent border-radius, roomy
+     * padding. Presets can override --vyg-card-radius and
+     * --vyg-card-padding to dial this in. */
+    border-radius: var(--vyg-card-radius, 16px);
+    box-shadow: var(--vyg-card-shadow, 0 8px 24px rgba(0, 0, 0, 0.08));
+    border: var(--vyg-card-border, 1px solid #e5e5e5);
+}
+
+/* ---- 9. Density variants -------------------------------------------- *
+ * Density classes come from CardSettings::resolve. They override the
+ * body padding / gap / type sizes to control how compact the card is.
+ * These cascade onto .vyg-card via custom property overrides.
+ */
+
+.vyg-density--compact {
+    --vyg-card-padding: 0.6rem;
+    --vyg-card-gap: 0.2rem;
+    --vyg-card-radius: 8px;
+    --vyg-title-size: 0.875rem;
+    --vyg-card-title-size: 0.875rem;
+}
+
+.vyg-density--comfortable {
+    --vyg-card-padding: 0.9rem;
+    --vyg-card-gap: 0.3rem;
+    --vyg-card-radius: 12px;
+    --vyg-title-size: 0.95rem;
+    --vyg-card-title-size: 0.95rem;
+}
+
+.vyg-density--editorial {
+    --vyg-card-padding: 1.5rem;
+    --vyg-card-gap: 0.5rem;
+    --vyg-card-radius: 16px;
+    --vyg-title-size: 1.1rem;
+    --vyg-card-title-size: 1.1rem;
+}
+
+/* ---- 10. Thumbnail ratio variants ----------------------------------- */
+
+.vyg-thumb-ratio--16-9 {
+    aspect-ratio: 16 / 9;
+}
+.vyg-thumb-ratio--4-3 {
+    aspect-ratio: 4 / 3;
+}
+.vyg-thumb-ratio--1-1 {
+    aspect-ratio: 1 / 1;
+}
+.vyg-thumb-ratio--9-16 {
+    aspect-ratio: 9 / 16;
+}
+.vyg-thumb-ratio--auto {
+    aspect-ratio: auto;
+}

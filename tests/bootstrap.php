@@ -45,6 +45,9 @@ if ( ! defined( 'VYG_PLUGIN_DIR' ) ) {
 if ( ! defined( 'VYG_PLUGIN_FILE' ) ) {
     define( 'VYG_PLUGIN_FILE', VYG_PLUGIN_DIR . 'vector-youtube-gallery.php' );
 }
+if ( ! defined( 'VYG_PLUGIN_URL' ) ) {
+    define( 'VYG_PLUGIN_URL', 'https://example.test/wp-content/plugins/vector-youtube-gallery/' );
+}
 if ( ! defined( 'VYG_USE_MOCK' ) ) {
     define( 'VYG_USE_MOCK', true );
 }

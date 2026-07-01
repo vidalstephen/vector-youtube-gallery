@@ -1,8 +1,13 @@
 /* Vector YouTube Gallery — grid layout (Phase 13.1 Refinement)
  *
- * This file defines the high-fidelity visual aesthetic for the YouTube grid.
- * It uses a strict typographic hierarchy and a "lifted" card design to match
- * the original reference mockup.
+ * SCOPE (Phase C1): This file owns the GRID WRAPPER, SECTION HEADER,
+ * TRUST STRIP, PAGINATION, and grid-specific DENSITY TOKENS. The
+ * shared video card anatomy (`.vyg-card`, `.vyg-card__*`, mode
+ * variants, style variants, density / ratio variants) now lives in
+ * `assets/css/card.css`, enqueued by `AssetManager::enqueue_card_assets()`
+ * for every layout that uses the shared card system. The grid
+ * layout therefore composes on top of `vyg-card` rather than
+ * defining the card internals.
  *
  * Token architecture:
  *   - Layout tokens (--vyg-grid-gap, --vyg-card-padding, etc.) are set by
@@ -12,7 +17,7 @@
  *   - This file provides REFINED DEFAULTS that make the grid look polished
  *     out-of-the-box, while still respecting preset overrides via the cascade.
  *
- * Tokens (declared on .vyg-feed and overridden by the density class):
+ * Tokens (declared on .vyg-grid and overridden by the density class):
  *   --vyg-grid-gap          gap between cards
  *   --vyg-card-padding      padding inside the card body
  *   --vyg-card-radius       border radius
@@ -149,185 +154,6 @@
 .vyg-grid__header-cta:focus-visible {
     outline: 2px solid #0f0f0f;
     outline-offset: 2px;
-}
-
-/* ---- Card --------------------------------------------------------------- */
-
-.vyg-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--vyg-card-bg, #fff);
-    border-radius: var(--vyg-card-radius);
-    box-shadow: var(--vyg-card-shadow);
-    border: var(--vyg-card-border, 1px solid #e5e5e5);
-    overflow: hidden;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.vyg-card:hover {
-    box-shadow: var(--vyg-card-shadow-hover);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .vyg-card,
-    .vyg-card:hover {
-        transition: none;
-        transform: none;
-    }
-}
-
-.vyg-card:focus-within {
-    outline: 2px solid #0f0f0f;
-    outline-offset: 3px;
-}
-
-.vyg-card__link {
-    display: block;
-    color: inherit;
-    text-decoration: none;
-}
-
-.vyg-card__link:focus-visible {
-    outline: none;
-}
-
-/* Thumbnail — strict 16:9 */
-.vyg-card__thumb-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    background: var(--vyg-card-thumb-bg, #000);
-    overflow: hidden;
-}
-
-.vyg-card__thumb {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-
-/* Duration badge — compact, semi-transparent, bottom-right */
-.vyg-card__duration {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: var(--vyg-duration-bg, rgba(0, 0, 0, 0.8));
-    color: var(--vyg-duration-color, #fff);
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1;
-}
-
-/* LIVE badge — top-left */
-.vyg-card__badge--live {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    background: var(--vyg-pill-bg, #ff0000);
-    color: var(--vyg-pill-color, #fff);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-}
-
-/* ---- Card body — typographic hierarchy --------------------------------- */
-
-.vyg-card__body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    padding: var(--vyg-card-padding);
-    position: relative;
-}
-
-/* Title — bold, high-contrast black, 2-line clamp */
-.vyg-card__title {
-    margin: 0;
-    font-size: var(--vyg-card-title-size);
-    font-weight: var(--vyg-card-title-weight);
-    line-height: 1.25;
-    color: #0f0f0f;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* Channel row — name + subscriber count + verified check */
-.vyg-card__channel {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: var(--vyg-card-meta-size);
-    color: #606060;
-    min-width: 0;
-}
-
-.vyg-card__channel-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 500;
-    color: #606060;
-}
-
-.vyg-card__channel-subs {
-    font-size: 0.85em;
-    opacity: 0.8;
-    color: #606060;
-}
-
-.vyg-card__verified {
-    color: #606060;
-    font-size: 12px;
-    line-height: 1;
-    flex: 0 0 auto;
-}
-
-/* Meta row — views • time, muted grey */
-.vyg-card__meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: var(--vyg-card-meta-size);
-    color: #606060;
-}
-
-.vyg-card__meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.2rem;
-}
-
-.vyg-card__meta-sep {
-    opacity: 0.6;
-}
-
-.vyg-card__meta .vyg-icon {
-    flex: 0 0 auto;
-    opacity: 0.8;
-}
-
-/* Per-card CTA (Phase 10.3 hook) */
-.vyg-card__cta-wrap {
-    margin-top: 0.5rem;
-    display: flex;
-    justify-content: flex-end;
-}
-
-.vyg-card__cta-wrap .vyg-icon {
-    color: #ff0000;
-    transition: transform 0.15s ease;
-}
-
-.vyg-card__cta-wrap:hover .vyg-icon {
-    transform: scale(1.1);
 }
 
 /* ---- Trust strip -------------------------------------------------------- */
