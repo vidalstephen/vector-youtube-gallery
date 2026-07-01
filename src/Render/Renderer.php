@@ -43,12 +43,28 @@ final class Renderer {
         'live' => true,
     );
 
+    /**
+     * The shared card renderer (Phase B2). Composed in the constructor
+     * from $video_renderer and $templates. Layouts receive this via the
+     * $ctx array as 'card_renderer'.
+     *
+     * Initialized in the constructor (not promoted) to avoid widening
+     * the public constructor signature. The plugin's container is
+     * simple; if it ever needs to inject a pre-built CardRenderer
+     * (e.g. with a theme-override partial loader), this can be promoted
+     * to a constructor param with a default of
+     * `new CardRenderer($video_renderer, $templates)`.
+     */
+    private readonly CardRenderer $card_renderer;
+
     public function __construct(
         private readonly FeedQuery $feed,
         private readonly VideoRenderer $video_renderer,
         private readonly TemplateLoader $templates,
         private readonly LiveQuery $live_query,
-    ) {}
+    ) {
+        $this->card_renderer = new CardRenderer( $video_renderer, $templates );
+    }
 
     /**
      * Render a feed.
@@ -197,61 +213,15 @@ final class Renderer {
      * @param array<int,array<string,mixed>> $videos
      */
     private function emit_html( array $args, ?array $source, array $videos, int $total, string $layout_slug, int $per_page, int $offset ): string {
-        $wrapper_id = sanitize_text_field( (string) ( $args['wrapper_id'] ?? '' ) );
-        if ( '' === $wrapper_id ) {
-            $source_uuid = (string) ( $source['source_uuid'] ?? '' );
-            $wrapper_id = 'vyg-feed-' . substr( md5( $source_uuid . '|' . $layout_slug ), 0, 8 );
-        }
-        $feed_uuid  = sanitize_text_field( (string) ( $args['feed_uuid'] ?? '' ) );
+        // Build the layout-template context first. The same call produces
+        // the wrapper_id, feed_config (with the Phase 10.7 product map
+        // merged), and preset that the CSS emission below needs — so we
+        // derive them in one place rather than recomputing them here.
+        $ctx = $this->build_layout_context( $args, $source, $videos, $total, $layout_slug, $per_page, $offset );
+
+        $wrapper_id = (string) $ctx['wrapper_id'];
+        $preset     = (string) $ctx['preset'];
         $custom_css = (string) ( $args['custom_css'] ?? '' );
-        $public_safe = ! empty( $args['public_safe'] );
-        $preset     = \VectorYT\Gallery\Render\Presets::sanitize_slug( (string) ( $args['preset'] ?? 'default' ) );
-
-        // Phase 10.7: allow third-party code (e.g. the Phase 10.3
-        // product mapping, or a custom WooCommerce bridge) to merge
-        // a `products` array into feed_config. Without this hook,
-        // a feed row has no top-level place to store the
-        // `{video_id => product_id}` mapping (the row's JSON
-        // columns are layout-only).
-        $feed_config = (array) ( $args['feed_config'] ?? array() );
-        if ( '' !== $feed_uuid && ! isset( $feed_config['products'] ) ) {
-            $injected = apply_filters(
-                'vyg_phase10_7_product_map_for_feed',
-                array(),
-                $feed_uuid
-            );
-            if ( is_array( $injected ) && ! empty( $injected ) ) {
-                $feed_config['products'] = $injected;
-            }
-        }
-
-        $ctx = array(
-            'source'       => $source,
-            'videos'       => $videos,
-            'renderer'     => $this->video_renderer,
-            'wrapper_id'   => $wrapper_id,
-            'feed_uuid'    => $feed_uuid,
-            'feed_config'  => $feed_config,
-            'preset'       => $preset,
-            'attrs'        => array_merge(
-                // Phase 13.1: saved display_config_json (per-feed defaults).
-                ( isset( $feed_config['display'] ) && is_array( $feed_config['display'] ) )
-                    ? $feed_config['display']
-                    : array(),
-                // Inline shortcode / block attributes take precedence.
-                $args,
-                array(
-                    'layout'      => $layout_slug,
-                    'offset'      => $offset,
-                    'total'       => $total,
-                    'per_page'    => $per_page,
-                    'wrapper_id'  => $wrapper_id,
-                    'feed_uuid'   => $feed_uuid,
-                    'public_safe' => $public_safe,
-                    'preset'      => $preset,
-                )
-            ),
-        );
 
         /** @var LayoutInterface $layout_class */
         $layout_class = self::LAYOUTS[ $layout_slug ];
@@ -285,6 +255,105 @@ final class Renderer {
                 . "\n</style>\n";
         }
         return $preset_css . $css_block . $layout_html . \VectorYT\Gallery\Render\SchemaLd::render( $source, $videos, $args );
+    }
+
+    /**
+     * Build the layout-template context array.
+     *
+     * This is the merge point for feed_config['display'] (saved per-feed
+     * defaults) and inline shortcode/block attributes. Phase B2 adds two
+     * new keys: `card_renderer` (the shared CardRenderer instance) and
+     * `card_settings` (the resolved, normalized settings array — output of
+     * CardSettings::resolve). Layouts receive the same array they've
+     * always received, plus these two new keys, so B3 can migrate Grid
+     * to call `$card_renderer->render( $video, $card_settings )` without
+     * any other plumbing change.
+     *
+     * Marked `protected` (not `private`) so the unit test can invoke it
+     * via Closure::bind and assert the resolved context shape without
+     * making it part of the public API. The public render() signature is
+     * unchanged.
+     *
+     * @param array<string,mixed>        $args
+     * @param array<string,mixed>|null   $source
+     * @param array<int,array<string,mixed>> $videos
+     * @return array<string,mixed>
+     */
+    protected function build_layout_context(
+        array $args,
+        ?array $source,
+        array $videos,
+        int $total,
+        string $layout_slug,
+        int $per_page,
+        int $offset
+    ): array {
+        // Derive the same secondary fields emit_html() computes, so this
+        // method is self-contained and the test helper can call it with
+        // just the seven primary args. Keeping the derivation in one
+        // place (here) means the ctx shape is defined in one place too.
+        $wrapper_id  = sanitize_text_field( (string) ( $args['wrapper_id'] ?? '' ) );
+        if ( '' === $wrapper_id ) {
+            $source_uuid = (string) ( $source['source_uuid'] ?? '' );
+            $wrapper_id  = 'vyg-feed-' . substr( md5( $source_uuid . '|' . $layout_slug ), 0, 8 );
+        }
+        $feed_uuid   = sanitize_text_field( (string) ( $args['feed_uuid'] ?? '' ) );
+        $public_safe = ! empty( $args['public_safe'] );
+        $preset      = \VectorYT\Gallery\Render\Presets::sanitize_slug( (string) ( $args['preset'] ?? 'default' ) );
+
+        $feed_config = (array) ( $args['feed_config'] ?? array() );
+        if ( '' !== $feed_uuid && ! isset( $feed_config['products'] ) ) {
+            $injected = apply_filters(
+                'vyg_phase10_7_product_map_for_feed',
+                array(),
+                $feed_uuid
+            );
+            if ( is_array( $injected ) && ! empty( $injected ) ) {
+                $feed_config['products'] = $injected;
+            }
+        }
+
+        // Phase B2: pull the saved display config (Phase 13.1 storage shape)
+        // and resolve it through CardSettings::resolve together with inline
+        // args. The layout slug and inline args are the two precedence
+        // axes; CardSettings handles the rest (legacy back-compat,
+        // profiles, defaults, sanitization).
+        $saved_display = isset( $feed_config['display'] ) && is_array( $feed_config['display'] )
+            ? $feed_config['display']
+            : array();
+
+        $card_settings = CardSettings::resolve( $layout_slug, $saved_display, $args );
+
+        return array(
+            'source'        => $source,
+            'videos'        => $videos,
+            'renderer'      => $this->video_renderer,
+            'wrapper_id'    => $wrapper_id,
+            'feed_uuid'     => $feed_uuid,
+            'feed_config'   => $feed_config,
+            'preset'        => $preset,
+            // Phase B2: shared card renderer + resolved card settings.
+            // Layouts gain access to $card_renderer and $card_settings in
+            // their scope. B3 migrates Grid; other layouts are untouched.
+            'card_renderer' => $this->card_renderer,
+            'card_settings' => $card_settings,
+            'attrs'         => array_merge(
+                // Phase 13.1: saved display_config_json (per-feed defaults).
+                $saved_display,
+                // Inline shortcode / block attributes take precedence.
+                $args,
+                array(
+                    'layout'      => $layout_slug,
+                    'offset'      => $offset,
+                    'total'       => $total,
+                    'per_page'    => $per_page,
+                    'wrapper_id'  => $wrapper_id,
+                    'feed_uuid'   => $feed_uuid,
+                    'public_safe' => $public_safe,
+                    'preset'      => $preset,
+                )
+            ),
+        );
     }
 
     /**
