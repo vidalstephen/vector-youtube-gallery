@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace VectorYT\Gallery\Repository;
 
 use VectorYT\Gallery\Database\Schema;
+use VectorYT\Gallery\Render\CardSettings;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -85,6 +86,11 @@ class FeedRepository {
             'card_radius',
             // Phase 13.1 — footer.
             'trust_strip',
+            // Phase A4 — nested card-customization shape
+            // (sanitized via CardSettings::sanitize_storage() — not
+            // coerce_display_value()). Top-level legacy keys above are
+            // kept for back-compat.
+            'card_settings',
         );
     }
 
@@ -399,9 +405,47 @@ class FeedRepository {
             if ( ! is_string( $key ) || ! isset( $allowed[ $key ] ) ) {
                 continue;
             }
+            // Phase A4 — the nested card_settings shape is sanitized
+            // by the dedicated CardSettings helper, not by
+            // coerce_display_value() (which is for flat keys like
+            // density, columns, etc.).
+            if ( 'card_settings' === $key ) {
+                $sanitized_card = self::sanitize_card_settings( $value );
+                if ( null !== $sanitized_card ) {
+                    $out[ $key ] = $sanitized_card;
+                }
+                continue;
+            }
             $out[ $key ] = self::coerce_display_value( $key, $value );
         }
         return $out;
+    }
+
+    /**
+     * Sanitize the nested `card_settings` value.
+     *
+     * Coerces non-array input to `[]`, then runs the result through
+     * CardSettings::sanitize_storage() which drops unknown layouts /
+     * unknown setting keys and coerces every value via CardSanitizer.
+     *
+     * Returns null when nothing survives sanitization (so the caller
+     * can omit the empty `card_settings => []` container from the
+     * stored row instead of persisting an empty object).
+     *
+     * @param mixed $value Raw value at the `card_settings` key.
+     * @return array<string,mixed>|null
+     */
+    private static function sanitize_card_settings( $value ): ?array {
+        $array = is_array( $value ) ? $value : array();
+        $sanitized = CardSettings::sanitize_storage( $array );
+        // sanitize_storage always returns the canonical
+        // ['global' => [...], 'layouts' => [...]] shape. If both
+        // sub-arrays are empty there is nothing to persist, so the
+        // caller drops the key entirely.
+        if ( empty( $sanitized['global'] ) && empty( $sanitized['layouts'] ) ) {
+            return null;
+        }
+        return $sanitized;
     }
 
     /**
