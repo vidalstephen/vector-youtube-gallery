@@ -46,6 +46,7 @@
     color: var(--vyg-card-title-color);
 }
 
+.vyg-feed .vyg-card__media,
 .vyg-feed .vyg-card__thumb-wrap {
     background: var(--vyg-card-thumb-bg);
 }

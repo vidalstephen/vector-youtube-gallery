@@ -122,15 +122,17 @@
 .vyg-card__media {
     position: relative;
     width: 100%;
-}
-
-.vyg-card__thumb-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 16 / 9;
     background: var(--vyg-card-thumb-bg, #000);
     overflow: hidden;
     border-radius: var(--vyg-thumb-radius, 0);
+}
+
+.vyg-card__media > .vyg-card__link,
+.vyg-card__thumb-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .vyg-card__thumb {
@@ -391,6 +393,7 @@
     flex: 0 0 40%;
     max-width: 40%;
 }
+.vyg-card--media-row .vyg-card__media,
 .vyg-card--media-row .vyg-card__thumb-wrap {
     aspect-ratio: 16 / 9;
     height: 100%;
@@ -421,6 +424,7 @@
 }
 
 /* Short-vertical — paired with the 9:16 thumb ratio. */
+.vyg-card--short-vertical .vyg-card__media,
 .vyg-card--short-vertical .vyg-card__thumb-wrap {
     aspect-ratio: 9 / 16;
 }
@@ -460,6 +464,7 @@
 
 /* Minimal-thumb — for masonry / dense grids that don't want a shadow
  * or border around the card body. */
+.vyg-card--minimal-thumb .vyg-card__media,
 .vyg-card--minimal-thumb .vyg-card__thumb-wrap {
     border-radius: var(--vyg-thumb-radius, 0);
 }
