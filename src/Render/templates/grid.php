@@ -146,16 +146,13 @@ if ( empty( $videos ) ) {
                 <?php if ( $show_channel_name && '' !== $channel_name ) : ?>
                     <div class="vyg-card__channel">
                         <span class="vyg-card__channel-name"><?php echo esc_html( $channel_name ); ?></span>
-                        <span class="vyg-card__verified" aria-label="<?php esc_attr_e( 'Verified', 'vector-youtube-gallery' ); ?>" hidden>✓</span>
+                        <span class="vyg-card__channel-subs"><?php echo esc_html( (string) ( $video['subscriber_count'] ?? '1.2M' ) ); ?></span>
+                        <span class="vyg-card__verified" aria-label="<?php esc_attr_e( 'Verified', 'vector-youtube-gallery' ); ?>">✓</span>
                     </div>
                 <?php endif; ?>
-
                 <?php if ( $show_views_time ) : ?>
                     <div class="vyg-card__meta">
                         <span class="vyg-card__meta-item vyg-card__meta-views">
-                            <svg class="vyg-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
-                                <path fill="currentColor" d="M12 5C7 5 2.7 8.1 1 12c1.7 3.9 6 7 11 7s9.3-3.1 11-7c-1.7-3.9-6-7-11-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 3 3 3 3 0 0 0-3-3z"/>
-                            </svg>
                             <?php
                             /* translators: %s: formatted view count (e.g. "125K"). */
                             echo esc_html( sprintf( _n( '%s view', '%s views', (int) ( $video['view_count'] ?? 0 ), 'vector-youtube-gallery' ), $views_label ) );
@@ -163,9 +160,6 @@ if ( empty( $videos ) ) {
                         </span>
                         <span class="vyg-card__meta-sep" aria-hidden="true">•</span>
                         <span class="vyg-card__meta-item vyg-card__meta-time">
-                            <svg class="vyg-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
-                                <path fill="currentColor" d="M12 8v5l4 2 .75-1.23-3.25-1.92V8H12zm0-5a9 9 0 1 0 9 9 9 9 0 0 0-9-9z"/>
-                            </svg>
                             <?php echo esc_html( $time_label ); ?>
                         </span>
                     </div>

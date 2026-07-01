@@ -17,7 +17,7 @@
     --vyg-card-bg:               transparent;
     --vyg-card-shadow:           none;
     --vyg-card-shadow-hover:     0 4px 10px rgba(0, 0, 0, 0.08);
-    --vyg-card-border:           0 solid transparent;
+    --vyg-card-border:           1px solid #e5e5e5;
     --vyg-card-padding:          0.9rem;
     --vyg-card-title-weight:     600;
     --vyg-card-title-size:       0.95em;
