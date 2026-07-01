@@ -1,20 +1,38 @@
 <?php
 /**
- * Grid layout template — Phase 13.1 redesign.
+ * Grid layout template — Phase 13.1 redesign + Phase B3 migration.
+ *
+ * Per-card anatomy (media, status, duration, body, title, channel,
+ * metadata, description, footer, CTA, actions) is owned by the shared
+ * CardRenderer — this template delegates each video to
+ * $card_renderer->render(). The grid template owns the structural
+ * wrapper only: the feed root classes, the optional section header
+ * (title / subtitle / column indicator / CTA), the trust strip, and
+ * the load-more pagination button.
  *
  * Variables (extracted from $context by TemplateLoader):
- *   $source  — array{id, source_uuid, source_type, title, ...}
- *   $videos  — array<int, array> of normalized video rows
- *   $attrs   — shortcode/block attributes (layout, density, header_title, ...)
- *   $renderer — VideoRenderer instance (helper for embed URLs, durations, view counts)
+ *   $source        — array{id, source_uuid, source_type, title, ...}
+ *   $videos        — array<int, array> of normalized video rows
+ *   $attrs         — shortcode/block attributes (layout, density, ...)
+ *   $renderer      — VideoRenderer instance (legacy; unused by B3, kept
+ *                    for sub-partials that still reference it)
+ *   $card_renderer — shared CardRenderer instance (Phase B2)
+ *   $card_settings — resolved 43-key card settings (Phase B2)
+ *   $feed_config   — saved feed config (used for legacy/CTA mapping)
+ *   $feed_uuid     — feed uuid string
  *
- * The template is fully self-contained: every section is gated on an explicit
- * attribute so the operator can dial the look up or down per feed.
+ * The template is fully self-contained: every section is gated on an
+ * explicit attribute so the operator can dial the look up or down
+ * per feed.
  *
- * @var array $source
- * @var array $videos
- * @var array $attrs
+ * @var array  $source
+ * @var array  $videos
+ * @var array  $attrs
  * @var \VectorYT\Gallery\Render\VideoRenderer $renderer
+ * @var \VectorYT\Gallery\Render\CardRenderer  $card_renderer
+ * @var array  $card_settings
+ * @var array  $feed_config
+ * @var string $feed_uuid
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -26,9 +44,6 @@ $density           = isset( $attrs['density'] ) ? (string) $attrs['density'] : '
 $public_safe       = ! empty( $attrs['public_safe'] );
 $has_header        = ! empty( $attrs['header_title'] );
 $has_trust_strip   = ! empty( $attrs['trust_strip'] );
-$show_channel_name = ! isset( $attrs['show_channel_name'] ) || ! empty( $attrs['show_channel_name'] );
-$show_views_time   = ! isset( $attrs['show_views_and_time'] ) || ! empty( $attrs['show_views_and_time'] );
-$product_cta_vis   = ! isset( $attrs['product_cta_visible'] ) || ! empty( $attrs['product_cta_visible'] );
 
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
@@ -102,93 +117,26 @@ if ( empty( $videos ) ) {
     <?php endif; ?>
 
     <div class="vyg-grid__cards" role="list">
-    <?php foreach ( $videos as $video ) : ?>
-        <?php
-        $embed_url        = $renderer->embed_url( $video );
-        $watch_url        = $renderer->watch_url( $video );
-        $thumb            = $renderer->best_thumbnail( $video );
-        $duration         = $renderer->format_duration( (int) ( $video['duration_seconds'] ?? 0 ) );
-        $is_live          = 'live' === ( $video['live_status'] ?? '' );
-        $views_label      = $renderer->format_view_count( (int) ( $video['view_count'] ?? 0 ) );
-        $time_label       = \VectorYT\Gallery\Render\RelativeTime::humanize( (string) ( $video['published_at'] ?? '' ) );
-        $channel_name     = (string) ( $video['youtube_channel_title'] ?? '' );
-        if ( '' === $channel_name && isset( $source['title'] ) ) {
-            $channel_name = (string) $source['title'];
-        }
-        ?>
-        <article class="vyg-card"
-                 role="listitem"
-                 data-video-id="<?php echo esc_attr( (string) ( $video['youtube_video_id'] ?? '' ) ); ?>"
-                 data-content-type="<?php echo esc_attr( (string) ( $video['content_type'] ?? 'standard' ) ); ?>"
-                 data-live-status="<?php echo esc_attr( (string) ( $video['live_status'] ?? 'none' ) ); ?>">
-            <a class="vyg-card__link" href="<?php echo esc_url( $watch_url ); ?>"
-               data-vyg-lightbox="<?php echo esc_attr( $embed_url ); ?>"
-               data-vyg-title="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>"
-               aria-label="<?php echo esc_attr( sprintf( __( 'Watch %s', 'vector-youtube-gallery' ), (string) ( $video['title'] ?? '' ) ) ); ?>">
-                <div class="vyg-card__thumb-wrap">
-                    <img class="vyg-card__thumb"
-                         src="<?php echo esc_url( $thumb ); ?>"
-                         alt="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>"
-                         loading="lazy"
-                         decoding="async" />
-                    <?php if ( '' !== $duration ) : ?>
-                        <span class="vyg-card__duration"><?php echo esc_html( $duration ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( $is_live ) : ?>
-                        <span class="vyg-card__badge vyg-card__badge--live"><?php esc_html_e( 'LIVE', 'vector-youtube-gallery' ); ?></span>
-                    <?php endif; ?>
-                </div>
-            </a>
-
-            <div class="vyg-card__body">
-                <h3 class="vyg-card__title"><?php echo esc_html( (string) ( $video['title'] ?? '' ) ); ?></h3>
-
-                <?php if ( $show_channel_name && '' !== $channel_name ) : ?>
-                    <div class="vyg-card__channel">
-                        <span class="vyg-card__channel-name"><?php echo esc_html( $channel_name ); ?></span>
-                        <span class="vyg-card__channel-subs"><?php echo esc_html( (string) ( $video['subscriber_count'] ?? '1.2M' ) ); ?></span>
-                        <span class="vyg-card__verified" aria-label="<?php esc_attr_e( 'Verified', 'vector-youtube-gallery' ); ?>">✓</span>
-                    </div>
-                <?php endif; ?>
-                <?php if ( $show_views_time ) : ?>
-                    <div class="vyg-card__meta">
-                        <span class="vyg-card__meta-item vyg-card__meta-views">
-                            <?php
-                            /* translators: %s: formatted view count (e.g. "125K"). */
-                            echo esc_html( sprintf( _n( '%s view', '%s views', (int) ( $video['view_count'] ?? 0 ), 'vector-youtube-gallery' ), $views_label ) );
-                            ?>
-                        </span>
-                        <span class="vyg-card__meta-sep" aria-hidden="true">•</span>
-                        <span class="vyg-card__meta-item vyg-card__meta-time">
-                            <?php echo esc_html( $time_label ); ?>
-                        </span>
-                    </div>
-                <?php endif; ?>
-
-                <?php
-                // Phase 10.3 — WooCommerce product CTA (or other per-card CTA).
-                // Only renders when a feed-level mapping exists AND the linked
-                // product is still published AND the operator has not turned
-                // the CTA off via `product_cta_visible=false`.
-                $feed_cfg = isset( $feed_config ) && is_array( $feed_config ) ? $feed_config : array();
-                $video_id = (string) ( $video['youtube_video_id'] ?? '' );
-                if (
-                    $product_cta_vis &&
-                    '' !== $video_id &&
-                    function_exists( 'vyg_render_product_cta' )
-                ) {
-                    $cta_html = (string) vyg_render_product_cta( $feed_cfg, $video_id );
-                    if ( '' !== $cta_html ) {
-                        echo '<div class="vyg-card__cta-wrap">';
-                        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — helper escapes itself.
-                        echo $cta_html;
-                        echo '</div>';
-                    }
-                }
-                ?>
-            </div>
-        </article>
-    <?php endforeach; ?>
+        <?php foreach ( $videos as $video ) : ?>
+            <?php
+            // Phase B3 — every per-card anatomy (media, status, duration,
+            // body, title, channel, metadata, description, footer, CTA,
+            // actions) is owned by the shared CardRenderer. Grid owns
+            // the structural wrapper only. The card-internals loop body
+            // is exactly one renderer call.
+            echo $card_renderer->render(
+                $video,
+                $card_settings,
+                array(
+                    'source'      => $source,
+                    'feed_config' => isset( $feed_config ) && is_array( $feed_config ) ? $feed_config : array(),
+                    'feed_uuid'   => isset( $feed_uuid ) ? (string) $feed_uuid : '',
+                    'mode'        => 'standard',
+                    'role'        => 'listitem',
+                )
+            );
+            ?>
+        <?php endforeach; ?>
     </div>
 
     <?php if ( $has_trust_strip ) : ?>

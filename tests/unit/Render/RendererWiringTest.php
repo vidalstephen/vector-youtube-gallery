@@ -161,6 +161,18 @@ final class RendererWiringTest extends TestCase
 
     public function test_product_cta_visible_false_hides_cta_hook(): void
     {
+        // Phase B3 — the old per-card CTA hook (`vyg-card__cta-wrap`
+        // containing the WooCommerce `vyg_render_product_cta` output)
+        // was the grid template's responsibility. After B3 the grid
+        // template delegates every per-card region to the shared
+        // CardRenderer, which decides whether to render a CTA based on
+        // `card_settings['show_cta']`. The legacy `product_cta_visible`
+        // boolean still controls the same outcome via the LEGACY_MAP
+        // (product_cta_visible → show_cta) but the rendered selector
+        // is the shared `vyg-card__cta` (not the legacy
+        // `vyg-card__cta-wrap`). The legacy key lives in the saved
+        // display config (the path the Phase 13.1 admin UI writes to),
+        // so we set it there.
         $this->feeds->source_row = array(
             'source_uuid' => 'src-cta',
             'source_type' => 'channel',
@@ -168,12 +180,6 @@ final class RendererWiringTest extends TestCase
             'title'       => 'CTA Source',
             'status'      => 'active',
         );
-        // Define a function that would normally render a CTA, so we can
-        // verify the template short-circuits when product_cta_visible=false.
-        if ( ! function_exists( 'vyg_render_product_cta' ) ) {
-            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound
-            eval( 'function vyg_render_product_cta( $feed_cfg, $video_id ) { return "<button class=\"vyg-card__cta\">BUY</button>"; }' );
-        }
         $renderer = new Renderer( $this->feeds, $this->video_renderer, $this->templates, $this->live_query );
         $html_on  = $renderer->render( array(
             'source_uuid'       => 'src-cta',
@@ -183,7 +189,11 @@ final class RendererWiringTest extends TestCase
                 ),
                 'manual_video_ids' => array(),
             ),
-            'product_cta_visible' => true,
+            'feed_config' => array(
+                'display' => array(
+                    'product_cta_visible' => true,
+                ),
+            ),
         ) );
         $html_off = $renderer->render( array(
             'source_uuid'       => 'src-cta',
@@ -193,10 +203,19 @@ final class RendererWiringTest extends TestCase
                 ),
                 'manual_video_ids' => array(),
             ),
-            'product_cta_visible' => false,
+            'feed_config' => array(
+                'display' => array(
+                    'product_cta_visible' => false,
+                ),
+            ),
         ) );
-        $this->assertStringContainsString( 'vyg-card__cta-wrap', $html_on );
-        $this->assertStringNotContainsString( 'vyg-card__cta-wrap', $html_off );
+        // product_cta_visible=true (legacy saved display) → legacy map
+        // sets show_cta=true → shared CardRenderer emits the CTA in the
+        // card footer.
+        $this->assertStringContainsString( 'vyg-card__cta', $html_on );
+        // product_cta_visible=false (legacy saved display) → show_cta=false
+        // → no CTA.
+        $this->assertStringNotContainsString( 'vyg-card__cta', $html_off );
     }
 
     // -----------------------------------------------------------------
