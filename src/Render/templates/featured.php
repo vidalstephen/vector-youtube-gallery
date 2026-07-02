@@ -24,6 +24,27 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs );
+
+// Phase 14.4 — section head "View all videos" link. The href precedence:
+//   1. see_all_url attr (explicit shortcode / block override)
+//   2. source's canonical URL synthesized from source_type + youtube_*_id
+//   3. '#' as the final fallback
+$see_all_url   = (string) ( $attrs['see_all_url'] ?? '' );
+$see_all_label = (string) ( $attrs['see_all_label'] ?? '' );
+if ( '' === $see_all_url && is_array( $source ) ) {
+    $source_type = (string) ( $source['source_type'] ?? '' );
+    if ( 'channel' === $source_type && ! empty( $source['youtube_channel_id'] ) ) {
+        $see_all_url = 'https://www.youtube.com/channel/' . rawurlencode( (string) $source['youtube_channel_id'] );
+    } elseif ( 'playlist' === $source_type && ! empty( $source['youtube_playlist_id'] ) ) {
+        $see_all_url = 'https://www.youtube.com/playlist?list=' . rawurlencode( (string) $source['youtube_playlist_id'] );
+    } elseif ( 'video' === $source_type && ! empty( $source['youtube_video_id'] ) ) {
+        $see_all_url = 'https://www.youtube.com/watch?v=' . rawurlencode( (string) $source['youtube_video_id'] );
+    }
+}
+if ( '' === $see_all_url ) {
+    $see_all_url = '#';
+}
+$see_all_label = ( '' !== $see_all_label ) ? $see_all_label : __( 'View all videos →', 'vector-youtube-gallery' );
 ?>
 <div class="vyg-feed vyg-feed--featured vyg-featured <?php echo esc_attr( $width_class ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
@@ -41,6 +62,10 @@ $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs 
     </article>
 
     <?php if ( ! empty( $rest ) ) : ?>
+        <div class="vyg-section-head">
+            <h2><?php esc_html_e( 'More Videos', 'vector-youtube-gallery' ); ?></h2>
+            <a class="vyg-section-head__link" href="<?php echo esc_url( $see_all_url ); ?>"><?php echo esc_html( $see_all_label ); ?></a>
+        </div>
         <div class="vyg-featured__rest vyg-grid vyg-grid--cols-<?php echo (int) $columns; ?>">
             <?php foreach ( $rest as $video ) : ?>
                 <article class="vyg-card"

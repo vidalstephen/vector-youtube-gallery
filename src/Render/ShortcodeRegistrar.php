@@ -93,6 +93,12 @@ final class ShortcodeRegistrar {
         // the prototype's default 'wide' should always pass through
         // (mirrors how `layout` always passes through).
         'width',
+        // Phase 14.4 — "View all" link target + label on featured/hero
+        // section heads. Structural (mirrors `width`): the operator's
+        // explicit shortcode/block attr should always reach the
+        // template, not be subject to the card-system explicit-only
+        // filter.
+        'see_all_url', 'see_all_label',
     );
 
     public function __construct(
@@ -261,6 +267,13 @@ final class ShortcodeRegistrar {
             // Phase 14.1 — width mode. Validated against the allow-list;
             // unknown values fall back to 'wide' inside TemplateAttributes.
             'width'          => (string) ( $atts['width'] ?? 'wide' ),
+            // Phase 14.4 — section-head "View all" link. see_all_url is
+            // a raw URL (sanitize via esc_url_raw on input), see_all_label
+            // is plain text. Both fall through to the template where the
+            // template decides what to do when they're empty (use the
+            // source's canonical URL, or '#').
+            'see_all_url'    => (string) ( $atts['see_all_url'] ?? '' ),
+            'see_all_label'  => (string) ( $atts['see_all_label'] ?? '' ),
             'feed_config'    => is_array( $config ?? null ) ? $config : array(),
         );
 
@@ -340,6 +353,12 @@ final class ShortcodeRegistrar {
             // prototype's baseline panel. Allowed values come from
             // TemplateAttributes::WIDTH_MODES.
             'width'          => 'wide',
+            // Phase 14.4 — section-head "View all" link. Both default
+            // to '' so the template falls back to the source's
+            // canonical URL (or '#') when the operator does not
+            // override them. Sanitized below in sanitize_shortcode_value.
+            'see_all_url'    => '',
+            'see_all_label'  => '',
 
             // Phase 13.1 grid redesign attrs (card-system).
             'density'                => 'comfortable',
@@ -432,12 +451,20 @@ final class ShortcodeRegistrar {
         // Text attrs.
         $text_attrs = array(
             'header_title', 'header_subtitle', 'header_cta_label', 'cta_label', 'card_radius',
+            // Phase 14.4 — section-head "View all" link label.
+            'see_all_label',
         );
         if ( in_array( $attr, $text_attrs, true ) ) {
             return sanitize_text_field( (string) $value );
         }
         // URL attrs.
         if ( 'header_cta_url' === $attr ) {
+            return esc_url_raw( (string) $value );
+        }
+        // Phase 14.4 — section-head "View all" link URL. Sanitized via
+        // esc_url_raw() (same as header_cta_url) so the template can
+        // emit it via esc_url() without double-escaping.
+        if ( 'see_all_url' === $attr ) {
             return esc_url_raw( (string) $value );
         }
         // List attrs (comma-string or array).

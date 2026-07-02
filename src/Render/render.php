@@ -71,6 +71,11 @@ function render_block_vectoryt_gallery(array $attributes): string {
         'preset'         => sanitize_key((string) ($attributes['preset'] ?? 'default')),
         // Phase 14.1 — width mode (theme/wide/full). Default 'wide'.
         'width'          => sanitize_key((string) ($attributes['width'] ?? 'wide')),
+        // Phase 14.4 — section-head "View all" link (featured/hero).
+        // Mirrors the shortcode path: empty string by default, the
+        // template synthesizes a fallback URL from the source row.
+        'see_all_url'    => esc_url_raw((string) ($attributes['see_all_url'] ?? '')),
+        'see_all_label'  => sanitize_text_field((string) ($attributes['see_all_label'] ?? '')),
         'public_safe'    => '' !== $feed_uuid,
     );
 

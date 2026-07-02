@@ -57,6 +57,27 @@ if (! empty($hero['published_at'])) {
         $published_label = date_i18n(get_option('date_format'), $ts);
     }
 }
+
+// Phase 14.4 — section head "View all" link. The href precedence:
+//   1. see_all_url attr (explicit shortcode / block override)
+//   2. source's canonical URL synthesized from source_type + youtube_*_id
+//   3. '#' as the final fallback
+$see_all_url   = (string) ($attrs['see_all_url'] ?? '');
+$see_all_label = (string) ($attrs['see_all_label'] ?? '');
+if ('' === $see_all_url && is_array($source)) {
+    $source_type = (string) ($source['source_type'] ?? '');
+    if ('channel' === $source_type && ! empty($source['youtube_channel_id'])) {
+        $see_all_url = 'https://www.youtube.com/channel/' . rawurlencode((string) $source['youtube_channel_id']);
+    } elseif ('playlist' === $source_type && ! empty($source['youtube_playlist_id'])) {
+        $see_all_url = 'https://www.youtube.com/playlist?list=' . rawurlencode((string) $source['youtube_playlist_id']);
+    } elseif ('video' === $source_type && ! empty($source['youtube_video_id'])) {
+        $see_all_url = 'https://www.youtube.com/watch?v=' . rawurlencode((string) $source['youtube_video_id']);
+    }
+}
+if ('' === $see_all_url) {
+    $see_all_url = '#';
+}
+$see_all_label = ('' !== $see_all_label) ? $see_all_label : __('View all videos →', 'vector-youtube-gallery');
 ?>
 <div class="vyg-feed vyg-feed--hero vyg-hero <?php echo esc_attr($width_class); ?>"
      <?php if ('' !== $wrapper_id) : ?>id="<?php echo esc_attr($wrapper_id); ?>"<?php endif; ?>
@@ -95,6 +116,10 @@ if (! empty($hero['published_at'])) {
     </article>
 
     <?php if (! empty($rest)) : ?>
+        <div class="vyg-section-head">
+            <h2><?php esc_html_e('Recommended next', 'vector-youtube-gallery'); ?></h2>
+            <a class="vyg-section-head__link" href="<?php echo esc_url($see_all_url); ?>"><?php echo esc_html($see_all_label); ?></a>
+        </div>
         <div class="vyg-hero__rest vyg-grid vyg-grid--cols-<?php echo (int) $columns; ?>">
             <?php foreach ($rest as $video) : ?>
                 <article class="vyg-card"

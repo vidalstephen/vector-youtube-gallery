@@ -66,6 +66,14 @@
             "type": "string",
             "default": "wide"
         },
+        "see_all_url": {
+            "type": "string",
+            "default": ""
+        },
+        "see_all_label": {
+            "type": "string",
+            "default": ""
+        },
         "density": {
             "type": "string",
             "default": "comfortable"
