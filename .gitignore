@@ -48,3 +48,10 @@ dev/logs/*.log
 .cache/
 .mypy_cache/
 .pytest_cache/screenshots/
+
+# --- Phase 14 visual capture artifacts ---
+# Keep final contact sheets; do not commit bulky per-layout/diff PNGs.
+screenshots/prototype-parity/*.png
+!screenshots/prototype-parity/contact-sheet-desktop.png
+!screenshots/prototype-parity/contact-sheet-mobile.png
+screenshots/prototype-parity/diffs/

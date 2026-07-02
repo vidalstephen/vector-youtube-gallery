@@ -7,13 +7,22 @@
  * the generated wp-config.php.
  *
  * The dev WordPress container is intentionally exposed only on
- * 127.0.0.1:8000. Tailscale Serve publishes that local port at:
+ * 127.0.0.1:8000. Public/remote access is provided by either:
  *   https://srv1388017.tail209ed.ts.net
+ *   https://wpt.nsystems.live
  *
  * When a trusted remote/local Host header is present, derive WP_HOME and
  * WP_SITEURL from that request origin. This keeps wp-admin form actions,
  * redirects, cookies, and asset URLs on the same hostname the browser used.
  */
+
+// Public dev/staging access should not execute WP-Cron. This prevents
+// anonymous page views through wpt.nsystems.live from draining YouTube
+// quota by running queued sync jobs. Manual sync remains available via
+// WP-CLI/admin actions.
+if (!defined('DISABLE_WP_CRON')) {
+    define('DISABLE_WP_CRON', true);
+}
 
 $host = '';
 if (isset($_SERVER['HTTP_X_FORWARDED_HOST']) && '' !== $_SERVER['HTTP_X_FORWARDED_HOST']) {
@@ -28,6 +37,7 @@ $allowed_hosts = array(
     'vyg-wp',
     'vyg-wp:80',
     'srv1388017.tail209ed.ts.net',
+    'wpt.nsystems.live',
 );
 
 if (in_array($host, $allowed_hosts, true)) {
