@@ -9,6 +9,44 @@
     display: block;
 }
 
+.vyg-live__head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.vyg-live__pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.vyg-live__pill--active {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.vyg-live__pill--upcoming {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.vyg-live__pill--replay {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
 .vyg-live__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
