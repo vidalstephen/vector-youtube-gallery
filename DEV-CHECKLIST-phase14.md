@@ -23,9 +23,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 14 — Prototype Parity**
-- Current sub-phase: **14.7 — Per-channel avatar gradient (`--aa`, `--ab`)**
-- Last completed item: 14.6 — per-video tone color; 775 PHPUnit tests, 2214 assertions, 0 failures; commit `9da09e8` on `main` ahead of `origin/main`. **Audit found full Scenario A** (no column, no helper, no SELECT, no CSS variable). Real substantive ship scope: schema migration + VideoRenderer helper + partial emit + CSS.
-- Next actionable item: 14.7 (per-channel avatar gradient with two-color `--aa`/`--ab` CSS variables). Audit first — same shape as 14.6, but for channel avatar gradients.
+- Current sub-phase: **14.8 — Badge type × style matrix (7 types × 4 styles)**
+- Last completed item: 14.7 — per-channel avatar gradient (`--aa` / `--ab`); 794 PHPUnit tests, 2270 assertions, 0 failures; commit `7716177` on `main` ahead of `origin/main`. **Audit found show_channel_avatar was wired in CardSettings but the `channel_avatar_url` column was missing from schema AND from the SELECT** — fixed both. Real substantive ship scope.
+- Next actionable item: 14.8 (7 badge types × 4 styles). Audit first — partial has some badge classes already (live/upcoming/replay); need to verify what types are wired and which styles exist.
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
 
@@ -49,7 +49,7 @@
 - [x] 14.4 Section head + "View all →" link (featured / hero layouts)
 - [x] 14.5 Card play icon center + thumbnail gradient overlay
 - [x] 14.6 Per-video tone color (`--tone` CSS variable) for varied card backgrounds
-- [ ] 14.7 Per-channel avatar gradient (`--aa`, `--ab` two-color CSS variables)
+- [x] 14.7 Per-channel avatar gradient (`--aa`, `--ab` two-color CSS variables)
 - [ ] 14.8 Badge type × style matrix (7 types × 4 styles)
 - [ ] 14.9 Shared header (kicker + h1 + intro + layout pill + channel CTA) across all 8 layouts
 - [ ] 14.10 Trust strip on grid / masonry / carousel
