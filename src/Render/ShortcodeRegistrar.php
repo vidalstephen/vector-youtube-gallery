@@ -99,6 +99,16 @@ final class ShortcodeRegistrar {
         // template, not be subject to the card-system explicit-only
         // filter.
         'see_all_url', 'see_all_label',
+        // Phase 14.9 — shared feed header (kicker + h1 + intro + pill
+        // + channel CTA). The show_* booleans and the text slots are
+        // all structural: they must always reach the template, and
+        // the template (partials/feed-header.php) decides what to
+        // emit based on visibility + text presence.
+        'show_kicker', 'show_h1', 'show_intro', 'show_pill',
+        'show_channel_cta',
+        'feed_kicker', 'feed_title', 'feed_intro',
+        'feed_cta_label', 'feed_cta_url',
+        'header_kicker', 'header_intro',
     );
 
     public function __construct(
@@ -275,6 +285,23 @@ final class ShortcodeRegistrar {
             'see_all_url'    => (string) ( $atts['see_all_url'] ?? '' ),
             'see_all_label'  => (string) ( $atts['see_all_label'] ?? '' ),
             'feed_config'    => is_array( $config ?? null ) ? $config : array(),
+            // Phase 14.9 — shared feed header (kicker + h1 + intro +
+            // pill + channel CTA). All booleans + text slots pass
+            // through verbatim. The partial decides what to emit based
+            // on visibility flag + text presence. Legacy `header_title`
+            // / `header_subtitle` / `header_cta_label` / `header_cta_url`
+            // are still aliased inside the partial, so this surface
+            // does not need to repeat them — only the *new* keys.
+            'show_kicker'      => $this->sanitize_shortcode_value( 'show_kicker', $atts['show_kicker'] ?? true ),
+            'show_h1'          => $this->sanitize_shortcode_value( 'show_h1', $atts['show_h1'] ?? true ),
+            'show_intro'       => $this->sanitize_shortcode_value( 'show_intro', $atts['show_intro'] ?? false ),
+            'show_pill'        => $this->sanitize_shortcode_value( 'show_pill', $atts['show_pill'] ?? true ),
+            'show_channel_cta' => $this->sanitize_shortcode_value( 'show_channel_cta', $atts['show_channel_cta'] ?? false ),
+            'feed_kicker'      => (string) ( $atts['feed_kicker'] ?? $atts['header_kicker'] ?? '' ),
+            'feed_title'       => (string) ( $atts['feed_title']  ?? '' ),
+            'feed_intro'       => (string) ( $atts['feed_intro']  ?? $atts['header_intro'] ?? '' ),
+            'feed_cta_label'   => (string) ( $atts['feed_cta_label'] ?? '' ),
+            'feed_cta_url'     => (string) ( $atts['feed_cta_url']   ?? '' ),
         );
 
         // Phase D1 — pass through card-system attrs only if the user
@@ -360,6 +387,27 @@ final class ShortcodeRegistrar {
             'see_all_url'    => '',
             'see_all_label'  => '',
 
+            // Phase 14.9 — shared feed header (kicker + h1 + intro +
+            // pill + channel CTA). Defaults match the prototype's
+            // per-layout behaviour: kicker/h1/pill visible (text-driven
+            // suppression), intro hidden, channel CTA hidden. Legacy
+            // `header_title` / `header_subtitle` / `header_cta_label` /
+            // `header_cta_url` continue to work as aliases inside the
+            // partial — they are card-system attrs (already declared
+            // above) so the explicit-only filter still applies to them.
+            'show_kicker'      => true,
+            'show_h1'          => true,
+            'show_intro'       => false,
+            'show_pill'        => true,
+            'show_channel_cta' => false,
+            'feed_kicker'      => '',
+            'feed_title'       => '',
+            'feed_intro'       => '',
+            'feed_cta_label'   => '',
+            'feed_cta_url'     => '',
+            'header_kicker'    => '',
+            'header_intro'     => '',
+
             // Phase 13.1 grid redesign attrs (card-system).
             'density'                => 'comfortable',
             'header_title'           => '',
@@ -444,6 +492,9 @@ final class ShortcodeRegistrar {
             'trust_strip', 'header_columns_visible', 'thumbnail_overlay',
             'show_play_icon', 'compact_mobile', 'hide_description_mobile',
             'hide_metadata_mobile',
+            // Phase 14.9 — shared feed header visibility booleans.
+            'show_kicker', 'show_h1', 'show_intro', 'show_pill',
+            'show_channel_cta',
         );
         if ( in_array( $attr, $bool_attrs, true ) ) {
             return \VectorYT\Gallery\Render\CardSanitizer::bool( $value, false );
@@ -453,12 +504,19 @@ final class ShortcodeRegistrar {
             'header_title', 'header_subtitle', 'header_cta_label', 'cta_label', 'card_radius',
             // Phase 14.4 — section-head "View all" link label.
             'see_all_label',
+            // Phase 14.9 — shared feed header text slots.
+            'feed_kicker', 'feed_title', 'feed_intro', 'feed_cta_label',
+            'header_kicker', 'header_intro',
         );
         if ( in_array( $attr, $text_attrs, true ) ) {
             return sanitize_text_field( (string) $value );
         }
         // URL attrs.
         if ( 'header_cta_url' === $attr ) {
+            return esc_url_raw( (string) $value );
+        }
+        // Phase 14.9 — shared feed header channel CTA URL.
+        if ( 'feed_cta_url' === $attr ) {
             return esc_url_raw( (string) $value );
         }
         // Phase 14.4 — section-head "View all" link URL. Sanitized via

@@ -47,9 +47,18 @@ $public_safe = ! empty( $attrs['public_safe'] );
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
+$layout_slug = (string) ( $attrs['layout'] ?? 'live' );
+$feed_header_partial = __DIR__ . '/partials/feed-header.php';
 ?>
 <div class="vyg-feed vyg-feed--live vyg-live <?php echo esc_attr( \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs ) ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+    <?php
+    // Phase 14.9 — shared top header (kicker + h1 + intro + pill + CTA).
+    if ( file_exists( $feed_header_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $feed_header_partial;
+    }
+    ?>
     <?php if ( ! empty( $buckets['live'] ) ) : ?>
         <section class="vyg-live__section vyg-live__section--active">
             <div class="vyg-live__head">

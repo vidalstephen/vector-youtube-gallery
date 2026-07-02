@@ -47,6 +47,8 @@ $hero_watch = $renderer->watch_url($hero);
 $hero_embed = $renderer->embed_url($hero);
 $hero_title = (string) ($hero['title'] ?? '');
 $hero_description = (string) ($hero['description'] ?? '');
+$layout_slug = (string) ($attrs['layout'] ?? 'hero');
+$feed_header_partial = __DIR__ . '/partials/feed-header.php';
 if (mb_strlen($hero_description) > 220) {
     $hero_description = mb_substr($hero_description, 0, 220) . '…';
 }
@@ -82,6 +84,16 @@ $see_all_label = ('' !== $see_all_label) ? $see_all_label : __('View all videos 
 <div class="vyg-feed vyg-feed--hero vyg-hero <?php echo esc_attr($width_class); ?>"
      <?php if ('' !== $wrapper_id) : ?>id="<?php echo esc_attr($wrapper_id); ?>"<?php endif; ?>
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+    <?php
+    // Phase 14.9 — shared top header (kicker + h1 + intro + pill + CTA).
+    // The 14.4 "View all videos →" inner section head (above the rest
+    // grid) is preserved below — this is the *top* shared header, not
+    // a replacement for the inner one.
+    if ( file_exists( $feed_header_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $feed_header_partial;
+    }
+    ?>
     <article class="vyg-hero__primary vyg-card"
              data-video-id="<?php echo esc_attr((string) ($hero['youtube_video_id'] ?? '')); ?>"
              data-content-type="<?php echo esc_attr((string) ($hero['content_type'] ?? 'standard')); ?>"

@@ -109,6 +109,22 @@ final class CardSettings {
 		'compact_mobile',
 		'hide_description_mobile',
 		'hide_metadata_mobile',
+
+		// Phase 14.9 — shared feed header (kicker + h1 + intro + pill + CTA).
+		// These are text/show controls that the shared feed-header partial
+		// reads off $attrs. The legacy `header_*` aliases are kept inside
+		// the partial (read $attrs['header_title'] as a fallback), so
+		// those don't need to be here — only the modern names.
+		'feed_kicker',
+		'feed_title',
+		'feed_intro',
+		'feed_cta_label',
+		'feed_cta_url',
+		'show_kicker',
+		'show_h1',
+		'show_intro',
+		'show_pill',
+		'show_channel_cta',
 		'hide_channel_mobile',
 	);
 
@@ -156,6 +172,13 @@ final class CardSettings {
 		'hide_description_mobile',
 		'hide_metadata_mobile',
 		'hide_channel_mobile',
+		// Phase 14.9 — shared feed header visibility booleans.
+		// (text slots feed_kicker/title/intro/cta_label/cta_url go in TEXT_SPECS)
+		'show_kicker',
+		'show_h1',
+		'show_intro',
+		'show_pill',
+		'show_channel_cta',
 	);
 
 	/**
@@ -188,7 +211,13 @@ final class CardSettings {
 	 * @var array<string,int>
 	 */
 	private const TEXT_SPECS = array(
-		'cta_label' => 80,
+		'cta_label'           => 80,
+		// Phase 14.9 — shared feed header text slots.
+		'feed_kicker'         => 60,
+		'feed_title'          => 120,
+		'feed_intro'          => 500,
+		'feed_cta_label'      => 60,
+		'feed_cta_url'        => 500,
 	);
 
 	/**
@@ -392,6 +421,22 @@ final class CardSettings {
 			'hide_description_mobile'=> true,
 			'hide_metadata_mobile'   => false,
 			'hide_channel_mobile'    => false,
+
+			// Phase 14.9 — shared feed header (kicker + h1 + intro + pill
+			// + CTA). Text slots default to empty; show_* booleans default
+			// to true (so the h1 + pill render out of the box). The
+			// feed-header partial auto-fills the h1 with a layout-specific
+			// default when feed_title is empty.
+			'feed_kicker'            => '',
+			'feed_title'             => '',
+			'feed_intro'             => '',
+			'feed_cta_label'         => '',
+			'feed_cta_url'           => '',
+			'show_kicker'            => true,
+			'show_h1'                => true,
+			'show_intro'             => false,
+			'show_pill'              => true,
+			'show_channel_cta'       => false,
 		);
 	}
 

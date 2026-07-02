@@ -19,9 +19,18 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs );
+$layout_slug = (string) ( $attrs['layout'] ?? 'list' );
+$feed_header_partial = __DIR__ . '/partials/feed-header.php';
 ?>
 <div class="vyg-feed vyg-feed--list vyg-list <?php echo esc_attr( $width_class ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+    <?php
+    // Phase 14.9 — shared top header (kicker + h1 + intro + pill + CTA).
+    if ( file_exists( $feed_header_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $feed_header_partial;
+    }
+    ?>
     <?php foreach ( $videos as $video ) : ?>
         <?php
         $embed_url = $renderer->embed_url( $video );

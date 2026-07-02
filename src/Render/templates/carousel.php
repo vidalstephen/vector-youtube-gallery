@@ -37,6 +37,8 @@ $root_attrs  = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 $slide_count = count($videos);
+$layout_slug = (string) ($attrs['layout'] ?? 'carousel');
+$feed_header_partial = __DIR__ . '/partials/feed-header.php';
 
 /**
  * Center-on-load: the slide that is visually in the middle of the track on
@@ -57,6 +59,13 @@ $active_index = (int) floor( $slide_count / 2 );
      aria-label="<?php echo esc_attr((string) ($source['title'] ?? __('Videos', 'vector-youtube-gallery'))); ?>"
      data-slide-count="<?php echo (int) $slide_count; ?>"
      data-per-view="<?php echo (int) $visible; ?>">
+    <?php
+    // Phase 14.9 — shared top header (kicker + h1 + intro + pill + CTA).
+    if ( file_exists( $feed_header_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $feed_header_partial;
+    }
+    ?>
     <button type="button"
             class="vyg-carousel__btn vyg-carousel__btn--prev"
             aria-label="<?php esc_attr_e('Previous slide', 'vector-youtube-gallery'); ?>"

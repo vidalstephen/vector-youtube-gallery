@@ -35,15 +35,16 @@
  * @var string $feed_uuid
  */
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 // --- Local short-hand -------------------------------------------------------
 $columns           = isset( $attrs['columns'] ) ? max( 1, min( 6, (int) $attrs['columns'] ) ) : 3;
 $wrapper_id        = isset( $attrs['wrapper_id'] ) ? (string) $attrs['wrapper_id'] : '';
 $density           = isset( $attrs['density'] ) ? (string) $attrs['density'] : 'comfortable';
 $public_safe       = ! empty( $attrs['public_safe'] );
-$has_header        = ! empty( $attrs['header_title'] );
 $has_trust_strip   = ! empty( $attrs['trust_strip'] );
+$layout_slug       = (string) ( $attrs['layout'] ?? 'grid' );
+$feed_header_partial = __DIR__ . '/partials/feed-header.php';
 
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
@@ -72,50 +73,20 @@ if ( empty( $videos ) ) {
     <?php if ( '' !== $wrapper_id ) : ?>id="<?php echo esc_attr( $wrapper_id ); ?>"<?php endif; ?>
     <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — TemplateAttributes::to_html escapes each attribute. ?>>
 
-    <?php if ( $has_header ) : ?>
-        <?php
-        $header_title        = (string) ( $attrs['header_title'] ?? '' );
-        $header_subtitle     = (string) ( $attrs['header_subtitle'] ?? '' );
-        $header_cta_label    = (string) ( $attrs['header_cta_label'] ?? '' );
-        $header_cta_url      = (string) ( $attrs['header_cta_url'] ?? '' );
-        $header_cols_visible = ! isset( $attrs['header_columns_visible'] ) || ! empty( $attrs['header_columns_visible'] );
-        $has_cta             = ( '' !== $header_cta_label && '' !== $header_cta_url );
-        ?>
-        <header class="vyg-grid__header" role="banner">
-            <div class="vyg-grid__header-text">
-                <span class="vyg-grid__header-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="22" height="22" focusable="false">
-                        <path fill="#ff0000" d="M23 12s0-3.6-.5-5.3a2.7 2.7 0 0 0-1.9-1.9C18.9 4.3 12 4.3 12 4.3s-6.9 0-8.6.5A2.7 2.7 0 0 0 1.5 6.7C1 8.4 1 12 1 12s0 3.6.5 5.3a2.7 2.7 0 0 0 1.9 1.9c1.7.5 8.6.5 8.6.5s6.9 0 8.6-.5a2.7 2.7 0 0 0 1.9-1.9C23 15.6 23 12 23 12zM9.8 15.4V8.6L15.5 12l-5.7 3.4z"/>
-                    </svg>
-                </span>
-                <h2 class="vyg-grid__header-title"><?php echo esc_html( $header_title ); ?></h2>
-            </div>
-
-            <div class="vyg-grid__header-controls">
-                <?php if ( $header_cols_visible ) : ?>
-                    <span class="vyg-grid__header-cols" aria-label="<?php echo esc_attr__( 'Column count', 'vector-youtube-gallery' ); ?>">
-                        <?php
-                        /* translators: %d: number of columns. */
-                        echo esc_html( sprintf( _n( '%d column', '%d columns', $columns, 'vector-youtube-gallery' ), $columns ) );
-                        ?>
-                    </span>
-                <?php endif; ?>
-
-                <?php if ( $has_cta ) : ?>
-                    <a class="vyg-grid__header-cta" href="<?php echo esc_url( $header_cta_url ); ?>" target="_blank" rel="noopener noreferrer">
-                        <?php echo esc_html( $header_cta_label ); ?>
-                        <svg class="vyg-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
-                            <path fill="currentColor" d="M14 3v2h3.6L9.3 13.3l1.4 1.4L19 6.4V10h2V3h-7zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z"/>
-                        </svg>
-                    </a>
-                <?php endif; ?>
-            </div>
-
-            <?php if ( '' !== $header_subtitle ) : ?>
-                <p class="vyg-grid__header-subtitle"><?php echo esc_html( $header_subtitle ); ?></p>
-            <?php endif; ?>
-        </header>
-    <?php endif; ?>
+    <?php
+    // Phase 14.9 — shared top header (kicker + h1 + intro + pill + CTA).
+    // The old per-grid `vyg-grid__header` block is replaced by this
+    // shared partial. Legacy `header_title` / `header_subtitle` /
+    // `header_cta_label` / `header_cta_url` keys are aliased inside the
+    // partial (via the `feed_*` slot precedence), so the existing
+    // 13.1/14.x operator base keeps working without changing shortcode
+    // attrs. The new `feed_kicker` / `feed_intro` / `show_*` /
+    // `show_channel_cta` attrs are the modern interface.
+    if ( file_exists( $feed_header_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $feed_header_partial;
+    }
+    ?>
 
     <div class="vyg-grid__cards" role="list">
         <?php foreach ( $videos as $video ) : ?>

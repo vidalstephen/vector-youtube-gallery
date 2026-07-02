@@ -77,6 +77,21 @@ function render_block_vectoryt_gallery(array $attributes): string {
         'see_all_url'    => esc_url_raw((string) ($attributes['see_all_url'] ?? '')),
         'see_all_label'  => sanitize_text_field((string) ($attributes['see_all_label'] ?? '')),
         'public_safe'    => '' !== $feed_uuid,
+        // Phase 14.9 — shared feed header (kicker + h1 + intro + pill
+        // + channel CTA). Mirrors the shortcode path. The block's
+        // inspector exposes these as controls (added in 14.9 inspector
+        // work, out of scope for this commit — for now the values pass
+        // through to the partial and the partial decides what to emit).
+        'show_kicker'      => ! empty( $attributes['show_kicker'] ),
+        'show_h1'          => ! isset( $attributes['show_h1'] ) || ! empty( $attributes['show_h1'] ),
+        'show_intro'       => ! empty( $attributes['show_intro'] ),
+        'show_pill'        => ! isset( $attributes['show_pill'] ) || ! empty( $attributes['show_pill'] ),
+        'show_channel_cta' => ! empty( $attributes['show_channel_cta'] ),
+        'feed_kicker'      => sanitize_text_field((string) ($attributes['feed_kicker'] ?? $attributes['header_kicker'] ?? '')),
+        'feed_title'       => sanitize_text_field((string) ($attributes['feed_title'] ?? '')),
+        'feed_intro'       => sanitize_text_field((string) ($attributes['feed_intro'] ?? $attributes['header_intro'] ?? '')),
+        'feed_cta_label'   => sanitize_text_field((string) ($attributes['feed_cta_label'] ?? '')),
+        'feed_cta_url'     => esc_url_raw((string) ($attributes['feed_cta_url'] ?? '')),
     );
 
     return $renderer->render($args);

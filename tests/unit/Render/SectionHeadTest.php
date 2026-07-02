@@ -173,13 +173,21 @@ final class SectionHeadTest extends TestCase
     }
 
     public function test_featured_section_head_omitted_when_no_secondary_grid(): void {
-        // Only 1 video → no rest grid → no section head.
+        // Phase 14.9: the shared header is no longer gated on
+        // "secondary grid present" (that was the 14.4 design). The
+        // header is now always emitted when ANY slot has content
+        // (kicker/h1/intro/pill/CTA), and the <h2> defaults to
+        // "Featured Videos" when no explicit title is set. So even
+        // with 1 video, the shared header emits its h2.
+        //
+        // The old 14.4 "View all videos →" link (.vyg-section-head__link)
+        // is suppressed when only 1 video renders — that gate is
+        // preserved.
         $html = $this->loader->render('featured', $this->ctxFeatured(1));
-
         $this->assertStringNotContainsString(
-            'vyg-section-head',
+            'vyg-section-head__link',
             $html,
-            'featured must omit the section head when only 1 video renders (no secondary grid)'
+            'featured must omit the 14.4 "View all" link when only 1 video renders (no secondary grid)'
         );
     }
 
@@ -226,12 +234,15 @@ final class SectionHeadTest extends TestCase
     }
 
     public function test_hero_section_head_omitted_when_no_secondary_grid(): void {
+        // Phase 14.9: see the featured variant's docblock. The shared
+        // header is now always emitted when slot content exists. The
+        // 14.4 "View all" link is the only thing still gated on the
+        // secondary-grid count.
         $html = $this->loader->render('hero', $this->ctxHero(1));
-
         $this->assertStringNotContainsString(
-            'vyg-section-head',
+            'vyg-section-head__link',
             $html,
-            'hero must omit the section head when only 1 video renders (no secondary grid)'
+            'hero must omit the 14.4 "View all" link when only 1 video renders (no secondary grid)'
         );
     }
 

@@ -24,6 +24,8 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs );
+$layout_slug = (string) ( $attrs['layout'] ?? 'featured' );
+$feed_header_partial = __DIR__ . '/partials/feed-header.php';
 
 // Phase 14.4 — section head "View all videos" link. The href precedence:
 //   1. see_all_url attr (explicit shortcode / block override)
@@ -48,6 +50,16 @@ $see_all_label = ( '' !== $see_all_label ) ? $see_all_label : __( 'View all vide
 ?>
 <div class="vyg-feed vyg-feed--featured vyg-featured <?php echo esc_attr( $width_class ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+    <?php
+    // Phase 14.9 — shared top header (kicker + h1 + intro + pill + CTA).
+    // The 14.4 "View all videos →" inner section head (above the rest
+    // grid) is preserved below — this is the *top* shared header, not
+    // a replacement for the inner one.
+    if ( file_exists( $feed_header_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $feed_header_partial;
+    }
+    ?>
     <article class="vyg-featured__hero"
              data-video-id="<?php echo esc_attr( (string) ( $hero['youtube_video_id'] ?? '' ) ); ?>">
         <a class="vyg-featured__link" href="<?php echo esc_url( $renderer->watch_url( $hero ) ); ?>"

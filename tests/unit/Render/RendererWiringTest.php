@@ -289,7 +289,7 @@ final class RendererWiringTest extends TestCase
         $this->assertIsArray( $ctx['card_settings'] );
         $this->assertNotEmpty( $ctx['card_settings'] );
         $allowed = CardSettings::allowed_keys();
-        $this->assertCount( 45, $allowed, 'sanity: CardSettings::allowed_keys() should return 45 keys (Phase 14.5 added show_play_icon + thumbnail_overlay)' );
+        $this->assertCount( 55, $allowed, 'sanity: CardSettings::allowed_keys() should return 55 keys (Phase 14.9 added 10 header controls)' );
         foreach ( $allowed as $key ) {
             $this->assertArrayHasKey( $key, $ctx['card_settings'], "card_settings must contain key: {$key}" );
         }

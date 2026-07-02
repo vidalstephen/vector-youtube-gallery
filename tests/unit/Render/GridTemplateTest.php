@@ -88,52 +88,76 @@ final class GridTemplateTest extends TestCase
 
     public function test_header_renders_when_title_set(): void
     {
+        // Phase 14.9: the bespoke grid header was replaced by the
+        // shared vyg-section-head partial (same shape across all 8
+        // layouts). This test asserts the shared header is emitted
+        // when title + intro are set, via the modern feed_intro slot.
+        // The legacy header_subtitle alias is exercised separately
+        // in FeedHeaderTest's data-provider ("legacy aliases" row).
         $html = $this->loader->render('grid', $this->ctx( array(
-            'header_title'     => 'My Channel',
-            'header_subtitle'  => 'Latest uploads',
+            'feed_title'  => 'My Channel',
+            'feed_intro'  => 'Latest uploads',
         ) ) );
-        $this->assertStringContainsString( 'vyg-grid__header', $html );
+        $this->assertStringContainsString( 'vyg-section-head', $html );
         $this->assertStringContainsString( 'My Channel', $html );
         $this->assertStringContainsString( 'Latest uploads', $html );
     }
 
     public function test_header_omitted_when_title_empty(): void
     {
+        // Phase 14.9: the shared header is conditionally rendered;
+        // when ALL slots are empty AND every show_* flag is false,
+        // the <header> tag is omitted entirely. Detailed omission
+        // rules in FeedHeaderTest.
         $html = $this->loader->render('grid', $this->ctx( array(
-            'header_title'     => '',
-            'header_subtitle'  => 'Latest uploads',
+            'feed_title'        => '',
+            'feed_intro'        => '',
+            'show_h1'           => false,
+            'show_intro'        => false,
+            'show_kicker'       => false,
+            'show_pill'         => false,
+            'show_channel_cta'  => false,
         ) ) );
-        $this->assertStringNotContainsString( 'vyg-grid__header', $html );
+        $this->assertStringNotContainsString( 'vyg-section-head__title', $html );
     }
 
     public function test_header_renders_cta_label_and_url(): void
     {
+        // Phase 14.9: the channel CTA now lives in the shared
+        // vyg-section-head__cta slot. feed-header.php renders the CTA
+        // when feed_cta_url is set (not '#') and show_channel_cta is on.
         $html = $this->loader->render('grid', $this->ctx( array(
-            'header_title'    => 'Channel',
-            'header_cta_label' => 'Visit',
-            'header_cta_url'  => 'https://example.com',
+            'feed_title'     => 'Channel',
+            'feed_cta_label' => 'Visit',
+            'feed_cta_url'   => 'https://example.com',
         ) ) );
-        $this->assertStringContainsString( 'vyg-grid__header-cta', $html );
+        $this->assertStringContainsString( 'vyg-section-head__cta', $html );
         $this->assertStringContainsString( 'href="https://example.com"', $html );
         $this->assertStringContainsString( 'Visit', $html );
     }
 
     public function test_header_columns_indicator_when_enabled(): void
     {
+        // Phase 14.9: the columns indicator was the old
+        // vyg-grid__header-cols pill. It is now the
+        // vyg-section-head__pill that all 8 layouts share, and is
+        // rendered when show_pill is true. Default is true.
         $html = $this->loader->render('grid', $this->ctx( array(
-            'header_title'              => 'Channel',
-            'header_columns_visible'    => true,
+            'feed_title'              => 'Channel',
+            'header_columns_visible'  => true,
         ) ) );
-        $this->assertStringContainsString( 'vyg-grid__header-cols', $html );
+        $this->assertStringContainsString( 'vyg-section-head__pill', $html );
     }
 
     public function test_header_columns_indicator_hidden_when_disabled(): void
     {
+        // show_pill=false suppresses the layout-name pill.
         $html = $this->loader->render('grid', $this->ctx( array(
-            'header_title'              => 'Channel',
-            'header_columns_visible'    => false,
+            'feed_title'             => 'Channel',
+            'header_columns_visible' => false,
+            'show_pill'              => false,
         ) ) );
-        $this->assertStringNotContainsString( 'vyg-grid__header-cols', $html );
+        $this->assertStringNotContainsString( 'vyg-section-head__pill', $html );
     }
 
     public function test_trust_strip_renders_when_enabled(): void

@@ -196,13 +196,20 @@
  * pill on the right. The CTA still renders when the URL is empty (the
  * h2 is the more important part); the template falls back to "#" so
  * the link is always present.
+ *
+ * Phase 14.9 — extended to support the shared 5-slot feed header
+ * (kicker + h1 + intro + layout pill + channel CTA) on all 8 layouts.
+ * The base block is now a column-stacked container with three rows:
+ *   1. __kicker (optional, eyebrow text)
+ *   2. __row   (h1 on the left, __actions on the right with pill + CTA)
+ *   3. __intro (optional, muted paragraph)
+ * The legacy Phase 14.4 `.vyg-section-head h2` and `__link` selectors
+ * are kept for the inner "View all videos →" head on featured + hero.
  */
 .vyg-section-head {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
+    flex-direction: column;
+    gap: 10px;
     margin: 34px 0 18px;
 }
 .vyg-section-head h2 {
@@ -227,4 +234,103 @@
     overflow-wrap: anywhere;
     color: inherit;
     text-decoration: none;
+}
+
+/* Phase 14.9 — eyebrow / kicker text. Small uppercase, slightly red
+ * accent (matches the prototype's "▶ Vector YouTube Gallery" line).
+ * No icon by default — operators add one via filter or custom CSS.
+ */
+.vyg-section-head__kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #ef233c;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* Phase 14.9 — the h1 + actions row. h1 on the left, pill + channel
+ * CTA stacked on the right. Wraps cleanly on narrow viewports.
+ */
+.vyg-section-head__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.vyg-section-head__title {
+    margin: 0;
+    /* Tight, large, slightly negative letter-spacing to match the
+     * prototype's h1 (clamp 34–58px on the prototype; here we ship
+     * a single static size for now — the legacy `.vyg-section-head h2`
+     * rule above gives 22px; the shared partial emits h2 with
+     * __title, so 22px is the conservative starting point).
+     */
+    font-size: clamp(22px, 3.2vw, 32px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+.vyg-section-head__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Phase 14.9 — layout pill. Uppercase, outlined chip, muted text.
+ * Mirrors the prototype's `.layout-pill` style.
+ */
+.vyg-section-head__pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border: 1px solid var(--vyg-line, #e2e8f0);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--vyg-feed-muted, #667085);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Phase 14.9 — channel CTA. White pill, dark text, small arrow-ish
+ * copy. The prototype uses a red play icon; we leave that to the
+ * feed_cta_label string operators pass (default "Watch on YouTube →").
+ */
+.vyg-section-head__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    transition: background 0.15s, transform 0.15s;
+}
+.vyg-section-head__cta:hover,
+.vyg-section-head__cta:focus {
+    background: #1e293b;
+    transform: translateY(-1px);
+    color: #fff;
+}
+
+/* Phase 14.9 — intro paragraph below the row. Muted, slightly
+ * smaller, tight line-height.
+ */
+.vyg-section-head__intro {
+    margin: 0;
+    color: var(--vyg-feed-muted, #667085);
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 70ch;
 }
