@@ -119,3 +119,80 @@
         scroll-behavior: auto;
     }
 }
+
+/* Phase 14.2 — dots row + active-card state (prototype parity).
+ *
+ * The dots row is a single tablist under the track; one <button> per
+ * slide. The active dot widens into a 28px pill (purple). The active
+ * slide gets a 3px purple outline + translateY(-5px) lift, matching
+ * the prototype's treatment.
+ *
+ * All rules are scoped to `.vyg-feed--carousel.vyg-carousel` so a
+ * stray `.vyg-carousel__dot` or `.vyg-carousel__slide--active` on a
+ * non-carousel page never matches.
+ */
+
+/* Dots row container. */
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    padding: 10px 0 0;
+    list-style: none;
+}
+
+/* Default dot — 9px circle, gray. */
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__dot {
+    width: 9px;
+    height: 9px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #cbd5e1;
+    cursor: pointer;
+    transition: width 0.18s ease, background 0.18s ease;
+}
+
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__dot:hover {
+    background: #94a3b8;
+}
+
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__dot:focus-visible {
+    outline: 3px solid rgba(59, 130, 246, 0.55);
+    outline-offset: 2px;
+}
+
+/* Active dot — 28px pill, purple. Matches the prototype's `.dotbtn.on`
+ * (28px width, var(--purple) background). */
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__dot--on,
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__dot[aria-selected="true"] {
+    width: 28px;
+    background: #6d28d9;
+}
+
+/* Active slide — purple outline + lift, matching the prototype's
+ * `.active` treatment (3px purple outline, 4px offset, translateY(-5px)).
+ * The outline + transform combine so the slide appears lifted above
+ * its neighbors. z-index keeps it above other slides. */
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__slide--active,
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__slide[aria-selected="true"] {
+    position: relative;
+    z-index: 2;
+    outline: 3px solid rgba(109, 40, 217, 0.72);
+    outline-offset: 4px;
+    transform: translateY(-5px);
+    border-radius: var(--vyg-card-radius, 14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vyg-feed--carousel.vyg-carousel .vyg-carousel__dot--on,
+    .vyg-feed--carousel.vyg-carousel .vyg-carousel__dot[aria-selected="true"] {
+        transition: none;
+    }
+    .vyg-feed--carousel.vyg-carousel .vyg-carousel__slide--active,
+    .vyg-feed--carousel.vyg-carousel .vyg-carousel__slide[aria-selected="true"] {
+        transform: none;
+    }
+}

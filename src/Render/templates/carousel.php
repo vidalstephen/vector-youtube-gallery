@@ -37,6 +37,17 @@ $root_attrs  = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 $slide_count = count($videos);
+
+/**
+ * Center-on-load: the slide that is visually in the middle of the track on
+ * first render gets the --active treatment. Default = floor($slide_count / 2)
+ * so a 5-slide carousel with 3 visible at a time is centered on the 3rd
+ * slide (0-indexed position 2). This matches the prototype's "active"
+ * state (purple outline + translateY(-5px)) and the matching dot's
+ * pill (purple, 28px). The carousel JS (assets/js/carousel.js) updates
+ * the active index on scroll/click/keyboard.
+ */
+$active_index = (int) floor( $slide_count / 2 );
 ?>
 <div class="vyg-feed vyg-feed--carousel vyg-carousel vyg-carousel--per-<?php echo (int) $visible; ?> <?php echo esc_attr($width_class); ?>"
      <?php if ('' !== $wrapper_id) : ?>id="<?php echo esc_attr($wrapper_id); ?>"<?php endif; ?>
@@ -61,16 +72,20 @@ $slide_count = count($videos);
         tabindex="0">
         <?php foreach ($videos as $i => $video) : ?>
             <?php
-            $embed_url = $renderer->embed_url($video);
-            $watch_url = $renderer->watch_url($video);
-            $thumb     = $renderer->best_thumbnail($video);
-            $duration  = $renderer->format_duration((int) ($video['duration_seconds'] ?? 0));
-            $is_live   = 'live' === ($video['live_status'] ?? '');
+            $embed_url   = $renderer->embed_url($video);
+            $watch_url   = $renderer->watch_url($video);
+            $thumb       = $renderer->best_thumbnail($video);
+            $duration    = $renderer->format_duration((int) ($video['duration_seconds'] ?? 0));
+            $is_live     = 'live' === ($video['live_status'] ?? '');
             $slide_index = $i + 1;
+            $is_active   = ( $i === $active_index );
+            $slide_classes = $is_active
+                ? 'vyg-carousel__slide vyg-carousel__slide--active vyg-card'
+                : 'vyg-carousel__slide vyg-card';
             ?>
-            <li class="vyg-carousel__slide vyg-card"
+            <li class="<?php echo esc_attr( $slide_classes ); ?>"
                 role="option"
-                aria-selected="<?php echo 0 === $i ? 'true' : 'false'; ?>"
+                aria-selected="<?php echo $is_active ? 'true' : 'false'; ?>"
                 aria-posinset="<?php echo (int) $slide_index; ?>"
                 aria-setsize="<?php echo (int) $slide_count; ?>"
                 data-video-id="<?php echo esc_attr((string) ($video['youtube_video_id'] ?? '')); ?>"
@@ -99,6 +114,32 @@ $slide_count = count($videos);
             </li>
         <?php endforeach; ?>
     </ul>
+
+    <?php if ( $slide_count > 1 ) : ?>
+        <div class="vyg-carousel__dots" role="tablist" aria-label="<?php esc_attr_e('Choose slide', 'vector-youtube-gallery'); ?>">
+            <?php foreach ( $videos as $i => $video ) : ?>
+                <?php
+                $is_active_dot = ( $i === $active_index );
+                $dot_index     = $i + 1; // 1-indexed for aria + data attr.
+                $dot_classes   = $is_active_dot
+                    ? 'vyg-carousel__dot vyg-carousel__dot--on'
+                    : 'vyg-carousel__dot';
+                $dot_label     = sprintf(
+                    /* translators: %d: 1-indexed slide number. */
+                    __( 'Go to slide %d', 'vector-youtube-gallery' ),
+                    $dot_index
+                );
+                ?>
+                <button type="button"
+                        class="<?php echo esc_attr( $dot_classes ); ?>"
+                        data-slide-index="<?php echo (int) $dot_index; ?>"
+                        role="tab"
+                        aria-label="<?php echo esc_attr( $dot_label ); ?>"
+                        aria-selected="<?php echo $is_active_dot ? 'true' : 'false'; ?>"
+                        aria-controls="<?php echo esc_attr( $wrapper_id ); ?>-track"></button>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
     <button type="button"
             class="vyg-carousel__btn vyg-carousel__btn--next"
