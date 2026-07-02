@@ -24,7 +24,7 @@
 
 - Current phase: **Phase 14 — Prototype Parity**
 - Current sub-phase: **14.4 — Section head + "View all →" link (featured / hero)**
-- Last completed item: 14.3 — live section pill counters (`2 live` / `3 upcoming` / `Recent replays`); 727 PHPUnit tests, 2109 assertions, 0 failures.
+- Last completed item: 14.3 — live section pill counters (`2 live` / `3 upcoming` / `Recent replays`); 727 PHPUnit tests, 2109 assertions, 0 failures; commit `45c62d7` on `main` ahead of `origin/main`.
 - Next actionable item: 14.4 (section head with "View all →" link on featured + hero layouts).
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
