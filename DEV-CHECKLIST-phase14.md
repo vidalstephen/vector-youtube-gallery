@@ -23,9 +23,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 14 — Prototype Parity**
-- Current sub-phase: **14.6 — Per-video tone color (`--tone`)**
-- Last completed item: 14.5 — card play icon + thumbnail gradient overlay; 757 PHPUnit tests, 2168 assertions, 0 failures; commit `d5fe139` on `main` ahead of `origin/main`. **Audit found the keys were NOT in CardSettings** (subagent's brief said they were, but they were being dropped by sanitize_flat). Real substantive ship scope.
-- Next actionable item: 14.6 (per-video tone color for varied card backgrounds). Audit first — schema may or may not have a `tone_color` column.
+- Current sub-phase: **14.7 — Per-channel avatar gradient (`--aa`, `--ab`)**
+- Last completed item: 14.6 — per-video tone color; 775 PHPUnit tests, 2214 assertions, 0 failures; commit `9da09e8` on `main` ahead of `origin/main`. **Audit found full Scenario A** (no column, no helper, no SELECT, no CSS variable). Real substantive ship scope: schema migration + VideoRenderer helper + partial emit + CSS.
+- Next actionable item: 14.7 (per-channel avatar gradient with two-color `--aa`/`--ab` CSS variables). Audit first — same shape as 14.6, but for channel avatar gradients.
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
 
