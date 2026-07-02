@@ -115,10 +115,59 @@ $action_label = static function ( string $slug ): string {
                 <?php endif; ?>
             </a>
 
-            <?php if ( $show_status_badge && '' !== $status_badge ) : ?>
-                <span class="vyg-card__badge vyg-card__badge--<?php echo esc_attr( $badge_position ); ?>"
+            <?php
+            // Phase 14.8 — render a badge when EITHER the legacy
+            // status_badge label is non-empty (live/upcoming/replay
+            // gated by enabled_badges) OR the new badge_type is set
+            // (one of: featured, short, new, product). The four new
+            // types aren't gated by the legacy enabled_badges list
+            // because they don't have a live_status origin — they
+            // come from is_pinned / content_type / manual_content_type
+            // / published_at. The show_status_badge setting is the
+            // single on/off switch for all 7.
+            $has_legacy_badge  = ( '' !== (string) ( $status_badge ?? '' ) );
+            $has_new_badge     = ( '' !== (string) ( $badge_type ?? '' ) );
+            ?>
+            <?php if ( $show_status_badge && ( $has_legacy_badge || $has_new_badge ) ) : ?>
+                <?php
+                // Phase 14.8 — badge type × style matrix (7 types × 4
+                // styles). The renderer now resolves a `$badge_type`
+                // (one of: featured, live, upcoming, replay, short,
+                // new, product — or '' for no signal), a `$badge_label`
+                // (the human text), and a `$badge_color` (the
+                // prototype hex). The partial combines the three
+                // pieces into one class string and one inline style
+                // attribute:
+                //   class="vyg-card__badge vyg-card__badge--{type}
+                //          vyg-card__badge--{style}
+                //          vyg-card__badge--{position}"
+                //   style="--vyg-badge-color:#…"
+                // The legacy $status_badge label (LIVE/UPCOMING/REPLAY)
+                // is still rendered when the allow-list gates it on;
+                // the 4 newer types (featured, short, new, product)
+                // always show when the show_status_badge setting is on.
+                $badge_classes = 'vyg-card__badge';
+                if ( '' !== (string) ( $badge_type ?? '' ) ) {
+                    $badge_classes .= ' vyg-card__badge--' . esc_attr( (string) $badge_type );
+                }
+                // The style class is always emitted (the setting has
+                // a default of 'solid' so it is never empty).
+                $badge_classes .= ' vyg-card__badge--' . esc_attr( (string) ( $badge_style ?? 'solid' ) );
+                $badge_classes .= ' vyg-card__badge--' . esc_attr( (string) $badge_position );
+                $badge_color_safe = (string) ( $badge_color ?? '' );
+                $badge_inline_style = '' !== $badge_color_safe
+                    ? '--vyg-badge-color:' . esc_attr( $badge_color_safe )
+                    : '';
+                ?>
+                <span class="<?php echo $badge_classes; ?>"
+                      style="<?php echo $badge_inline_style; ?>"
                       aria-label="<?php echo esc_attr( $status_badge ); ?>">
-                    <?php echo esc_html( $status_badge ); ?>
+                    <?php
+                    // Prefer the new badge_label (covers all 7 types);
+                    // fall back to the legacy status_badge for safety.
+                    $badge_text = (string) ( $badge_label ?? '' );
+                    echo esc_html( '' !== $badge_text ? $badge_text : $status_badge );
+                    ?>
                 </span>
             <?php endif; ?>
 

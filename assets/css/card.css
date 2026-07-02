@@ -247,41 +247,123 @@
     backdrop-filter: blur(8px);
 }
 
-/* Status badges (LIVE / UPCOMING / FEATURED) sit absolutely on the
- * media region. Default to top-left; position modifiers below move
- * them around the wrap. */
+/* Status badges (LIVE / UPCOMING / FEATURED / REPLAY / SHORT / NEW /
+ * PRODUCT) sit absolutely on the media region. Default to top-left;
+ * position modifiers below move them around the wrap.
+ *
+ * Phase 14.8 — badge type × style matrix (7 types × 4 styles).
+ *
+ * The base `.vyg-card__badge` rule below carries the SHARED shape:
+ * position, font, padding, border-radius, uppercase, etc. It does
+ * NOT carry a background — every per-style class sets the background
+ * (and border / text color) so the 4 styles are visually distinct.
+ *
+ * The per-type `--{type}` rules only set the badge-color CSS custom
+ * property (`--vyg-badge-color`), which the per-style rules then
+ * consume via color-mix() for the solid / soft variants, and the
+ * outline + minimal variants reference it directly. This decouples
+ * type (semantic) from style (visual) and lets the per-type rule be
+ * a single line per type.
+ *
+ * 7 types: featured | live | upcoming | replay | short | new | product
+ * 4 styles: solid | soft | outline | minimal
+ * = 28 visible combos, all derived from 7 type rules + 4 style rules
+ *   + the 4 position rules that already exist.
+ */
 .vyg-card__badge {
     position: absolute;
     top: 10px;
     left: 10px;
     z-index: 2;
-    background: var(--vyg-pill-bg, linear-gradient(135deg, #ff0033, #ff6b00));
-    color: var(--vyg-pill-color, #fff);
+    background: var(--vyg-badge-color, #ff0000);
+    color: #fff;
     padding: 0.28rem 0.55rem;
     border-radius: 999px;
     font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.055em;
+    line-height: 1;
     text-transform: uppercase;
-    box-shadow: 0 10px 24px -14px rgba(255, 0, 51, 0.8);
+    box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.65);
+    white-space: nowrap;
 }
 
-.vyg-card__badge--live {
-    background: var(--vyg-pill-bg, #ff0000);
-    color: var(--vyg-pill-color, #fff);
-}
-
-.vyg-card__badge--upcoming {
-    /* Default upcoming pill uses the same pill palette as live;
-     * presets.css can override --vyg-pill-bg per use case. */
-    background: var(--vyg-pill-bg, #ff0000);
-    color: var(--vyg-pill-color, #fff);
-}
-
+/* ---- Per-type color rules ----
+ * Each rule sets the prototype's per-type hex on a `--vyg-badge-color`
+ * CSS custom property. The per-style rules below consume this
+ * variable to build the actual background.
+ */
 .vyg-card__badge--featured {
-    /* Featured (commerce) pill defaults to a slightly darker pill. */
-    background: var(--vyg-pill-bg, #ff0000);
-    color: var(--vyg-pill-color, #fff);
+    --vyg-badge-color: #6d28d9;
+}
+.vyg-card__badge--live {
+    --vyg-badge-color: #ef233c;
+}
+.vyg-card__badge--upcoming {
+    --vyg-badge-color: #7c3aed;
+}
+.vyg-card__badge--replay {
+    --vyg-badge-color: #2563eb;
+}
+.vyg-card__badge--short {
+    --vyg-badge-color: #0ea5e9;
+}
+.vyg-card__badge--new {
+    --vyg-badge-color: #16a34a;
+}
+.vyg-card__badge--product {
+    --vyg-badge-color: #f97316;
+}
+
+/* ---- Per-style rules ----
+ * 4 style variants on the same element. The base rule (above) uses
+ * the solid color directly; the soft / outline / minimal rules
+ * override the background + color + border as needed.
+ *
+ *   solid   : full per-type color background, white text.
+ *   soft    : 16% mix of the per-type color over white, 72% mix of
+ *             the per-type color as text. Reads as a tinted pill
+ *             on busy thumbnails.
+ *   outline : white background, 82% mix of the per-type color as
+ *             text, 35% mix of the per-type color as border.
+ *             Reads as a bordered chip.
+ *   minimal : rgba(15, 23, 42, .72) translucent slate background,
+ *             white text. The badge color is intentionally ignored
+ *             for minimal — the prototype uses it as a quiet
+ *             "presence" marker that doesn't compete with the thumb.
+ *
+ * All four use color-mix(in srgb, ...) so a child theme can swap
+ * the per-type color by changing ONE variable and every style
+ * follows.
+ */
+.vyg-card__badge--soft {
+    background: color-mix(in srgb, var(--vyg-badge-color, #6d28d9) 16%, white);
+    color: color-mix(in srgb, var(--vyg-badge-color, #6d28d9) 72%, #0f172a);
+    box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.35);
+}
+.vyg-card__badge--outline {
+    background: #ffffff;
+    color: color-mix(in srgb, var(--vyg-badge-color, #6d28d9) 82%, #0f172a);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--vyg-badge-color, #6d28d9) 35%, rgba(15, 23, 42, 0.12)) inset;
+    /* The outline style wants the border to read as a clean chip
+     * outline (not the inset shadow above), so we use a real border
+     * when the type color is set and a fallback neutral otherwise. */
+    border: 1px solid color-mix(in srgb, var(--vyg-badge-color, #6d28d9) 35%, rgba(15, 23, 42, 0.12));
+    padding: calc(0.28rem - 1px) calc(0.55rem - 1px);
+}
+.vyg-card__badge--minimal {
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+    box-shadow: 0 6px 18px -12px rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+}
+
+/* The solid style is the DEFAULT — i.e. the rule above on the
+ * base class IS the solid style. We add an explicit class for
+ * symmetry with the other 3 (so `vyg-card__badge--solid` is a
+ * recognized variant and the per-style set is a closed 4). */
+.vyg-card__badge--solid {
+    /* Inherits background/color from the base rule. */
 }
 
 /* ---- 5. Body region (title, channel, meta, description) -------------- */

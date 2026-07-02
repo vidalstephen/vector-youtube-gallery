@@ -243,11 +243,27 @@ final class CardRenderer {
         $badge_position     = self::slug_to_class( (string) ( $settings['badge_position'] ?? 'top_left' ) );
         $cta_style          = self::slug_to_class( (string) ( $settings['cta_style'] ?? 'primary' ) );
 
-        // --- Status badge text (LIVE / UPCOMING / REPLAY) ---
+        // --- Status badge (Phase 14.8 — 7 types × 4 styles) ---
+        // The `live_status` field only drives the live/upcoming/replay
+        // types. The remaining 4 (featured, short, new, product) come
+        // from `is_pinned` / `content_type` / `published_at` /
+        // `manual_content_type` and are derived in
+        // `VideoRenderer::badge_type_for()`. The label and the per-type
+        // color are also resolved here so the partial can render the
+        // full class combo + inline style with a single scope read.
         $live_status        = (string) ( $video['live_status'] ?? 'none' );
         $enabled_badges     = isset( $settings['enabled_badges'] ) && is_array( $settings['enabled_badges'] )
             ? $settings['enabled_badges']
             : array();
+        $badge_type         = $this->video_renderer->badge_type_for( $video );
+        $badge_label        = $this->video_renderer->badge_type_label( $badge_type );
+        $badge_color        = $this->video_renderer->badge_type_color( $badge_type );
+        // The legacy `enabled_badges` allow-list (Phase 10.x) still
+        // gates the live/upcoming/replay types. For the 4 newer
+        // types (featured, short, new, product) we always allow them
+        // when the show_status_badge setting is on — operators
+        // disable the badge wholesale via `show_status_badge=false`,
+        // not via per-type toggles.
         $status_badge       = $this->resolve_status_badge( $live_status, $enabled_badges );
 
         // --- Phase 14.7 — per-channel avatar gradient pair ---
@@ -273,6 +289,20 @@ final class CardRenderer {
             'title_lines'       => (int) ( $settings['title_lines'] ?? 2 ),
             'duration_position' => $duration_position,
             'badge_position'    => $badge_position,
+            // Phase 14.8 — badge type / style / color resolved by the
+            // VideoRenderer helpers. The partial reads these to emit
+            // `<span class="vyg-card__badge vyg-card__badge--{type}
+            //  vyg-card__badge--{style} vyg-card__badge--{position}"
+            //  style="--vyg-badge-color:{hex}">{label}</span>`. All
+            // three are guaranteed safe by the helpers (whitelisted
+            // type slug, whitelisted hex, whitelisted label).
+            'badge_type'        => $badge_type,
+            'badge_label'       => $badge_label,
+            'badge_color'       => $badge_color,
+            // The style + position class pieces the partial needs
+            // (the position slug has already been converted to dash
+            // form above; the style is the raw enum value).
+            'badge_style'       => (string) ( $settings['badge_style'] ?? 'solid' ),
             'status_badge'      => $status_badge,
             'metadata_fields'   => $this->metadata_fields_for( $settings ),
             'cta_style'         => $cta_style,

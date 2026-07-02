@@ -285,7 +285,7 @@ final class CardSettings {
 	 * @var array<string,string[]>
 	 */
 	private const LIST_SPECS = array(
-		'enabled_badges'  => array( 'live', 'upcoming', 'replay', 'featured', 'short', 'product' ),
+		'enabled_badges'  => array( 'live', 'upcoming', 'replay', 'featured', 'short', 'product', 'new' ),
 		'metadata_fields' => array( 'views', 'published_date' ),
 		'actions'         => array( 'watch', 'youtube', 'share', 'more' ),
 	);

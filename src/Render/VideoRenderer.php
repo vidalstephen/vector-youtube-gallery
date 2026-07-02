@@ -285,6 +285,231 @@ final class VideoRenderer {
         return array( self::DEFAULT_AVATAR_COLOR_A, self::DEFAULT_AVATAR_COLOR_B );
     }
 
+    // -----------------------------------------------------------------
+    // Phase 14.8 — badge type / style system (7 types × 4 styles)
+    // -----------------------------------------------------------------
+
+    /**
+     * Window during which a freshly-published, non-live standard
+     * video still earns a "new" badge. The prototype surfaces any
+     * video published in the last week with a green NEW pill; beyond
+     * that the badge disappears and the video just renders as a
+     * standard row. 7 days is the same window YouTube Studio's own
+     * "new" treatment uses.
+     */
+    public const NEW_BADGE_WINDOW_SECONDS = 7 * DAY_IN_SECONDS;
+
+    /**
+     * The seven badge types from the prototype panel — each maps to
+     * a CSS class (`.vyg-card__badge--{slug}`), a human label, and a
+     * per-type color. The order is the prototype's display order in
+     * the Badge type select (featured, live, upcoming, replay, short,
+     * new, product). The "standard" row is NOT a badge — it's the
+     * default state with no badge rendered.
+     *
+     * @var array<string,array{label:string,color:string}>
+     */
+    private const BADGE_TYPES = array(
+        'featured' => array(
+            'label' => 'Featured',
+            'color' => '#6d28d9',
+        ),
+        'live'     => array(
+            'label' => 'Live',
+            'color' => '#ef233c',
+        ),
+        'upcoming' => array(
+            'label' => 'Upcoming',
+            'color' => '#7c3aed',
+        ),
+        'replay'   => array(
+            'label' => 'Replay',
+            'color' => '#2563eb',
+        ),
+        'short'    => array(
+            'label' => 'Short',
+            'color' => '#0ea5e9',
+        ),
+        'new'      => array(
+            'label' => 'New',
+            'color' => '#16a34a',
+        ),
+        'product'  => array(
+            'label' => 'Product',
+            'color' => '#f97316',
+        ),
+    );
+
+    /**
+     * Derive the badge type for a video row.
+     *
+     * Phase 14.8 — prototype badge panel. The 7 types map to specific
+     * signals on the row, in this priority order (highest first):
+     *
+     *   1. manual_content_type = 'product'           → 'product'
+     *      (operator override always wins; also matches the
+     *      shortcode-attr path for "promote this to a product card".)
+     *   2. live_status = 'live'                      → 'live'
+     *   3. live_status = 'upcoming' + scheduled in
+     *      the future                                → 'upcoming'
+     *      (a stale 'upcoming' row whose scheduled_start_at has
+     *      already passed gets no badge rather than misleading the
+     *      visitor with a "starts in N days" label that has elapsed.)
+     *   4. live_status = 'replay'                    → 'replay'
+     *   5. content_type = 'short_confirmed' |
+     *      'short_candidate'                         → 'short'
+     *   6. is_pinned = 1 (and not live)              → 'featured'
+     *   7. published within the last 7 days, no
+     *      live/pinned/short signal, content_type =
+     *      'standard'                                → 'new'
+     *   8. otherwise                                 → '' (no badge)
+     *
+     * The function is pure: no DB calls, no WordPress globals, no
+     * filters. Callers (CardRenderer) can suppress the badge via
+     * `show_status_badge` or the `enabled_badges` allow-list in
+     * CardSettings — this helper only decides WHICH type the row
+     * qualifies for, never whether to render it.
+     *
+     * @param array<string,mixed> $video
+     * @return string One of the 7 slugs above, or '' for "no badge".
+     */
+    public function badge_type_for( array $video ): string {
+        // Tier 1 — manual override (operator-pinned product tag).
+        $manual = strtolower( (string) ( $video['manual_content_type'] ?? '' ) );
+        if ( 'product' === $manual ) {
+            return 'product';
+        }
+
+        // Tier 2 — live signal. Live always wins over Shorts (matches
+        // VideoNormalizer's content_type priority).
+        $live_status = (string) ( $video['live_status'] ?? 'none' );
+        if ( 'live' === $live_status ) {
+            return 'live';
+        }
+
+        // Tier 3 — upcoming, but only when the scheduled start is
+        // actually still in the future. A 'upcoming' row whose
+        // scheduled_start_at has elapsed falls through (a stale
+        // "upcoming" pill is worse than no pill).
+        if ( 'upcoming' === $live_status && $this->is_scheduled_in_future( $video ) ) {
+            return 'upcoming';
+        }
+
+        // Tier 4 — replay.
+        if ( 'replay' === $live_status ) {
+            return 'replay';
+        }
+
+        // Tier 5 — shorts (confirmed or candidate).
+        $content_type = (string) ( $video['content_type'] ?? '' );
+        if ( 'short_confirmed' === $content_type || 'short_candidate' === $content_type ) {
+            return 'short';
+        }
+
+        // Tier 6 — pinned (featured) — only when nothing more
+        // specific (live/upcoming/replay/short) already matched.
+        if ( ! empty( $video['is_pinned'] ) ) {
+            return 'featured';
+        }
+
+        // Tier 7 — "new" for recently-published standard videos.
+        // We intentionally exclude live/shorts here so a freshly
+        // published live broadcast still renders a LIVE pill, not a
+        // NEW pill stacked on top of it.
+        if ( 'standard' === $content_type && $this->is_recently_published( $video ) ) {
+            return 'new';
+        }
+
+        return '';
+    }
+
+    /**
+     * Human label for a badge type slug. Returns '' for unknown
+     * slugs so the caller can decide whether to render an empty
+     * span or suppress the badge entirely.
+     *
+     * @param string $type One of the 7 prototype types.
+     * @return string The label (e.g. "Live") or '' for unknown.
+     */
+    public function badge_type_label( string $type ): string {
+        if ( ! isset( self::BADGE_TYPES[ $type ] ) ) {
+            return '';
+        }
+        return (string) self::BADGE_TYPES[ $type ]['label'];
+    }
+
+    /**
+     * Prototype hex color for a badge type slug. Returns '' for
+     * unknown slugs. The color is a hard-coded 7-char lowercase hex
+     * from the BADGE_TYPES table — no XSS surface (the caller still
+     * passes it through esc_attr when interpolating into a style
+     * attribute, but the value itself is whitelisted).
+     *
+     * @param string $type One of the 7 prototype types.
+     * @return string 7-char lowercase hex like '#0ea5e9' or ''.
+     */
+    public function badge_type_color( string $type ): string {
+        if ( ! isset( self::BADGE_TYPES[ $type ] ) ) {
+            return '';
+        }
+        return (string) self::BADGE_TYPES[ $type ]['color'];
+    }
+
+    /**
+     * The full set of supported badge type slugs. Used by the
+     * CardSettings LIST_SPECS so the operator panel can offer
+     * "enable / disable per type" toggles against the same allow-list
+     * the renderer reads.
+     *
+     * @return string[]
+     */
+    public function badge_type_slugs(): array {
+        return array_keys( self::BADGE_TYPES );
+    }
+
+    /**
+     * Helper for badge_type_for(): was this video scheduled to start
+     * in the future relative to "now"? Returns false for any row
+     * that lacks a parseable scheduled_start_at.
+     *
+     * @param array<string,mixed> $video
+     */
+    private function is_scheduled_in_future( array $video ): bool {
+        $raw = (string) ( $video['scheduled_start_at'] ?? '' );
+        if ( '' === $raw ) {
+            // The VideoNormalizer stores scheduled_start_at as
+            // 'Y-m-d H:i:s' (UTC) or null. Without a value we
+            // treat the row as "indeterminate" — not eligible for
+            // the upcoming badge.
+            return false;
+        }
+        $ts = strtotime( $raw . ' UTC' );
+        if ( false === $ts ) {
+            return false;
+        }
+        return $ts > time();
+    }
+
+    /**
+     * Helper for badge_type_for(): was this video published within
+     * the NEW_BADGE_WINDOW? The window is 7 days, matching the
+     * prototype's green "NEW" pill. Returns false when the row has
+     * no parseable published_at.
+     *
+     * @param array<string,mixed> $video
+     */
+    private function is_recently_published( array $video ): bool {
+        $raw = (string) ( $video['published_at'] ?? '' );
+        if ( '' === $raw ) {
+            return false;
+        }
+        $ts = strtotime( $raw . ' UTC' );
+        if ( false === $ts ) {
+            return false;
+        }
+        return ( time() - $ts ) <= self::NEW_BADGE_WINDOW_SECONDS;
+    }
+
     /**
      * Derive a deterministic two-color avatar pair from a YouTube
      * channel id.
