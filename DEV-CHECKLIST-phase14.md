@@ -48,7 +48,7 @@
 - [x] 14.3 Live section pill counters (`2 live`, `3 upcoming`, `Recent replays`)
 - [x] 14.4 Section head + "View all →" link (featured / hero layouts)
 - [x] 14.5 Card play icon center + thumbnail gradient overlay
-- [ ] 14.6 Per-video tone color (`--tone` CSS variable) for varied card backgrounds
+- [x] 14.6 Per-video tone color (`--tone` CSS variable) for varied card backgrounds
 - [ ] 14.7 Per-channel avatar gradient (`--aa`, `--ab` two-color CSS variables)
 - [ ] 14.8 Badge type × style matrix (7 types × 4 styles)
 - [ ] 14.9 Shared header (kicker + h1 + intro + layout pill + channel CTA) across all 8 layouts
