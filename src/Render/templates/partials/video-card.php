@@ -83,12 +83,23 @@ $action_label = static function ( string $slug ): string {
         // class name matches the prototype's .thumb-wrap--overlay
         // convention from the BEM plan, even though the shared
         // partial uses vyg-card__media as the outer thumb container.
+        //
+        // Phase 14.6 — per-video tone (channel brand gradient). The
+        // CardRenderer resolves a 7-char `#RRGGBB` value into
+        // $tone_color (3-tier fallback: stored → channel-id hash →
+        // default slate). The hex is interpolated into a `style`
+        // attribute as `--tone:…` so card.css can build a
+        // color-mix() gradient from it (or fall back to the
+        // pre-14.6 flat thumb background when the browser is too
+        // old to understand `var(--tone)`).
         $media_classes = 'vyg-card__media vyg-thumb-ratio--' . esc_attr( str_replace( '_', '-', $thumbnail_ratio ) );
         if ( $thumbnail_overlay ) {
             $media_classes .= ' vyg-card__thumb-wrap--overlay';
         }
+        $media_style = sprintf( '--tone:%s', esc_attr( (string) ( $tone_color ?? '#64748b' ) ) );
         ?>
-        <div class="<?php echo $media_classes; // already escaped above. ?>">
+        <div class="<?php echo $media_classes; // already escaped above. ?>"
+             style="<?php echo $media_style; // esc_attr'd in the sprintf above; hex is whitelisted by tone_color(). ?>">
             <a class="vyg-card__link"
                href="<?php echo esc_url( $watch_url ); ?>"
                data-vyg-title="<?php echo esc_attr( $title ); ?>"

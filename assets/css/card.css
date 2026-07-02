@@ -126,7 +126,24 @@
 .vyg-card__media {
     position: relative;
     width: 100%;
-    background: var(--vyg-card-thumb-bg, #050505);
+    /* Phase 14.6 — per-video tone (channel brand gradient). The
+     * background is a 145° gradient between the channel's `--tone`
+     * (16% mixed toward white) and the same tone (90% mixed toward
+     * #0f172a slate). The `color-mix()` function is supported in
+     * all evergreen browsers since late 2023; older browsers that
+     * don't understand it fall through to the simple `var(--tone)`
+     * background declared immediately after, which is itself a
+     * graceful fallback to the original --vyg-card-thumb-bg
+     * (pre-14.6 behavior). */
+    background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--tone, #64748b) 16%, white),
+        color-mix(in srgb, var(--tone, #64748b) 90%, #0f172a)
+    );
+    /* Fallback chain: tone → thumb-bg → black. Older browsers that
+     * ignore color-mix() still get a flat color (the tone itself),
+     * so the card background is at least varied. */
+    background-color: var(--tone, var(--vyg-card-thumb-bg, #050505));
     overflow: hidden;
     border-radius: var(--vyg-thumb-radius, 0);
     isolation: isolate;

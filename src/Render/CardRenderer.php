@@ -271,6 +271,12 @@ final class CardRenderer {
             'metadata_fields'   => $this->metadata_fields_for( $settings ),
             'cta_style'         => $cta_style,
             'cta_label'         => (string) ( $settings['cta_label'] ?? 'View Product' ),
+            // Phase 14.6 — per-video tone (channel brand gradient).
+            // The helper returns a safe lowercase `#RRGGBB` (3-tier
+            // fallback: stored → channel-id hash → default slate), so
+            // the partial can interpolate it into a `style="--tone:…"`
+            // attribute after one `esc_attr` for HTML attribute safety.
+            'tone_color'        => $this->video_renderer->tone_color( $video ),
         );
     }
 

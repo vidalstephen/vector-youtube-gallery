@@ -55,6 +55,8 @@ final class VideoNormalizer {
         $stats    = (array) ( $api_resource['statistics'] ?? array() );
         $thumbs   = (array) ( $snippet['thumbnails'] ?? array() );
         $live     = (array) ( $api_resource['liveStreamingDetails'] ?? array() );
+        $branding = (array) ( $api_resource['brandingSettings'] ?? array() );
+        $brand_image = (array) ( $branding['image'] ?? array() );
 
         $duration_iso = (string) ( $details['duration'] ?? '' );
         $duration_seconds = $this->parse_iso8601_duration_to_seconds( $duration_iso );
@@ -96,6 +98,20 @@ final class VideoNormalizer {
             ? wp_json_encode( array_values( $snippet['tags'] ) )
             : null;
 
+        // Phase 14.6 — tone_color: pull from channel branding
+        // (`brandingSettings.image.backgroundColor`). YouTube sends a
+        // bare 6-digit lowercase hex like "0F766E" (no leading #).
+        // The VideoRenderer::tone_color helper accepts that as-is (it
+        // validates with a strict regex), but the column has no # so
+        // we strip a leading # if the API ever returns one. Empty
+        // string is the explicit "no value" sentinel — the renderer
+        // falls through to the channel-id hash in that case.
+        $brand_bg = (string) ( $brand_image['backgroundColor'] ?? '' );
+        $brand_bg = ltrim( $brand_bg, '#' );
+        $tone_color = '' !== $brand_bg && (bool) preg_match( '/^[0-9a-fA-F]{6}$/', $brand_bg )
+            ? '#' . strtolower( $brand_bg )
+            : '';
+
         $row = array(
             'youtube_video_id'    => (string) ( $api_resource['id'] ?? '' ),
             'youtube_channel_id'  => sanitize_text_field( (string) ( $snippet['channelId'] ?? '' ) ),
@@ -127,6 +143,11 @@ final class VideoNormalizer {
             'last_success_at'     => gmdate( 'Y-m-d H:i:s' ),
             'api_data_expires_at' => gmdate( 'Y-m-d H:i:s', time() + 30 * DAY_IN_SECONDS ),
             'manual_content_type' => '' !== $manual ? sanitize_key( $manual ) : null,
+            // Phase 14.6 — per-video tone (drives the card thumb gradient).
+            // Sourced from the channel's branding background color; empty
+            // when YouTube did not return a valid value (renderer falls
+            // through to a deterministic channel-id hash).
+            'tone_color'          => $tone_color,
         );
 
         return $row;

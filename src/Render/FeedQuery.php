@@ -118,7 +118,7 @@ class FeedQuery {
                        v.duration_iso, v.thumbnail_default, v.thumbnail_medium, v.thumbnail_high,
                        v.thumbnail_standard, v.thumbnail_maxres, v.content_type, v.live_status,
                        v.availability_status, v.published_at, v.view_count, v.actual_start_at,
-                       v.actual_end_at, v.scheduled_start_at,
+                       v.actual_end_at, v.scheduled_start_at, v.tone_color,
                        s.title AS youtube_channel_title
                 FROM {$videos_table} v
                 LEFT JOIN {$sources_table} s ON s.youtube_channel_id = v.youtube_channel_id
@@ -419,7 +419,7 @@ class FeedQuery {
                        v.duration_iso, v.thumbnail_default, v.thumbnail_medium, v.thumbnail_high,
                        v.thumbnail_standard, v.thumbnail_maxres, v.content_type, v.live_status,
                        v.availability_status, v.published_at, v.view_count, v.actual_start_at,
-                       v.actual_end_at, v.scheduled_start_at,
+                       v.actual_end_at, v.scheduled_start_at, v.tone_color,
                        s.title AS youtube_channel_title
                 FROM {$table} v
                 LEFT JOIN {$sources_table} s ON s.youtube_channel_id = v.youtube_channel_id
