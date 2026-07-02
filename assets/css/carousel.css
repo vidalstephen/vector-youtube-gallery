@@ -1,4 +1,4 @@
-/* Carousel layout — horizontal slider with prev/next buttons + snap. */
+/* Carousel layout — premium horizontal slider with snap controls. */
 .vyg-feed--carousel.vyg-carousel {
     position: relative;
     display: block;
@@ -7,62 +7,51 @@
 
 .vyg-feed--carousel.vyg-carousel > .vyg-carousel__track {
     display: flex;
-    gap: 1rem;
+    gap: var(--vyg-grid-gap, 1.25rem);
     overflow-x: auto;
     overflow-y: hidden;
     list-style: none;
     margin: 0;
-    padding: 0.5rem 0;
+    padding: 0.75rem 0.2rem 1.1rem;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    /* Hide scrollbar visually but keep it functional (assistive tech + keyboard). */
     scrollbar-width: thin;
+    scrollbar-color: rgba(17, 24, 39, 0.25) transparent;
 }
 
 .vyg-feed--carousel.vyg-carousel > .vyg-carousel__track:focus-visible {
-    outline: 3px solid #2271b1;
-    outline-offset: 2px;
+    outline: 3px solid rgba(59, 130, 246, 0.55);
+    outline-offset: 3px;
+    border-radius: 14px;
 }
 
 .vyg-feed--carousel.vyg-carousel > .vyg-carousel__track::-webkit-scrollbar {
-    height: 6px;
+    height: 8px;
 }
 .vyg-feed--carousel.vyg-carousel > .vyg-carousel__track::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.25);
-    border-radius: 3px;
+    background: rgba(17, 24, 39, 0.25);
+    border-radius: 999px;
 }
 
 .vyg-feed--carousel.vyg-carousel .vyg-carousel__slide {
-    flex: 0 0 calc((100% - ((3 - 1) * 1rem)) / 3); /* per-view=3 default; overridden by suffixes. */
+    flex: 0 0 calc((100% - ((3 - 1) * var(--vyg-grid-gap, 1.25rem))) / 3);
     scroll-snap-align: start;
     scroll-snap-stop: always;
 }
 
-.vyg-feed--carousel.vyg-carousel--per-1 .vyg-carousel__slide {
-    flex: 0 0 100%;
-}
-.vyg-feed--carousel.vyg-carousel--per-2 .vyg-carousel__slide {
-    flex: 0 0 calc((100% - 1rem) / 2);
-}
-.vyg-feed--carousel.vyg-carousel--per-3 .vyg-carousel__slide {
-    flex: 0 0 calc((100% - 2rem) / 3);
-}
-.vyg-feed--carousel.vyg-carousel--per-4 .vyg-carousel__slide {
-    flex: 0 0 calc((100% - 3rem) / 4);
-}
-.vyg-feed--carousel.vyg-carousel--per-5 .vyg-carousel__slide {
-    flex: 0 0 calc((100% - 4rem) / 5);
-}
-.vyg-feed--carousel.vyg-carousel--per-6 .vyg-carousel__slide {
-    flex: 0 0 calc((100% - 5rem) / 6);
-}
+.vyg-feed--carousel.vyg-carousel--per-1 .vyg-carousel__slide { flex-basis: 100%; }
+.vyg-feed--carousel.vyg-carousel--per-2 .vyg-carousel__slide { flex-basis: calc((100% - var(--vyg-grid-gap, 1.25rem)) / 2); }
+.vyg-feed--carousel.vyg-carousel--per-3 .vyg-carousel__slide { flex-basis: calc((100% - (2 * var(--vyg-grid-gap, 1.25rem))) / 3); }
+.vyg-feed--carousel.vyg-carousel--per-4 .vyg-carousel__slide { flex-basis: calc((100% - (3 * var(--vyg-grid-gap, 1.25rem))) / 4); }
+.vyg-feed--carousel.vyg-carousel--per-5 .vyg-carousel__slide { flex-basis: calc((100% - (4 * var(--vyg-grid-gap, 1.25rem))) / 5); }
+.vyg-feed--carousel.vyg-carousel--per-6 .vyg-carousel__slide { flex-basis: calc((100% - (5 * var(--vyg-grid-gap, 1.25rem))) / 6); }
 
 @media (max-width: 900px) {
     .vyg-feed--carousel.vyg-carousel--per-4 .vyg-carousel__slide,
     .vyg-feed--carousel.vyg-carousel--per-5 .vyg-carousel__slide,
     .vyg-feed--carousel.vyg-carousel--per-6 .vyg-carousel__slide {
-        flex: 0 0 calc((100% - 2rem) / 3);
+        flex: 0 0 calc((100% - (2 * var(--vyg-grid-gap, 1.25rem))) / 3);
     }
 }
 @media (max-width: 600px) {
@@ -70,7 +59,7 @@
     .vyg-feed--carousel.vyg-carousel--per-4 .vyg-carousel__slide,
     .vyg-feed--carousel.vyg-carousel--per-5 .vyg-carousel__slide,
     .vyg-feed--carousel.vyg-carousel--per-6 .vyg-carousel__slide {
-        flex: 0 0 calc((100% - 1rem) / 2);
+        flex: 0 0 calc((100% - var(--vyg-grid-gap, 1.25rem)) / 2);
     }
 }
 @media (max-width: 380px) {
@@ -83,24 +72,26 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
-    border: 1px solid rgba(0, 0, 0, 0.18);
+    border: 0;
     background: rgba(255, 255, 255, 0.92);
-    color: #111;
-    font-size: 20px;
+    color: #111827;
+    font-size: 22px;
     line-height: 1;
     cursor: pointer;
     z-index: 2;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    transition: background 0.15s ease;
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08), 0 16px 30px -20px rgba(17, 24, 39, 0.75);
+    backdrop-filter: blur(12px);
+    transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .vyg-feed--carousel.vyg-carousel .vyg-carousel__btn:hover:not([disabled]),
 .vyg-feed--carousel.vyg-carousel .vyg-carousel__btn:focus-visible {
     background: #fff;
-    outline: 2px solid #2271b1;
+    transform: translateY(-50%) scale(1.04);
+    outline: 3px solid rgba(59, 130, 246, 0.55);
     outline-offset: 2px;
 }
 
@@ -109,12 +100,8 @@
     cursor: not-allowed;
 }
 
-.vyg-feed--carousel.vyg-carousel .vyg-carousel__btn--prev {
-    left: -8px;
-}
-.vyg-feed--carousel.vyg-carousel .vyg-carousel__btn--next {
-    right: -8px;
-}
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__btn--prev { left: -12px; }
+.vyg-feed--carousel.vyg-carousel .vyg-carousel__btn--next { right: -12px; }
 
 .vyg-feed--carousel.vyg-carousel .vyg-carousel__live {
     position: absolute;

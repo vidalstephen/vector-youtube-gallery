@@ -59,8 +59,10 @@ class LiveQuery {
         if ( '' === $where ) {
             return array();
         }
+        $params = $this->source_where_params( $source, $ch, $vid, $pl );
+        $params[] = $limit;
         $sql = "SELECT * FROM {$videos_table} v WHERE v.live_status = 'live' AND {$where} ORDER BY v.concurrent_viewers DESC LIMIT %d";
-        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $limit ), ARRAY_A );
+        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
         return is_array( $rows ) ? $rows : array();
     }
 
@@ -79,8 +81,10 @@ class LiveQuery {
         if ( '' === $where ) {
             return array();
         }
+        $params = $this->source_where_params( $source, $ch, $vid, $pl );
+        $params[] = $limit;
         $sql = "SELECT * FROM {$videos_table} v WHERE v.live_status = 'upcoming' AND {$where} ORDER BY v.scheduled_start_at ASC LIMIT %d";
-        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $limit ), ARRAY_A );
+        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
         return is_array( $rows ) ? $rows : array();
     }
 
@@ -131,5 +135,24 @@ class LiveQuery {
             return $alias . 'source_id = %d AND ' . $alias . 'availability_status = \'available\'';
         }
         return '';
+    }
+
+    /**
+     * Return the placeholder values that match source_where().
+     *
+     * @return array<int,mixed>
+     */
+    private function source_where_params( array $source, string $ch, string $vid, string $pl ): array {
+        $type = (string) ( $source['source_type'] ?? '' );
+        if ( 'channel' === $type && '' !== $ch ) {
+            return array( $ch );
+        }
+        if ( 'video' === $type && '' !== $vid ) {
+            return array( $vid );
+        }
+        if ( 'playlist' === $type && '' !== $pl ) {
+            return array( (int) ( $source['id'] ?? 0 ) );
+        }
+        return array();
     }
 }

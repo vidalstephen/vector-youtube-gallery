@@ -4,7 +4,11 @@
 .vyg-feed {
     box-sizing: border-box;
     font-family: inherit;
-    color: inherit;
+    color: var(--vyg-feed-text, inherit);
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    isolation: isolate;
 }
 
 .vyg-feed *,
@@ -25,18 +29,48 @@
 }
 
 .vyg-feed__loadmore-wrap {
-    margin: 1.5em 0;
+    margin: clamp(1.5rem, 4vw, 2.75rem) 0;
     text-align: center;
 }
 
-.vyg-feed__loadmore.button {
-    display: inline-block;
+.vyg-feed__loadmore.button,
+.vyg-feed__loadmore {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0.7rem 1.15rem;
+    border: 0;
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    box-shadow: 0 10px 24px -18px rgba(17, 24, 39, 0.75);
 }
 
 .vyg-feed__remaining {
-    margin-left: 0.5em;
-    color: #555;
+    margin-left: 0.75em;
+    color: var(--vyg-feed-muted, #667085);
     font-size: 0.85em;
+}
+
+/* Empty state used by layouts when the cached source has no matching rows. */
+.vyg-feed--empty {
+    max-width: 720px;
+    margin: 1.5rem auto;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border-radius: 20px;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.035), rgba(124, 58, 237, 0.045));
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08) inset;
+    color: var(--vyg-feed-muted, #667085);
+}
+
+.vyg-feed--empty p {
+    margin: 0;
+    font-weight: 700;
+    color: #344054;
 }
 
 /* Lightbox overlay (consumed by js/lightbox.js) */
@@ -113,11 +147,12 @@
 
 /* Phase 10 — Elementor editor placeholder (no API call, no DOM mutation). */
 .vyg-elementor-editor-placeholder {
-    border: 1px dashed rgba(0, 0, 0, 0.25);
-    padding: 1em;
+    border: 1px dashed rgba(17, 24, 39, 0.22);
+    border-radius: 16px;
+    padding: 1.25em;
     text-align: center;
-    color: #555;
-    background: rgba(0, 0, 0, 0.02);
+    color: var(--vyg-feed-muted, #667085);
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.035), rgba(124, 58, 237, 0.045));
 }
 .vyg-elementor-editor-placeholder__hint {
     margin-top: 0.4em;

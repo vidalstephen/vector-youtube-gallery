@@ -13,24 +13,29 @@
  * cascade down to the cards.
  */
 .vyg-feed {
-    --vyg-card-radius:           8px;
-    --vyg-card-bg:               transparent;
-    --vyg-card-shadow:           none;
-    --vyg-card-shadow-hover:     0 4px 10px rgba(0, 0, 0, 0.08);
-    --vyg-card-border:           1px solid #e5e5e5;
-    --vyg-card-padding:          0.9rem;
-    --vyg-card-title-weight:     600;
-    --vyg-card-title-size:       0.95em;
-    --vyg-card-title-color:      inherit;
+    --vyg-feed-accent:           #ff0033;
+    --vyg-feed-accent-2:         #7c3aed;
+    --vyg-feed-text:             #111827;
+    --vyg-feed-muted:            #667085;
+    --vyg-feed-border:           rgba(17, 24, 39, 0.10);
+    --vyg-card-radius:           18px;
+    --vyg-card-bg:               #ffffff;
+    --vyg-card-shadow:           0 0 0 1px rgba(17, 24, 39, 0.08), 0 2px 4px rgba(17, 24, 39, 0.04), 0 16px 32px -24px rgba(17, 24, 39, 0.45);
+    --vyg-card-shadow-hover:     0 0 0 1px rgba(17, 24, 39, 0.12), 0 12px 28px -14px rgba(17, 24, 39, 0.38), 0 24px 54px -32px rgba(17, 24, 39, 0.52);
+    --vyg-card-border:           0 solid transparent;
+    --vyg-card-padding:          1rem;
+    --vyg-card-title-weight:     700;
+    --vyg-card-title-size:       0.98rem;
+    --vyg-card-title-color:      #111827;
     --vyg-card-meta-size:        0.8125rem;
-    --vyg-card-meta-color:       rgba(0, 0, 0, 0.6);
-    --vyg-grid-gap:              1rem;
-    --vyg-duration-bg:           rgba(0, 0, 0, 0.78);
+    --vyg-card-meta-color:       var(--vyg-feed-muted);
+    --vyg-grid-gap:              1.25rem;
+    --vyg-duration-bg:           rgba(0, 0, 0, 0.86);
     --vyg-duration-color:        #fff;
-    --vyg-pill-bg:               rgba(0, 0, 0, 0.78);
+    --vyg-pill-bg:               linear-gradient(135deg, #ff0033, #ff6b00);
     --vyg-pill-color:            #fff;
-    --vyg-card-thumb-bg:         #000;
-    --vyg-verified-color:        #1a73e8;
+    --vyg-card-thumb-bg:         #050505;
+    --vyg-verified-color:        #0ea5e9;
 }
 
 .vyg-feed .vyg-card {

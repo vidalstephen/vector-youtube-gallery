@@ -20,7 +20,7 @@ defined('ABSPATH') || exit;
 final class AssetManager {
 
     private const HANDLE_BASE = 'vyg';
-    private const VERSION     = '0.1.0';
+    private const VERSION     = '0.1.1';
 
     private bool $lightbox_enqueued = false;
     private bool $load_more_enqueued = false;

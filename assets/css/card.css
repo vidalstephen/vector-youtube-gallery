@@ -51,13 +51,13 @@
  * by setting the same variable on .vyg-card or any ancestor.
  */
 .vyg-card {
-    --vyg-card-gap:        0.3rem;          /* gap between body regions (title, channel, meta) */
+    --vyg-card-gap:        0.42rem;          /* gap between body regions (title, channel, meta) */
     --vyg-title-size:      inherit;         /* mirrors --vyg-card-title-size from presets.css */
-    --vyg-title-line-height: 1.25;
+    --vyg-title-line-height: 1.22;
     --vyg-title-lines:     2;
     --vyg-thumb-radius:    inherit;         /* mirrors the existing thumb-wrap shape */
-    --vyg-cta-bg:          rgba(0, 0, 0, 0.06);
-    --vyg-cta-color:       inherit;
+    --vyg-cta-bg:          #111827;
+    --vyg-cta-color:       #ffffff;
     --vyg-cta-radius:      999px;
 }
 
@@ -67,20 +67,24 @@
     display: flex;
     flex-direction: column;
     background: var(--vyg-card-bg, #fff);
-    border-radius: var(--vyg-card-radius);
-    box-shadow: var(--vyg-card-shadow);
-    border: var(--vyg-card-border, 1px solid #e5e5e5);
+    border-radius: var(--vyg-card-radius, 18px);
+    box-shadow: var(--vyg-card-shadow, 0 0 0 1px rgba(17, 24, 39, 0.08), 0 2px 4px rgba(17, 24, 39, 0.04), 0 16px 32px -24px rgba(17, 24, 39, 0.45));
+    border: var(--vyg-card-border, 0 solid transparent);
     overflow: hidden;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    min-width: 0;
+    transform: translateY(0);
+    transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+    will-change: transform;
 }
 
 .vyg-card:hover {
-    box-shadow: var(--vyg-card-shadow-hover, 0 4px 10px rgba(0, 0, 0, 0.08));
+    transform: translateY(-3px);
+    box-shadow: var(--vyg-card-shadow-hover, 0 0 0 1px rgba(17, 24, 39, 0.12), 0 12px 28px -14px rgba(17, 24, 39, 0.38), 0 24px 54px -32px rgba(17, 24, 39, 0.52));
 }
 
 .vyg-card:focus-within {
-    outline: 2px solid #0f0f0f;
-    outline-offset: 3px;
+    outline: 3px solid rgba(59, 130, 246, 0.55);
+    outline-offset: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -122,9 +126,21 @@
 .vyg-card__media {
     position: relative;
     width: 100%;
-    background: var(--vyg-card-thumb-bg, #000);
+    background: var(--vyg-card-thumb-bg, #050505);
     overflow: hidden;
     border-radius: var(--vyg-thumb-radius, 0);
+    isolation: isolate;
+}
+
+.vyg-card__media::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 46%;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.44));
+    opacity: 0.72;
+    z-index: 1;
 }
 
 .vyg-card__media > .vyg-card__link,
@@ -140,19 +156,30 @@
     height: 100%;
     object-fit: cover;
     display: block;
+    transform: scale(1.001);
+    transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+.vyg-card:hover .vyg-card__thumb {
+    transform: scale(1.035);
+    filter: saturate(1.06) contrast(1.03);
 }
 
 .vyg-card__duration {
     position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: var(--vyg-duration-bg, rgba(0, 0, 0, 0.8));
+    bottom: 10px;
+    right: 10px;
+    z-index: 2;
+    background: var(--vyg-duration-bg, rgba(0, 0, 0, 0.86));
     color: var(--vyg-duration-color, #fff);
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
+    padding: 0.28rem 0.48rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
     line-height: 1;
+    box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
 }
 
 /* Status badges (LIVE / UPCOMING / FEATURED) sit absolutely on the
@@ -160,15 +187,18 @@
  * them around the wrap. */
 .vyg-card__badge {
     position: absolute;
-    top: 8px;
-    left: 8px;
-    background: var(--vyg-pill-bg, #ff0000);
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    background: var(--vyg-pill-bg, linear-gradient(135deg, #ff0033, #ff6b00));
     color: var(--vyg-pill-color, #fff);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+    padding: 0.28rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+    box-shadow: 0 10px 24px -14px rgba(255, 0, 51, 0.8);
 }
 
 .vyg-card__badge--live {
@@ -197,17 +227,27 @@
     gap: var(--vyg-card-gap);
     padding: var(--vyg-card-padding);
     position: relative;
+    min-width: 0;
 }
 
 .vyg-card__title {
     margin: 0;
     font-size: var(--vyg-card-title-size, var(--vyg-title-size));
-    font-weight: var(--vyg-card-title-weight, 600);
+    font-weight: var(--vyg-card-title-weight, 700);
     line-height: var(--vyg-title-line-height);
-    color: var(--vyg-card-title-color, #0f0f0f);
+    letter-spacing: -0.018em;
+    color: var(--vyg-card-title-color, #111827);
     display: -webkit-box;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.vyg-card__title-link {
+    transition: color 0.18s ease;
+}
+
+.vyg-card__title-link:hover {
+    color: var(--vyg-feed-accent, #ff0033);
 }
 
 /* Title line-clamp variants (set by the partial based on title_lines
@@ -230,9 +270,9 @@
 .vyg-card__channel {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.38rem;
     font-size: var(--vyg-card-meta-size);
-    color: var(--vyg-card-meta-color, #606060);
+    color: var(--vyg-card-meta-color, #667085);
     min-width: 0;
 }
 
@@ -248,8 +288,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 500;
-    color: var(--vyg-card-meta-color, #606060);
+    font-weight: 600;
+    color: var(--vyg-card-meta-color, #667085);
 }
 
 .vyg-card__channel-subs {
@@ -269,9 +309,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.38rem;
     font-size: var(--vyg-card-meta-size);
-    color: var(--vyg-card-meta-color, #606060);
+    font-weight: 500;
+    color: var(--vyg-card-meta-color, #667085);
 }
 
 .vyg-card__meta-item {
@@ -291,9 +332,9 @@
 
 .vyg-card__description {
     margin: 0;
-    color: var(--vyg-card-meta-color, #606060);
+    color: var(--vyg-card-meta-color, #667085);
     font-size: var(--vyg-card-meta-size);
-    line-height: 1.4;
+    line-height: 1.5;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
@@ -307,31 +348,36 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.6rem;
     padding: 0 var(--vyg-card-padding) var(--vyg-card-padding);
-    border-top: 1px solid var(--vyg-card-border, #e5e5e5);
-    padding-top: 0.5rem;
+    border-top: 1px solid rgba(17, 24, 39, 0.08);
+    padding-top: 0.7rem;
+    margin-top: auto;
 }
 
 .vyg-card__cta {
     display: inline-flex;
     align-items: center;
-    gap: 0.4em;
-    padding: 0.45em 0.85em;
-    font-size: 0.85em;
-    font-weight: 600;
+    gap: 0.45em;
+    padding: 0.58em 0.95em;
+    font-size: 0.82em;
+    font-weight: 800;
+    letter-spacing: -0.01em;
     text-decoration: none;
     border-radius: var(--vyg-cta-radius, 999px);
-    background: var(--vyg-cta-bg, rgba(0, 0, 0, 0.06));
-    color: var(--vyg-cta-color, inherit);
-    border: 1px solid currentColor;
-    transition: background-color 0.15s ease;
+    background: var(--vyg-cta-bg, #111827);
+    color: var(--vyg-cta-color, #fff);
+    border: 0;
+    box-shadow: 0 10px 24px -18px rgba(17, 24, 39, 0.75);
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .vyg-card__cta:hover,
 .vyg-card__cta:focus {
-    background: rgba(0, 0, 0, 0.12);
-    outline: 2px solid currentColor;
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 16px 30px -20px rgba(17, 24, 39, 0.9);
+    outline: 3px solid rgba(59, 130, 246, 0.45);
     outline-offset: 2px;
 }
 
@@ -351,20 +397,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border: 0;
-    background: transparent;
-    color: inherit;
+    background: rgba(17, 24, 39, 0.055);
+    color: #111827;
     border-radius: 50%;
     cursor: pointer;
     padding: 0;
-    transition: background-color 0.15s ease;
+    transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .vyg-card__action:hover,
 .vyg-card__action:focus-visible {
-    background: rgba(0, 0, 0, 0.06);
+    background: rgba(17, 24, 39, 0.11);
+    transform: translateY(-1px);
     outline: none;
 }
 
@@ -388,34 +435,50 @@
 /* Media-row — horizontal layout (used by List layout). */
 .vyg-card--media-row {
     flex-direction: row;
+    min-height: 148px;
 }
 .vyg-card--media-row .vyg-card__media {
-    flex: 0 0 40%;
-    max-width: 40%;
+    flex: 0 0 42%;
+    max-width: 42%;
 }
 .vyg-card--media-row .vyg-card__media,
 .vyg-card--media-row .vyg-card__thumb-wrap {
     aspect-ratio: 16 / 9;
-    height: 100%;
+    height: auto;
+    min-height: 148px;
     border-radius: 0;
 }
 .vyg-card--media-row .vyg-card__body {
     flex: 1 1 auto;
     min-width: 0;
+    justify-content: center;
 }
 .vyg-card--media-row .vyg-card__footer {
     flex-basis: 100%;
     margin-top: 0;
 }
 
-/* Hero-primary — large media, big title, used by Hero layout for
- * the first card. */
+@media (max-width: 520px) {
+    .vyg-card--media-row {
+        flex-direction: column;
+    }
+    .vyg-card--media-row .vyg-card__media {
+        flex-basis: auto;
+        max-width: none;
+    }
+}
+
+.vyg-card--hero-primary {
+    --vyg-card-radius: 24px;
+    --vyg-card-padding: clamp(1.1rem, 2vw, 1.65rem);
+}
 .vyg-card--hero-primary .vyg-card__title {
-    font-size: 1.5rem;
-    line-height: 1.2;
+    font-size: clamp(1.35rem, 2.6vw, 2.15rem);
+    line-height: 1.08;
+    letter-spacing: -0.04em;
 }
 .vyg-card--hero-primary .vyg-card__body {
-    padding: 1.25rem 1.5rem;
+    padding: var(--vyg-card-padding);
 }
 
 /* Hero-secondary — paired with hero-primary; smaller title. */
@@ -444,10 +507,10 @@
 .vyg-card--overlay .vyg-card__body {
     position: absolute;
     inset: auto 0 0 0;
-    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.85));
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.9));
     color: #fff;
-    padding: 1.5rem 1rem 1rem;
-    z-index: 1;
+    padding: 3rem 1rem 1rem;
+    z-index: 2;
 }
 .vyg-card--overlay .vyg-card__title,
 .vyg-card--overlay .vyg-card__meta,
@@ -476,13 +539,13 @@
 /* ---- 8. Card style variants ----------------------------------------- */
 
 .vyg-card--bordered {
-    /* Default — same as base. */
-    border: var(--vyg-card-border, 1px solid #e5e5e5);
+    /* Default — premium shadow-border from the base card. */
+    border: var(--vyg-card-border, 0 solid transparent);
 }
 
 .vyg-card--elevated {
     border: 0;
-    box-shadow: var(--vyg-card-shadow, 0 4px 10px rgba(0, 0, 0, 0.08));
+    box-shadow: var(--vyg-card-shadow-hover, 0 18px 42px -24px rgba(17, 24, 39, 0.55));
 }
 
 .vyg-card--flat {
@@ -499,12 +562,12 @@
 }
 
 .vyg-card--commerce {
-    /* Commerce cards: soft elevation, prominent border-radius, roomy
-     * padding. Presets can override --vyg-card-radius and
-     * --vyg-card-padding to dial this in. */
-    border-radius: var(--vyg-card-radius, 16px);
-    box-shadow: var(--vyg-card-shadow, 0 8px 24px rgba(0, 0, 0, 0.08));
-    border: var(--vyg-card-border, 1px solid #e5e5e5);
+    border-radius: var(--vyg-card-radius, 20px);
+    box-shadow: var(--vyg-card-shadow-hover, 0 18px 42px -24px rgba(17, 24, 39, 0.55));
+    border: var(--vyg-card-border, 0 solid transparent);
+}
+.vyg-card--commerce .vyg-card__cta {
+    background: linear-gradient(135deg, var(--vyg-feed-accent, #ff0033), var(--vyg-feed-accent-2, #7c3aed));
 }
 
 /* ---- 9. Density variants -------------------------------------------- *
@@ -514,27 +577,27 @@
  */
 
 .vyg-density--compact {
-    --vyg-card-padding: 0.6rem;
-    --vyg-card-gap: 0.2rem;
-    --vyg-card-radius: 8px;
-    --vyg-title-size: 0.875rem;
-    --vyg-card-title-size: 0.875rem;
+    --vyg-card-padding: 0.7rem;
+    --vyg-card-gap: 0.26rem;
+    --vyg-card-radius: 14px;
+    --vyg-title-size: 0.9rem;
+    --vyg-card-title-size: 0.9rem;
 }
 
 .vyg-density--comfortable {
-    --vyg-card-padding: 0.9rem;
-    --vyg-card-gap: 0.3rem;
-    --vyg-card-radius: 12px;
-    --vyg-title-size: 0.95rem;
-    --vyg-card-title-size: 0.95rem;
+    --vyg-card-padding: 1rem;
+    --vyg-card-gap: 0.42rem;
+    --vyg-card-radius: 18px;
+    --vyg-title-size: 1rem;
+    --vyg-card-title-size: 1rem;
 }
 
 .vyg-density--editorial {
-    --vyg-card-padding: 1.5rem;
-    --vyg-card-gap: 0.5rem;
-    --vyg-card-radius: 16px;
-    --vyg-title-size: 1.1rem;
-    --vyg-card-title-size: 1.1rem;
+    --vyg-card-padding: 1.35rem;
+    --vyg-card-gap: 0.62rem;
+    --vyg-card-radius: 24px;
+    --vyg-title-size: 1.16rem;
+    --vyg-card-title-size: 1.16rem;
 }
 
 /* ---- 10. Thumbnail ratio variants ----------------------------------- */

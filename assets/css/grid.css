@@ -34,6 +34,11 @@
 .vyg-feed--grid.vyg-grid {
     display: block;
     gap: var(--vyg-grid-gap);
+    width: 100%;
+}
+
+.vyg-feed--grid.vyg-grid .vyg-grid__cards {
+    align-items: stretch;
 }
 
 .vyg-feed--grid.vyg-grid--cols-1 .vyg-grid__cards { grid-template-columns: repeat(1, minmax(0, 1fr)); }
@@ -46,6 +51,7 @@
 .vyg-grid__cards {
     display: grid;
     gap: var(--vyg-grid-gap);
+    align-items: stretch;
 }
 
 @media (max-width: 600px) {
@@ -73,9 +79,12 @@
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
-    gap: 0.75rem 1rem;
-    margin: 0 0 1.5rem;
-    padding: 0;
+    gap: 0.8rem 1rem;
+    margin: 0 0 clamp(1.25rem, 3vw, 2rem);
+    padding: clamp(0.95rem, 2.5vw, 1.25rem);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.045), rgba(124, 58, 237, 0.05));
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.06) inset;
 }
 
 .vyg-grid__header-text {
@@ -92,10 +101,11 @@
 
 .vyg-grid__header-title {
     margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    line-height: 1.2;
-    color: #0f0f0f;
+    font-size: clamp(1.25rem, 2.5vw, 1.8rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1.08;
+    color: #111827;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -104,9 +114,9 @@
 .vyg-grid__header-subtitle {
     grid-column: 1 / -1;
     margin: 0;
-    color: #606060;
-    font-size: 0.9rem;
-    font-weight: 400;
+    color: var(--vyg-feed-muted, #667085);
+    font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .vyg-grid__header-controls {
@@ -119,35 +129,38 @@
 .vyg-grid__header-cols {
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.6rem;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
+    padding: 0.32rem 0.72rem;
+    border: 0;
+    border-radius: 999px;
     font-size: 0.75rem;
-    color: #606060;
-    background: #f2f2f2;
-    font-weight: 500;
+    color: #344054;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08) inset;
+    font-weight: 700;
 }
 
 /* Ghost-style CTA — clean outline button, not a red block */
 .vyg-grid__header-cta {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.85rem;
-    border-radius: 18px;
-    background: #fff;
-    color: #0f0f0f;
-    font-size: 0.8rem;
-    font-weight: 600;
+    gap: 0.45rem;
+    padding: 0.58rem 0.95rem;
+    border-radius: 999px;
+    background: #111827;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
     text-decoration: none;
-    border: 1px solid #e5e5e5;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    border: 0;
+    box-shadow: 0 12px 24px -18px rgba(17, 24, 39, 0.75);
+    transition: transform 0.18s ease, background-color 0.18s ease;
 }
 
 .vyg-grid__header-cta:hover,
 .vyg-grid__header-cta:focus {
-    background: #f9f9f9;
-    border-color: #ccc;
+    background: #000;
+    transform: translateY(-1px);
     outline: none;
 }
 
@@ -160,17 +173,20 @@
 
 .vyg-grid__trust-strip {
     list-style: none;
-    margin: 2.5rem auto 0;
-    padding: 1rem 1.5rem;
+    margin: clamp(2rem, 4vw, 3rem) auto 0;
+    padding: 1rem 1.25rem;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem 3rem;
+    gap: 0.65rem 2rem;
     max-width: 1000px;
-    border-top: 1px solid #e5e5e5;
-    font-size: 0.8rem;
-    color: #606060;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.035);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.06) inset;
+    font-size: 0.82rem;
+    color: var(--vyg-feed-muted, #667085);
 }
 
 .vyg-grid__trust-item {
@@ -181,13 +197,14 @@
 
 .vyg-grid__trust-icon {
     display: inline-flex;
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: #f2f2f2;
-    color: #606060;
+    background: #fff;
+    color: var(--vyg-feed-accent, #ff0033);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08) inset;
     flex: 0 0 auto;
 }
 
@@ -202,34 +219,34 @@
 /* ---- Density tokens ----------------------------------------------------- */
 
 .vyg-grid--density-compact {
-    --vyg-grid-gap: 0.75rem;
-    --vyg-card-padding: 0.6rem;
-    --vyg-card-radius: 8px;
-    --vyg-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --vyg-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --vyg-card-title-size: 0.875rem;
-    --vyg-card-title-weight: 600;
+    --vyg-grid-gap: 0.9rem;
+    --vyg-card-padding: 0.72rem;
+    --vyg-card-radius: 14px;
+    --vyg-card-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08), 0 10px 24px -22px rgba(17, 24, 39, 0.55);
+    --vyg-card-shadow-hover: 0 0 0 1px rgba(17, 24, 39, 0.12), 0 16px 34px -24px rgba(17, 24, 39, 0.65);
+    --vyg-card-title-size: 0.9rem;
+    --vyg-card-title-weight: 700;
     --vyg-card-meta-size: 0.75rem;
 }
 
 .vyg-grid--density-comfortable {
-    --vyg-grid-gap: 1.25rem;
-    --vyg-card-padding: 0.9rem;
-    --vyg-card-radius: 12px;
-    --vyg-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-    --vyg-card-shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
-    --vyg-card-title-size: 0.95rem;
-    --vyg-card-title-weight: 600;
+    --vyg-grid-gap: 1.35rem;
+    --vyg-card-padding: 1rem;
+    --vyg-card-radius: 18px;
+    --vyg-card-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08), 0 2px 4px rgba(17, 24, 39, 0.04), 0 16px 32px -24px rgba(17, 24, 39, 0.45);
+    --vyg-card-shadow-hover: 0 0 0 1px rgba(17, 24, 39, 0.12), 0 12px 28px -14px rgba(17, 24, 39, 0.38), 0 24px 54px -32px rgba(17, 24, 39, 0.52);
+    --vyg-card-title-size: 1rem;
+    --vyg-card-title-weight: 700;
     --vyg-card-meta-size: 0.8125rem;
 }
 
 .vyg-grid--density-editorial {
-    --vyg-grid-gap: 2.5rem;
-    --vyg-card-padding: 1.5rem;
-    --vyg-card-radius: 16px;
-    --vyg-card-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-    --vyg-card-shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.16);
-    --vyg-card-title-size: 1.1rem;
-    --vyg-card-title-weight: 700;
+    --vyg-grid-gap: 2rem;
+    --vyg-card-padding: 1.35rem;
+    --vyg-card-radius: 24px;
+    --vyg-card-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08), 0 24px 56px -34px rgba(17, 24, 39, 0.55);
+    --vyg-card-shadow-hover: 0 0 0 1px rgba(17, 24, 39, 0.12), 0 30px 70px -38px rgba(17, 24, 39, 0.68);
+    --vyg-card-title-size: 1.16rem;
+    --vyg-card-title-weight: 800;
     --vyg-card-meta-size: 0.9rem;
 }
