@@ -30,6 +30,13 @@ final class BrainHelpers {
         Functions\when( 'esc_attr' )->alias( static fn( string $s ): string => $s );
         Functions\when( 'esc_attr__' )->alias( static fn( string $s, ?string $domain = null ): string => $s );
         Functions\when( 'esc_attr_e' )->alias( static function ( string $s, ?string $domain = null ): void { echo $s; } );
+        // Phase 14.10 — wp_kses stub for the trust-strip partial.
+        // Real WP strips disallowed tags/attrs; the unit test stub returns
+        // the input verbatim because the trust-strip's $allowed_svg_tags
+        // allow-list is itself the production safety net — tests don't
+        // assert on stripped output, they assert on the rendered HTML
+        // shape (vyg-trust-strip class + per-item <li> count).
+        Functions\when( 'wp_kses' )->alias( static fn( string $s, $allowed_html = array() ): string => $s );
         Functions\when( 'wp_unslash' )->alias( static fn( $v ) => $v );
         Functions\when( 'wp_trim_words' )->alias( static function ( string $text, int $num_words = 55, $more = null ): string {
             $words = preg_split( '/\s+/', trim( $text ) );

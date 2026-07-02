@@ -44,7 +44,8 @@ $density           = isset( $attrs['density'] ) ? (string) $attrs['density'] : '
 $public_safe       = ! empty( $attrs['public_safe'] );
 $has_trust_strip   = ! empty( $attrs['trust_strip'] );
 $layout_slug       = (string) ( $attrs['layout'] ?? 'grid' );
-$feed_header_partial = __DIR__ . '/partials/feed-header.php';
+$feed_header_partial  = __DIR__ . '/partials/feed-header.php';
+$trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
 
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
@@ -111,34 +112,20 @@ if ( empty( $videos ) ) {
         <?php endforeach; ?>
     </div>
 
-    <?php if ( $has_trust_strip ) : ?>
-        <ul class="vyg-grid__trust-strip" aria-label="<?php esc_attr_e( 'Trust badges', 'vector-youtube-gallery' ); ?>">
-            <li class="vyg-grid__trust-item">
-                <span class="vyg-grid__trust-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="20" height="20" focusable="false"><path fill="currentColor" d="M12 4a8 8 0 1 0 8 8 8 8 0 0 0-8-8zm0 14a6 6 0 1 1 6-6 6 6 0 0 1-6 6zm1-7.6V6h-2v6l5.2 3.1 1-1.7z"/></svg>
-                </span>
-                <span class="vyg-grid__trust-text"><?php esc_html_e( 'Lazy Loaded', 'vector-youtube-gallery' ); ?></span>
-            </li>
-            <li class="vyg-grid__trust-item">
-                <span class="vyg-grid__trust-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="20" height="20" focusable="false"><path fill="currentColor" d="M12 1 3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5l-9-4zm0 10.99h7c-.5 4.5-3.5 8.6-7 9.93V12H5V6.3l7-3.11v8.8z"/></svg>
-                </span>
-                <span class="vyg-grid__trust-text"><?php esc_html_e( 'Privacy Safe', 'vector-youtube-gallery' ); ?></span>
-            </li>
-            <li class="vyg-grid__trust-item">
-                <span class="vyg-grid__trust-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="20" height="20" focusable="false"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-                </span>
-                <span class="vyg-grid__trust-text"><?php esc_html_e( 'Accessible', 'vector-youtube-gallery' ); ?></span>
-            </li>
-            <li class="vyg-grid__trust-item">
-                <span class="vyg-grid__trust-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="20" height="20" focusable="false"><path fill="currentColor" d="M3 5h18v2H3zm0 6h18v2H3zm0 6h12v2H3z"/></svg>
-                </span>
-                <span class="vyg-grid__trust-text"><?php esc_html_e( 'Builder Ready', 'vector-youtube-gallery' ); ?></span>
-            </li>
-        </ul>
-    <?php endif; ?>
+    <?php
+    // Phase 14.10 — trust strip extracted to a shared partial so
+    // grid, masonry, and carousel can all share the same 4-item
+    // trust row. Grid was the only layout to ship the strip before
+    // 14.10 (the 14.x work put it inline here); the partial now
+    // owns the markup. The shared <ul> class is `vyg-trust-strip`
+    // (new) AND `vyg-grid__trust-strip` (legacy alias kept for
+    // existing CSS + the existing GridTemplateTest::test_trust_strip_*
+    // assertions).
+    if ( $has_trust_strip && file_exists( $trust_strip_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $trust_strip_partial;
+    }
+    ?>
 </div>
 
 <?php

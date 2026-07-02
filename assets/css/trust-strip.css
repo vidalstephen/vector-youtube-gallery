@@ -1,0 +1,88 @@
+/* ---- Trust strip (Phase 14.10) -----------------------------------------
+ *
+ * Shared trust strip used by grid, masonry, and carousel layouts. The
+ * 14.x grid work shipped a bespoke `.vyg-grid__trust-strip` block in
+ * `grid.css`; Phase 14.10 extracts the markup to a shared partial at
+ * `src/Render/templates/partials/trust-strip.php` and adds the new
+ * `.vyg-trust-strip` namespace. The partial emits BOTH class names on
+ * the <ul> so existing grid CSS still applies (back-compat) AND the
+ * new shared rules below apply uniformly across all 3 layouts.
+ *
+ * Layouts outside this scope (list, featured, hero, shorts, live)
+ * never emit the strip, so no rules are needed there.
+ *
+ * The strip is a horizontal row of 4 inline badges (default items):
+ *   - Lazy Loaded   (clock icon)
+ *   - Privacy Safe  (shield icon)
+ *   - Accessible    (info icon)
+ *   - Builder Ready (menu icon)
+ *
+ * Operators can override the items via the `trust_strip_items` shortcode
+ * attr (an array of slug/text/icon_svg). The shared partial handles
+ * sanitization (wp_kses on the SVG, esc_html on the text).
+ */
+
+.vyg-trust-strip {
+    list-style: none;
+    margin: clamp(2rem, 4vw, 3rem) auto 0;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem 2rem;
+    max-width: 1000px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.035);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.06) inset;
+    font-size: 0.82rem;
+    color: var(--vyg-feed-muted, #667085);
+}
+
+.vyg-trust-strip__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.vyg-trust-strip__icon {
+    display: inline-flex;
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--vyg-feed-accent, #ff0033);
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08) inset;
+    flex: 0 0 auto;
+}
+
+.vyg-trust-strip__icon svg {
+    display: block;
+}
+
+/* Per-icon override hook: themes can attach a different background
+ * image or font-icon to a specific slug (e.g. lazy / privacy /
+ * accessible / builder) without touching the partial markup. */
+.vyg-trust-strip__icon--lazy,
+.vyg-trust-strip__icon--privacy,
+.vyg-trust-strip__icon--accessible,
+.vyg-trust-strip__icon--builder {
+    /* Default: SVG fills the icon background. Operators can override. */
+}
+
+.vyg-trust-strip__text {
+    font-weight: 600;
+}
+
+/* Inside carousel, the strip sits at the bottom of the viewport
+ * below the track. The carousel track is the focus of attention on
+ * the first render, so the strip just needs to flow naturally
+ * underneath — no special positioning. The flex layout above already
+ * handles the responsive wrap. */
+
+@media print {
+    .vyg-trust-strip { display: none; }
+}

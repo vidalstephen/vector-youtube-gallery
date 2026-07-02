@@ -29,12 +29,14 @@ if (empty($videos)) {
 $columns    = isset($attrs['columns']) ? max(1, min(6, (int) $attrs['columns'])) : 3;
 $wrapper_id = isset($attrs['wrapper_id']) ? (string) $attrs['wrapper_id'] : '';
 $public_safe = ! empty($attrs['public_safe']);
+$has_trust_strip = ! empty( $attrs['trust_strip'] );
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root($attrs, $source, $public_safe)
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 $layout_slug = (string) ($attrs['layout'] ?? 'masonry');
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
+$trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
 ?>
 <div class="vyg-feed vyg-feed--masonry vyg-masonry vyg-masonry--cols-<?php echo (int) $columns; ?> <?php echo esc_attr($width_class); ?>"
      <?php if ('' !== $wrapper_id) : ?>id="<?php echo esc_attr($wrapper_id); ?>"<?php endif; ?>
@@ -79,6 +81,16 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
             </a>
         </article>
     <?php endforeach; ?>
+    <?php
+    // Phase 14.10 — shared trust strip. Mirrors the grid layout's
+    // existing 14.x inline strip, extracted to a partial so masonry
+    // and carousel can share the same 4-item trust row. Gated on the
+    // same `trust_strip` boolean.
+    if ( $has_trust_strip && file_exists( $trust_strip_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $trust_strip_partial;
+    }
+    ?>
 </div>
 <?php
 // Pagination: render load-more button if requested.

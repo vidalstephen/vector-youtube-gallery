@@ -28,6 +28,9 @@ final class AssetManager {
     private bool $presets_enqueued = false;
     private bool $analytics_enqueued = false;
     private bool $card_enqueued = false;
+    // Phase 14.10 — flag for the shared trust-strip stylesheet, enqueued
+    // for grid + masonry + carousel layouts.
+    private bool $trust_strip_enqueued = false;
     /** @var array<string,bool> */
     private array $css_enqueued = array();
 
@@ -80,6 +83,7 @@ final class AssetManager {
         $handle = self::HANDLE_BASE . '-' . $layout_slug;
         if (isset($this->css_enqueued[$handle])) {
             $this->maybe_enqueue_presets();
+            $this->maybe_enqueue_trust_strip();
             return;
         }
         wp_register_style($handle, $this->url($map[$layout_slug]), array(self::HANDLE_BASE, 'vyg-card'), self::VERSION);
@@ -88,6 +92,13 @@ final class AssetManager {
 
         // Preset tokens are loaded once per request alongside the first layout.
         $this->maybe_enqueue_presets();
+
+        // Phase 14.10 — shared trust-strip CSS for the 3 layouts that
+        // emit it (grid, masonry, carousel). Idempotent: enqueued once
+        // per request. Loaded after the layout-specific stylesheet so
+        // a theme that overrides `.vyg-trust-strip` can win the cascade
+        // by simply enqueuing later.
+        $this->maybe_enqueue_trust_strip();
 
         // Lightbox JS handled centrally below.
         $this->enqueue_lightbox();
@@ -138,6 +149,29 @@ final class AssetManager {
         );
         wp_enqueue_style(self::HANDLE_BASE . '-presets');
         $this->presets_enqueued = true;
+    }
+
+    /**
+     * Phase 14.10 — enqueue the shared trust-strip stylesheet once
+     * per request. The trust strip is rendered by grid, masonry, and
+     * carousel only; other layouts do not call this method, so the
+     * CSS only loads on pages that actually emit the strip.
+     *
+     * Idempotent: enqueued once per request via the $trust_strip_enqueued
+     * flag, mirroring the maybe_enqueue_presets() pattern.
+     */
+    public function maybe_enqueue_trust_strip(): void {
+        if ($this->trust_strip_enqueued) {
+            return;
+        }
+        wp_register_style(
+            self::HANDLE_BASE . '-trust-strip',
+            $this->url('css/trust-strip.css'),
+            array(self::HANDLE_BASE, 'vyg-card'),
+            self::VERSION
+        );
+        wp_enqueue_style(self::HANDLE_BASE . '-trust-strip');
+        $this->trust_strip_enqueued = true;
     }
 
     public function enqueue_carousel(): void {

@@ -32,6 +32,7 @@ $per_page    = isset($attrs['per_page']) ? (int) $attrs['per_page'] : 0;
 $visible     = isset($attrs['columns']) ? max(1, min(6, (int) $attrs['columns'])) : 3;
 $wrapper_id  = isset($attrs['wrapper_id']) ? (string) $attrs['wrapper_id'] : '';
 $public_safe = ! empty($attrs['public_safe']);
+$has_trust_strip = ! empty( $attrs['trust_strip'] );
 $root_attrs  = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root($attrs, $source, $public_safe)
 );
@@ -39,6 +40,7 @@ $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 $slide_count = count($videos);
 $layout_slug = (string) ($attrs['layout'] ?? 'carousel');
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
+$trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
 
 /**
  * Center-on-load: the slide that is visually in the middle of the track on
@@ -159,6 +161,16 @@ $active_index = (int) floor( $slide_count / 2 );
     </button>
 
     <div class="vyg-carousel__live" aria-live="polite" aria-atomic="true"></div>
+    <?php
+    // Phase 14.10 — shared trust strip. Mirrors the grid layout's
+    // existing 14.x inline strip, extracted to a partial so grid,
+    // masonry, and carousel can all share the same 4-item trust row.
+    // Gated on the same `trust_strip` boolean.
+    if ( $has_trust_strip && file_exists( $trust_strip_partial ) ) {
+        // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
+        include $trust_strip_partial;
+    }
+    ?>
 </div>
 <?php
 // Pagination: render load-more button if requested.
