@@ -23,9 +23,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 14 — Prototype Parity**
-- Current sub-phase: **14.4 — Section head + "View all →" link (featured / hero)**
-- Last completed item: 14.3 — live section pill counters (`2 live` / `3 upcoming` / `Recent replays`); 727 PHPUnit tests, 2109 assertions, 0 failures; commit `45c62d7` on `main` ahead of `origin/main`.
-- Next actionable item: 14.4 (section head with "View all →" link on featured + hero layouts).
+- Current sub-phase: **14.5 — Card play icon + thumbnail gradient overlay**
+- Last completed item: 14.4 — featured/hero section head with "View all" link; 740 PHPUnit tests, 2127 assertions, 0 failures; commit `c9b253f` on `main` ahead of `origin/main`.
+- Next actionable item: 14.5 (card play icon center + thumbnail gradient overlay). Audit first — CardSettings already has the keys; verify the partial + CSS are wired.
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
 
@@ -46,7 +46,7 @@
 - [x] 14.1 Width modes wrapper class (`vyg-theme / vyg-wide / vyg-full`) with `--vyg-max` tokens (880 / 1180 / 100%)
 - [x] 14.2 Carousel: prev/next nav buttons (already wired), dots, active-card state
 - [x] 14.3 Live section pill counters (`2 live`, `3 upcoming`, `Recent replays`)
-- [ ] 14.4 Section head + "View all →" link (featured / hero layouts)
+- [x] 14.4 Section head + "View all →" link (featured / hero layouts)
 - [ ] 14.5 Card play icon center + thumbnail gradient overlay
 - [ ] 14.6 Per-video tone color (`--tone` CSS variable) for varied card backgrounds
 - [ ] 14.7 Per-channel avatar gradient (`--aa`, `--ab` two-color CSS variables)
