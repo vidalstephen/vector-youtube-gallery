@@ -22,10 +22,10 @@
 
 ## Current Development Status
 
-- Current phase: **Phase 14 — Prototype Parity (started 2026-07-02)**
-- Current sub-phase: **14.0 — Branch prep + archive**
-- Last completed item: 13.1 — 6 Playwright captures under `screenshots/phase13/`; 482 PHPUnit tests pass, 1341 assertions, 0 failures; 24 commits on `main` ahead of `origin/main` (Phase 13.1 grid redesign + prototype-parity research).
-- Next actionable item: 14.1 (width modes wrapper class).
+- Current phase: **Phase 14 — Prototype Parity**
+- Current sub-phase: **14.2 — Carousel nav + dots + active state**
+- Last completed item: 14.1 — width modes wrapper class; 708 PHPUnit tests, 2062 assertions, 0 failures; commit `e3f11b7` on `main` ahead of `origin/main`.
+- Next actionable item: 14.2 (carousel active slide + dots; prev/next already wired).
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
 
@@ -42,9 +42,9 @@
 
 ### Phase 14 — Prototype Parity
 
-- [ ] 14.0 Archive pre-prototype checklist; create `DEV-CHECKLIST-phase14.md`; commit + push
-- [ ] 14.1 Width modes wrapper class (`vyg-theme / vyg-wide / vyg-full`) with `--vyg-max` tokens (880 / 1180 / 100%)
-- [ ] 14.2 Carousel: prev/next nav buttons, dots, active-card state
+- [x] 14.0 Archive pre-prototype checklist; create `DEV-CHECKLIST-phase14.md`; commit + push
+- [x] 14.1 Width modes wrapper class (`vyg-theme / vyg-wide / vyg-full`) with `--vyg-max` tokens (880 / 1180 / 100%)
+- [ ] 14.2 Carousel: prev/next nav buttons (already wired), dots, active-card state
 - [ ] 14.3 Live section pill counters (`2 live`, `3 upcoming`, `Recent replays`)
 - [ ] 14.4 Section head + "View all →" link (featured / hero layouts)
 - [ ] 14.5 Card play icon center + thumbnail gradient overlay
