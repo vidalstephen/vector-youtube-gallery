@@ -23,9 +23,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 14 — Prototype Parity**
-- Current sub-phase: **14.11 — Relative countdown for live upcoming**
-- Last completed item: 14.10 — trust strip on grid/masonry/carousel (extracted to shared partial); 878 PHPUnit tests, 2465 assertions, 0 failures; commit `59b18c6` on `main`; smoke 23/23 OK.
-- Next actionable item: 14.11 — relative countdown for live upcoming (`in 2h 15m`). Audit first — check if the live template already emits a formatted time or just raw mysql2date.
+- Current sub-phase: **14.12 — Final parity contact-sheet capture**
+- Last completed item: 14.11 — relative countdown for live upcoming (new TimeHelper::relative_countdown, live-card.php wired); 899 PHPUnit tests, 2513 assertions, 0 failures; commit `e53f406` on `main`; smoke 40/40 OK.
+- Next actionable item: 14.12 — final contact-sheet capture. The `scripts/run-14-1-playwright.sh` already exists and is unreliable per the 14.1 notes; Phase 14.12 should add a deterministic Camofox/Playwright capture that renders all 8 layouts and assembles a side-by-side comparison sheet against the prototype screenshots.
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
 
@@ -53,7 +53,7 @@
 - [x] 14.8 Badge type × style matrix (7 types × 4 styles)
 - [x] 14.9 Shared header (kicker + h1 + intro + layout pill + channel CTA) across all 8 layouts
 - [x] 14.10 Trust strip on grid/masonry/carousel
-- [ ] 14.11 Relative countdown for live upcoming
+- [x] 14.11 Relative countdown for live upcoming
 - [ ] 14.12 Final parity contact-sheet capture
 - [ ] 14.13 Close out + resume note
 
