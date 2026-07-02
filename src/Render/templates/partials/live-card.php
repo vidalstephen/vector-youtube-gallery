@@ -60,10 +60,30 @@ function vyg_render_live_card( array $video, \VectorYT\Gallery\Render\VideoRende
             <?php elseif ( 'upcoming' === $status && ! empty( $video['scheduled_start_at'] ) ) : ?>
                 <p class="vyg-live__scheduled">
                     <?php
-                    /* translators: %s: scheduled start time */
-                    $when = mysql2date( get_option( 'time_format' ), (string) $video['scheduled_start_at'] );
-                    echo esc_html( sprintf( __( 'Starts at %s', 'vector-youtube-gallery' ), $when ) );
+                    // Phase 14.11 — prototype parity: emit a relative
+                    // countdown ("in 2h 15m", "in 3 days", "starting now")
+                    // instead of the raw site time. The raw ISO/MySQL
+                    // timestamp is preserved in the <time datetime="...">
+                    // attribute for accessibility / screen readers, and
+                    // the helper is a pure function with a deterministic
+                    // $now injection for tests.
+                    $when = \VectorYT\Gallery\Render\TimeHelper::relative_countdown( (string) $video['scheduled_start_at'] );
+                    // The helper returns "" for unparseable input; fall
+                    // back to the legacy "Starts at <time>" wording in
+                    // that case so the partial never emits an empty
+                    // <time> element.
+                    $iso = (string) $video['scheduled_start_at'];
                     ?>
+                    <time class="vyg-live__scheduled-time" datetime="<?php echo esc_attr( $iso ); ?>">
+                        <?php
+                        if ( '' !== $when ) {
+                            echo esc_html( sprintf( __( 'Starts %s', 'vector-youtube-gallery' ), $when ) );
+                        } else {
+                            $fallback = mysql2date( get_option( 'time_format' ), $iso );
+                            echo esc_html( sprintf( __( 'Starts at %s', 'vector-youtube-gallery' ), $fallback ) );
+                        }
+                        ?>
+                    </time>
                 </p>
             <?php elseif ( 'ended' === $status && ! empty( $video['ended_at'] ) ) : ?>
                 <p class="vyg-live__ended">

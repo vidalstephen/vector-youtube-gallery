@@ -154,3 +154,15 @@
     font-weight: 500;
     color: var(--vyg-card-meta-color, #667085);
 }
+
+/* Phase 14.11 — relative countdown text inside the upcoming card.
+ * The <time> wrapper is a semantic element (datetime attr carries
+ * the raw ISO/MySQL timestamp for screen readers); visual styling
+ * is inherited from the parent <p class="vyg-live__scheduled">.
+ * The `color: inherit` is defensive — it keeps the countdown the
+ * same weight as the surrounding meta line even when the parent
+ * rule changes in the future. */
+.vyg-live__scheduled-time {
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+}
