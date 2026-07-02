@@ -62,6 +62,10 @@
             "type": "string",
             "default": "default"
         },
+        "width": {
+            "type": "string",
+            "default": "wide"
+        },
         "density": {
             "type": "string",
             "default": "comfortable"

@@ -11,6 +11,35 @@
     isolation: isolate;
 }
 
+/* Phase 14.1 — width modes (prototype parity).
+ *
+ * The .vyg-feed root <div> carries a width class (.vyg-theme / .vyg-wide /
+ * .vyg-full) and a matching --vyg-max CSS variable token. Layouts are
+ * capped at min(100%, var(--vyg-max)) so the rendered gallery either
+ * respects the theme's content width, the prototype's wide default, or
+ * the full viewport width.
+ *
+ *   .vyg-theme  — ~880px (theme content width)
+ *   .vyg-wide   — ~1180px (prototype baseline; the default)
+ *   .vyg-full   — 100% (no cap)
+ *
+ * See src/Render/TemplateAttributes::width_class() and ::feed_root().
+ */
+.vyg-feed.vyg-theme {
+    --vyg-max: 880px;
+    width: min(100%, var(--vyg-max));
+    margin-inline: auto;
+}
+.vyg-feed.vyg-wide {
+    --vyg-max: 1180px;
+    width: min(100%, var(--vyg-max));
+    margin-inline: auto;
+}
+.vyg-feed.vyg-full {
+    --vyg-max: 100%;
+    width: 100%;
+}
+
 .vyg-feed *,
 .vyg-feed *::before,
 .vyg-feed *::after {

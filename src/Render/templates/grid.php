@@ -49,9 +49,10 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
 $root_classes = sprintf(
-    'vyg-feed vyg-feed--grid vyg-grid vyg-grid--cols-%1$d vyg-grid--density-%2$s',
+    'vyg-feed vyg-feed--grid vyg-grid vyg-grid--cols-%1$d vyg-grid--density-%2$s %3$s',
     $columns,
-    sanitize_key( $density )
+    sanitize_key( $density ),
+    \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs )
 );
 
 if ( empty( $videos ) ) {

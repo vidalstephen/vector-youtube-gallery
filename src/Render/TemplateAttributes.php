@@ -23,12 +23,28 @@ defined( 'ABSPATH' ) || exit;
 final class TemplateAttributes {
 
     /**
+     * Phase 14.1 — width modes allow-list. The prototype's panel exposes
+     * three preset widths; the shortcode / block / Elementor surfaces
+     * accept these values verbatim. Anything outside the list falls back
+     * to 'wide' so the rendered CSS class is always a known token.
+     *
+     * @var string[]
+     */
+    public const WIDTH_MODES = array( 'theme', 'wide', 'full' );
+
+    /**
      * Build the shared attribute map for the root feed <div>.
      *
      * When $public_safe is true, internal source_uuid is omitted from the
      * rendered attributes. This is the Phase 8.4 public REST endpoint's
      * mode: the response payload must not leak any internal IDs that the
      * front-end doesn't need to call back into the system.
+     *
+     * Phase 14.1 also emits `data-vyg-width` so the consumer (CSS, JS,
+     * inspection) can read the width from a single attribute. The
+     * matching CSS class (.vyg-theme / .vyg-wide / .vyg-full) is
+     * provided separately by `width_class()` and is appended to the
+     * layout template's own class string.
      *
      * @param array<string,mixed> $attrs
      * @param array<string,mixed>|null $source
@@ -37,7 +53,8 @@ final class TemplateAttributes {
      */
     public static function feed_root( array $attrs, ?array $source, bool $public_safe = false ): array {
         $out = array(
-            'data-layout' => sanitize_key( (string) ( $attrs['layout'] ?? 'grid' ) ),
+            'data-layout'      => sanitize_key( (string) ( $attrs['layout'] ?? 'grid' ) ),
+            'data-vyg-width'   => self::sanitize_width( $attrs ),
         );
         $feed_uuid = (string) ( $attrs['feed_uuid'] ?? '' );
         if ( '' !== $feed_uuid ) {
@@ -50,6 +67,38 @@ final class TemplateAttributes {
             }
         }
         return $out;
+    }
+
+    /**
+     * Phase 14.1 — return the matching CSS class fragment for the
+     * width mode on $attrs. Layout templates append this to their own
+     * root-class string:
+     *
+     *   $classes = 'vyg-feed vyg-feed--grid vyg-grid vyg-grid--cols-3 ' .
+     *              TemplateAttributes::width_class( $attrs );
+     *
+     * Unknown / missing values fall back to 'vyg-wide' so a stray value
+     * never produces a non-existent CSS class.
+     *
+     * @param array<string,mixed> $attrs
+     * @return string E.g. 'vyg-theme', 'vyg-wide', 'vyg-full'.
+     */
+    public static function width_class( array $attrs ): string {
+        return 'vyg-' . self::sanitize_width( $attrs );
+    }
+
+    /**
+     * Phase 14.1 — normalize the width attr to a known mode.
+     *
+     * @param array<string,mixed> $attrs
+     * @return string One of 'theme', 'wide', 'full'.
+     */
+    private static function sanitize_width( array $attrs ): string {
+        $candidate = (string) ( $attrs['width'] ?? '' );
+        if ( in_array( $candidate, self::WIDTH_MODES, true ) ) {
+            return $candidate;
+        }
+        return 'wide';
     }
 
     /**

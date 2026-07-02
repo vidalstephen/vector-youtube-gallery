@@ -18,8 +18,9 @@ $public_safe = ! empty( $attrs['public_safe'] );
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
+$width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs );
 ?>
-<div class="vyg-feed vyg-feed--list vyg-list"
+<div class="vyg-feed vyg-feed--list vyg-list <?php echo esc_attr( $width_class ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
     <?php foreach ( $videos as $video ) : ?>
         <?php

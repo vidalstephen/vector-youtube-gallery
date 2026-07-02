@@ -89,6 +89,10 @@ final class ShortcodeRegistrar {
         'feed_uuid', 'source_uuid', 'layout', 'per_page', 'columns',
         'orderby', 'order', 'content_type', 'pagination', 'offset',
         'wrapper_id', 'schema_enabled', 'preset', 'custom_css',
+        // Phase 14.1 — width modes (theme/wide/full). Structural because
+        // the prototype's default 'wide' should always pass through
+        // (mirrors how `layout` always passes through).
+        'width',
     );
 
     public function __construct(
@@ -254,6 +258,9 @@ final class ShortcodeRegistrar {
             'custom_css'     => $inline_override,
             'schema_enabled' => ! empty( $atts['schema_enabled'] ),
             'preset'         => sanitize_key( (string) ( $atts['preset'] ?? 'default' ) ),
+            // Phase 14.1 — width mode. Validated against the allow-list;
+            // unknown values fall back to 'wide' inside TemplateAttributes.
+            'width'          => (string) ( $atts['width'] ?? 'wide' ),
             'feed_config'    => is_array( $config ?? null ) ? $config : array(),
         );
 
@@ -329,6 +336,10 @@ final class ShortcodeRegistrar {
             'wrapper_id'     => '',
             'schema_enabled' => false,
             'preset'         => 'default',
+            // Phase 14.1 — width mode. Default 'wide' matches the
+            // prototype's baseline panel. Allowed values come from
+            // TemplateAttributes::WIDTH_MODES.
+            'width'          => 'wide',
 
             // Phase 13.1 grid redesign attrs (card-system).
             'density'                => 'comfortable',
@@ -387,6 +398,11 @@ final class ShortcodeRegistrar {
         $enum_attrs = array(
             'density', 'card_preset', 'card_style', 'thumbnail_ratio',
             'metadata_separator', 'cta_style', 'cta_position', 'date_format',
+            // Phase 14.1 — width is an enum-like attr; sanitize_key
+            // returns 'wide'/'theme'/'full' which match the WIDTH_MODES
+            // allow-list. Unknown values fall back to 'wide' in
+            // TemplateAttributes::sanitize_width().
+            'width',
         );
         if ( in_array( $attr, $enum_attrs, true ) ) {
             return sanitize_key( (string) $value );

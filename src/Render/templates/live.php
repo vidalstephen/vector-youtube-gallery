@@ -29,7 +29,7 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
 ?>
-<div class="vyg-feed vyg-feed--live vyg-live"
+<div class="vyg-feed vyg-feed--live vyg-live <?php echo esc_attr( \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs ) ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
     <?php if ( ! empty( $buckets['live'] ) ) : ?>
         <section class="vyg-live__section vyg-live__section--active">

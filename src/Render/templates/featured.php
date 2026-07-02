@@ -23,8 +23,9 @@ $public_safe = ! empty( $attrs['public_safe'] );
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
+$width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs );
 ?>
-<div class="vyg-feed vyg-feed--featured vyg-featured"
+<div class="vyg-feed vyg-feed--featured vyg-featured <?php echo esc_attr( $width_class ); ?>"
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
     <article class="vyg-featured__hero"
              data-video-id="<?php echo esc_attr( (string) ( $hero['youtube_video_id'] ?? '' ) ); ?>">

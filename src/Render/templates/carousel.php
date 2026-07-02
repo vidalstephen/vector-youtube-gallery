@@ -35,9 +35,10 @@ $public_safe = ! empty($attrs['public_safe']);
 $root_attrs  = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root($attrs, $source, $public_safe)
 );
+$width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 $slide_count = count($videos);
 ?>
-<div class="vyg-feed vyg-feed--carousel vyg-carousel vyg-carousel--per-<?php echo (int) $visible; ?>"
+<div class="vyg-feed vyg-feed--carousel vyg-carousel vyg-carousel--per-<?php echo (int) $visible; ?> <?php echo esc_attr($width_class); ?>"
      <?php if ('' !== $wrapper_id) : ?>id="<?php echo esc_attr($wrapper_id); ?>"<?php endif; ?>
      <?php echo $root_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — TemplateAttributes::to_html escapes each attribute. ?>
      role="region"

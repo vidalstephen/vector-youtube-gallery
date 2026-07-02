@@ -69,6 +69,8 @@ function render_block_vectoryt_gallery(array $attributes): string {
         'columns'        => isset($attributes['columns']) ? max(1, (int) $attributes['columns']) : 3,
         'schema_enabled' => ! empty($attributes['schema_enabled']),
         'preset'         => sanitize_key((string) ($attributes['preset'] ?? 'default')),
+        // Phase 14.1 — width mode (theme/wide/full). Default 'wide'.
+        'width'          => sanitize_key((string) ($attributes['width'] ?? 'wide')),
         'public_safe'    => '' !== $feed_uuid,
     );
 
