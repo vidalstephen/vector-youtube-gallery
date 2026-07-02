@@ -23,9 +23,9 @@
 ## Current Development Status
 
 - Current phase: **Phase 14 — Prototype Parity**
-- Current sub-phase: **14.5 — Card play icon + thumbnail gradient overlay**
-- Last completed item: 14.4 — featured/hero section head with "View all" link; 740 PHPUnit tests, 2127 assertions, 0 failures; commit `c9b253f` on `main` ahead of `origin/main`.
-- Next actionable item: 14.5 (card play icon center + thumbnail gradient overlay). Audit first — CardSettings already has the keys; verify the partial + CSS are wired.
+- Current sub-phase: **14.6 — Per-video tone color (`--tone`)**
+- Last completed item: 14.5 — card play icon + thumbnail gradient overlay; 757 PHPUnit tests, 2168 assertions, 0 failures; commit `d5fe139` on `main` ahead of `origin/main`. **Audit found the keys were NOT in CardSettings** (subagent's brief said they were, but they were being dropped by sanitize_flat). Real substantive ship scope.
+- Next actionable item: 14.6 (per-video tone color for varied card backgrounds). Audit first — schema may or may not have a `tone_color` column.
 - Blocked items: none
 - Deferred items: 13.2–13.8 (channel metadata sync, licensing, i18n, accessibility audit, packaging, security audit, docs, final E2E) — resume point archived in `docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md`.
 
@@ -47,7 +47,7 @@
 - [x] 14.2 Carousel: prev/next nav buttons (already wired), dots, active-card state
 - [x] 14.3 Live section pill counters (`2 live`, `3 upcoming`, `Recent replays`)
 - [x] 14.4 Section head + "View all →" link (featured / hero layouts)
-- [ ] 14.5 Card play icon center + thumbnail gradient overlay
+- [x] 14.5 Card play icon center + thumbnail gradient overlay
 - [ ] 14.6 Per-video tone color (`--tone` CSS variable) for varied card backgrounds
 - [ ] 14.7 Per-channel avatar gradient (`--aa`, `--ab` two-color CSS variables)
 - [ ] 14.8 Badge type × style matrix (7 types × 4 styles)
