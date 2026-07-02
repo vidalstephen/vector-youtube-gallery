@@ -143,6 +143,54 @@
     z-index: 1;
 }
 
+/* Phase 14.5 — prototype parity. When the .vyg-card__thumb-wrap--overlay
+ * class is present (driven by the resolved thumbnail_overlay setting),
+ * override the default bottom-46% dark gradient with the prototype's
+ * full-inset slate gradient. The selector targets the same element
+ * (the vyg-card__media wrapper in the shared partial) but wins the
+ * cascade because it appears after the default rule and adds a more
+ * specific class match. */
+.vyg-card__media.vyg-card__thumb-wrap--overlay::after {
+    inset: 0;
+    height: auto;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.48));
+    opacity: 1;
+    z-index: 2;
+}
+
+/* Phase 14.5 — prototype play icon. 58px white circle, centered on
+ * the thumb via the vyg-card__link anchor (which is positioned by the
+ * .vyg-card__media > .vyg-card__link rule above). The arrow glyph is
+ * centered inside the circle; padding-left nudges the visual centroid
+ * rightward to compensate for the glyph's left-leaning triangle shape. */
+.vyg-card__play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+    padding-left: 3px;
+    box-shadow: 0 18px 36px -14px rgba(15, 23, 42, 0.55), 0 4px 10px -4px rgba(15, 23, 42, 0.35);
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* On hover/focus the play icon scales up slightly for tactile feedback. */
+.vyg-card:hover .vyg-card__play,
+.vyg-card:focus-within .vyg-card__play {
+    transform: translate(-50%, -50%) scale(1.06);
+    transition: transform 0.22s ease;
+}
+
 .vyg-card__media > .vyg-card__link,
 .vyg-card__thumb-wrap {
     position: relative;

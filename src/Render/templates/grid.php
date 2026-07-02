@@ -17,7 +17,7 @@
  *   $renderer      — VideoRenderer instance (legacy; unused by B3, kept
  *                    for sub-partials that still reference it)
  *   $card_renderer — shared CardRenderer instance (Phase B2)
- *   $card_settings — resolved 43-key card settings (Phase B2)
+ *   $card_settings — resolved 45-key card settings (Phase B2 + 14.5)
  *   $feed_config   — saved feed config (used for legacy/CTA mapping)
  *   $feed_uuid     — feed uuid string
  *

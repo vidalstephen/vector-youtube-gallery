@@ -15,7 +15,7 @@
  *
  * Phase B2 additions (test_b2_*): the layout-template context also
  * exposes `card_renderer` (a CardRenderer instance) and `card_settings`
- * (the output of CardSettings::resolve — 43 normalized keys, with
+ * (the output of CardSettings::resolve — 45 normalized keys, with
  * inline > per-layout > global > legacy > profile > defaults precedence).
  * The test seam is Renderer::build_layout_context(), invoked via
  * Reflection so the protected method stays out of the public API.
@@ -226,7 +226,7 @@ final class RendererWiringTest extends TestCase
     // array that exposes:
     //   - 'card_renderer' => a CardRenderer instance
     //   - 'card_settings' => the output of CardSettings::resolve(...)
-    //     (43 normalized keys, with the correct precedence applied)
+    //     (45 normalized keys, with the correct precedence applied)
     //
     // The seam is Renderer::build_layout_context(), a protected method
     // that constructs and returns the ctx array. The tests invoke it via
@@ -289,7 +289,7 @@ final class RendererWiringTest extends TestCase
         $this->assertIsArray( $ctx['card_settings'] );
         $this->assertNotEmpty( $ctx['card_settings'] );
         $allowed = CardSettings::allowed_keys();
-        $this->assertCount( 43, $allowed, 'sanity: CardSettings::allowed_keys() should return 43 keys' );
+        $this->assertCount( 45, $allowed, 'sanity: CardSettings::allowed_keys() should return 45 keys (Phase 14.5 added show_play_icon + thumbnail_overlay)' );
         foreach ( $allowed as $key ) {
             $this->assertArrayHasKey( $key, $ctx['card_settings'], "card_settings must contain key: {$key}" );
         }

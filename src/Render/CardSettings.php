@@ -51,6 +51,11 @@ final class CardSettings {
 		'thumbnail_ratio',
 		'thumbnail_fit',
 		'thumbnail_radius',
+		// Phase 14.5 — prototype play icon + gradient overlay on the
+		// thumb. Both are visual-only (no admin / REST leak risk) so
+		// they are pure-public CardSettings keys.
+		'show_play_icon',
+		'thumbnail_overlay',
 
 		// Duration badge
 		'show_duration',
@@ -144,6 +149,9 @@ final class CardSettings {
 		'show_metadata',
 		'show_description',
 		'show_actions',
+		// Phase 14.5 — prototype play icon + gradient overlay.
+		'show_play_icon',
+		'thumbnail_overlay',
 		'compact_mobile',
 		'hide_description_mobile',
 		'hide_metadata_mobile',
@@ -322,6 +330,12 @@ final class CardSettings {
 			'thumbnail_ratio'    => '16_9',
 			'thumbnail_fit'      => 'cover',
 			'thumbnail_radius'   => 'medium',
+			// Phase 14.5 — default the prototype's two visual signals ON.
+			// Mirrors the shortcode defaults in ShortcodeRegistrar so the
+			// admin Feed Builder and the shortcode/block/Elementor
+			// surfaces agree on the baseline.
+			'show_play_icon'     => true,
+			'thumbnail_overlay'  => true,
 
 			// Duration
 			'show_duration'      => true,

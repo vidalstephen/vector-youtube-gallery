@@ -16,6 +16,7 @@
  *   $show_thumbnail, $show_duration, $show_status_badge, $show_title,
  *   $show_channel, $show_metadata, $show_description, $show_cta,
  *   $show_actions, $show_footer
+ *   $show_play_icon, $thumbnail_overlay                          — Phase 14.5
  *   $show_avatar, $show_verified    — only true when BOTH the show_* flag
  *                                     AND a real field exist on $video
  *   $thumbnail_ratio                — sanitized enum
@@ -74,7 +75,20 @@ $action_label = static function ( string $slug ): string {
          data-live-status="<?php echo esc_attr( (string) ( $video['live_status'] ?? 'none' ) ); ?>">
 
     <?php if ( $show_thumbnail ) : ?>
-        <div class="vyg-card__media vyg-thumb-ratio--<?php echo esc_attr( str_replace( '_', '-', $thumbnail_ratio ) ); ?>">
+        <?php
+        // Phase 14.5 — prototype parity: when thumbnail_overlay is on,
+        // add the vyg-card__thumb-wrap--overlay class to the media
+        // wrapper so card.css can render the slate-tinted gradient
+        // ::after (overriding the default bottom-46% gradient). The
+        // class name matches the prototype's .thumb-wrap--overlay
+        // convention from the BEM plan, even though the shared
+        // partial uses vyg-card__media as the outer thumb container.
+        $media_classes = 'vyg-card__media vyg-thumb-ratio--' . esc_attr( str_replace( '_', '-', $thumbnail_ratio ) );
+        if ( $thumbnail_overlay ) {
+            $media_classes .= ' vyg-card__thumb-wrap--overlay';
+        }
+        ?>
+        <div class="<?php echo $media_classes; // already escaped above. ?>">
             <a class="vyg-card__link"
                href="<?php echo esc_url( $watch_url ); ?>"
                data-vyg-title="<?php echo esc_attr( $title ); ?>"
@@ -84,6 +98,10 @@ $action_label = static function ( string $slug ): string {
                      alt="<?php echo esc_attr( $title ); ?>"
                      loading="lazy"
                      decoding="async" />
+                <?php if ( $show_play_icon ) : ?>
+                    <?php // Phase 14.5 — prototype play icon. aria-hidden because the watch link above supplies the accessible name. ?>
+                    <span class="vyg-card__play" aria-hidden="true">&#9654;</span>
+                <?php endif; ?>
             </a>
 
             <?php if ( $show_status_badge && '' !== $status_badge ) : ?>

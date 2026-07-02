@@ -156,6 +156,8 @@ final class CardRenderer {
      */
     private function build_region_visibility( array $settings, array $video, array $context ): array {
         $show_thumbnail    = (bool) ( $settings['show_thumbnail'] ?? true );
+        $show_play_icon    = (bool) ( $settings['show_play_icon'] ?? true );
+        $thumbnail_overlay = (bool) ( $settings['thumbnail_overlay'] ?? true );
         $show_duration     = (bool) ( $settings['show_duration'] ?? true );
         $show_status_badge = (bool) ( $settings['show_status_badge'] ?? false );
         $show_title        = (bool) ( $settings['show_title'] ?? true );
@@ -190,6 +192,13 @@ final class CardRenderer {
 
         return array(
             'show_thumbnail'    => $show_thumbnail,
+            // Phase 14.5 — prototype play icon + gradient overlay. Both
+            // are visual-only, always on by default; the partial uses
+            // them to emit a centered <span class="vyg-card__play"> on
+            // the thumb and to add the vyg-card__thumb-wrap--overlay
+            // class (which triggers the slate gradient ::after).
+            'show_play_icon'    => $show_play_icon,
+            'thumbnail_overlay' => $thumbnail_overlay,
             'show_duration'     => $show_duration,
             'show_status_badge' => $show_status_badge,
             'show_title'        => $show_title,
