@@ -250,6 +250,12 @@ final class CardRenderer {
             : array();
         $status_badge       = $this->resolve_status_badge( $live_status, $enabled_badges );
 
+        // --- Phase 14.7 — per-channel avatar gradient pair ---
+        // Resolved once here so the partial has a stable shape (always
+        // two 7-char lowercase `#RRGGBB` strings). The helper applies
+        // the same XSS guard as `tone_color()`.
+        $avatar_colors      = $this->video_renderer->avatar_colors( $video );
+
         return array(
             'video'             => $video,
             'video_id'          => (string) ( $video['youtube_video_id'] ?? '' ),
@@ -277,6 +283,16 @@ final class CardRenderer {
             // the partial can interpolate it into a `style="--tone:…"`
             // attribute after one `esc_attr` for HTML attribute safety.
             'tone_color'        => $this->video_renderer->tone_color( $video ),
+            // Phase 14.7 — per-channel avatar gradient (`--aa` / `--ab`).
+            // The helper returns a 2-element pair of safe lowercase
+            // `#RRGGBB` strings (3-tier fallback: stored pair → channel-id
+            // hash pair → default slate pair). The partial interpolates
+            // both into a `style="--aa:…; --ab:…"` attribute. The two
+            // colors are guaranteed to be valid 7-char hex by
+            // `is_valid_hex_color()` so the only required safety is the
+            // single `esc_attr` on the composed string.
+            'avatar_color_a'    => $avatar_colors[0],
+            'avatar_color_b'    => $avatar_colors[1],
         );
     }
 

@@ -206,4 +206,118 @@ final class VideoRenderer {
         $b = ord( $hash[2] );
         return sprintf( '#%02x%02x%02x', $r, $g, $b );
     }
+
+    // -----------------------------------------------------------------
+    // Phase 14.7 — per-channel avatar gradient (`--aa` / `--ab`)
+    // -----------------------------------------------------------------
+
+    /**
+     * Default mid-tone for the avatar gradient. Used when no channel id
+     * is available AND no operator override is stored. Same slate-500
+     * default as `DEFAULT_TONE_COLOR` so the avatar gradient is visually
+     * compatible with the thumb gradient from 14.6.
+     */
+    public const DEFAULT_AVATAR_COLOR_A = '#64748b';
+
+    /**
+     * Default dark anchor for the avatar gradient. Paired with the
+     * mid-tone above it forms a visually distinct 135deg gradient that
+     * reads correctly even on white card backgrounds.
+     */
+    public const DEFAULT_AVATAR_COLOR_B = '#0f172a';
+
+    /**
+     * Resolve the two-color avatar gradient pair for a video card.
+     *
+     * Phase 14.7 — per-channel avatar gradient. The prototype pairs a
+     * mid-tone (avatar[0]) with a dark anchor (avatar[1]) to form a
+     * 135deg linear gradient on a 30px circle. The two colors come
+     * from the operator's persisted overrides on the video row, then
+     * fall back to a deterministic SHA-256 hash of the channel id
+     * (two non-overlapping slices of the hash), then to the
+     * slate-500 / slate-900 pair as a last resort.
+     *
+     * Schema reality: as of Phase 14.7 the `vyg_sources` and
+     * `vyg_videos` tables do NOT yet persist `brand_color_*` /
+     * `avatar_color_*` columns. When they are added (likely in
+     * 14.13+ or in a later channel-metadata-sync phase), the helper
+     * will pick them up via the tier 1 read on `$video`. The tier 2
+     * hash is stable across page loads so the visual remains
+     * consistent today.
+     *
+     * XSS contract: same as `tone_color()`. Stored values are
+     * validated against the strict 7-char `#RRGGBB` regex and
+     * rejected when they don't match — falls through to the hash
+     * tier. The hash output is always 7 lowercase chars by
+     * construction.
+     *
+     * @param array<string,mixed> $video
+     * @return array{0:string,1:string} [color_a, color_b] — both 7-char `#RRGGBB`.
+     */
+    public function avatar_colors( array $video ): array {
+        // Tier 1: stored operator override (future schema). Two keys:
+        // `avatar_color_a` (mid-tone) and `avatar_color_b` (dark). The
+        // pair must BOTH be valid — if one is missing or invalid, fall
+        // through to the hash tier rather than emit a half-broken
+        // pair.
+        $stored_a = (string) ( $video['avatar_color_a'] ?? '' );
+        $stored_b = (string) ( $video['avatar_color_b'] ?? '' );
+        if ( '' !== $stored_a && '' !== $stored_b
+            && self::is_valid_hex_color( $stored_a )
+            && self::is_valid_hex_color( $stored_b )
+        ) {
+            return array( strtolower( $stored_a ), strtolower( $stored_b ) );
+        }
+
+        // Tier 2: deterministic hash of the channel id. The two
+        // colors are deliberately derived from NON-OVERLAPPING bytes
+        // of the SHA-256 digest (bytes 3..5 vs bytes 6..8) so the
+        // pair is visually distinct with high probability.
+        $channel_id = (string) ( $video['youtube_channel_id'] ?? '' );
+        if ( '' !== $channel_id ) {
+            $pair = self::channel_id_to_avatar_colors( $channel_id );
+            if ( null !== $pair ) {
+                return $pair;
+            }
+        }
+
+        // Tier 3: slate-500 / slate-900 default pair.
+        return array( self::DEFAULT_AVATAR_COLOR_A, self::DEFAULT_AVATAR_COLOR_B );
+    }
+
+    /**
+     * Derive a deterministic two-color avatar pair from a YouTube
+     * channel id.
+     *
+     * Algorithm: SHA-256 the channel id, take bytes 3..5 for color A
+     * (mid-tone) and bytes 6..8 for color B (dark anchor). The two
+     * slices are non-overlapping so the pair is visually distinct
+     * with high probability. Same input → same output (stable across
+     * page loads). Always returns two 7-char lowercase hex strings
+     * when given a non-empty channel id.
+     *
+     * @param string $channel_id Non-empty YouTube channel id.
+     * @return array{0:string,1:string}|null Null only if $channel_id is empty.
+     */
+    public static function channel_id_to_avatar_colors( string $channel_id ): ?array {
+        if ( '' === $channel_id ) {
+            return null;
+        }
+        $hash = hash( 'sha256', $channel_id, true );
+        // Bytes 3..5 → color A. Skipping the first 3 bytes (which
+        // `channel_id_to_tone()` already uses for the thumb gradient)
+        // keeps the avatar pair from being identical to the thumb
+        // tone on the same card.
+        $r1 = ord( $hash[3] );
+        $g1 = ord( $hash[4] );
+        $b1 = ord( $hash[5] );
+        // Bytes 6..8 → color B. Another non-overlapping slice.
+        $r2 = ord( $hash[6] );
+        $g2 = ord( $hash[7] );
+        $b2 = ord( $hash[8] );
+        return array(
+            sprintf( '#%02x%02x%02x', $r1, $g1, $b1 ),
+            sprintf( '#%02x%02x%02x', $r2, $g2, $b2 ),
+        );
+    }
 }

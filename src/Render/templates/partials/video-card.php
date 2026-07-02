@@ -150,13 +150,36 @@ $action_label = static function ( string $slug ): string {
         <?php if ( $show_channel && '' !== $channel_name ) : ?>
             <div class="vyg-card__channel">
                 <?php if ( $show_avatar ) : ?>
+                    <?php
+                    // Phase 14.7 — per-channel avatar gradient (`--aa` / `--ab`).
+                    // The CardRenderer resolves a 2-color pair of safe lowercase
+                    // `#RRGGBB` strings (3-tier fallback: stored → channel-id hash
+                    // pair → default slate) and passes them as `$avatar_color_a` /
+                    // `$avatar_color_b`. We interpolate them into a single
+                    // `style="--aa:…; --ab:…"` attribute on the avatar element so
+                    // card.css can build a `linear-gradient(135deg, var(--aa),
+                    // var(--ab))` background. The pair is then hidden under the
+                    // real `<img>` when `channel_avatar_url` is populated (the
+                    // future Phase 13.2 metadata sync will populate it); on the
+                    // current dev install the column doesn't exist yet, so the
+                    // gradient is the only visible signal — the channel initial is
+                    // supplied by the surrounding `.vyg-card__channel-name` for
+                    // now (no text-initial overlay is added in this phase, the
+                    // gradient circle stands in for the prototype's text avatar).
+                    $avatar_style = sprintf(
+                        '--aa:%s;--ab:%s',
+                        esc_attr( (string) ( $avatar_color_a ?? '#64748b' ) ),
+                        esc_attr( (string) ( $avatar_color_b ?? '#0f172a' ) )
+                    );
+                    ?>
                     <img class="vyg-card__channel-avatar"
                          src="<?php echo esc_url( (string) $video['channel_avatar_url'] ); ?>"
                          alt="<?php echo esc_attr( $channel_name ); ?>"
                          loading="lazy"
                          decoding="async"
                          width="20"
-                         height="20" />
+                         height="20"
+                         style="<?php echo $avatar_style; // esc_attr'd in the sprintf above; hex is whitelisted by avatar_colors(). ?>" />
                 <?php endif; ?>
                 <span class="vyg-card__channel-name"><?php echo esc_html( $channel_name ); ?></span>
                 <?php if ( $show_verified ) : ?>

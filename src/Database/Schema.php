@@ -128,6 +128,7 @@ final class Schema {
             manual_content_source varchar(190) DEFAULT NULL,
             manual_reason varchar(500) DEFAULT NULL,
             tone_color varchar(7) NOT NULL DEFAULT '',
+            channel_avatar_url TEXT DEFAULT NULL,
             moderation_status varchar(32) NOT NULL DEFAULT 'approved',
             moderation_reason varchar(500) DEFAULT NULL,
             moderated_by bigint(20) unsigned DEFAULT NULL,

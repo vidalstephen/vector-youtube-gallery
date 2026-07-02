@@ -347,6 +347,18 @@
     height: 20px;
     border-radius: 50%;
     object-fit: cover;
+    /* Phase 14.7 — per-channel avatar gradient (`--aa` / `--ab`).
+     * The two colors are emitted on the <img> via inline
+     * `style="--aa:…; --ab:…"` by video-card.php (3-tier fallback:
+     * stored → channel-id hash → default slate). The gradient sits
+     * underneath the loaded avatar image (which is `object-fit:cover`,
+     * so it occludes the gradient when present). When the image
+     * src is empty (current dev state — `channel_avatar_url` column
+     * doesn't exist on vyg_videos yet) the gradient remains the
+     * visible signal, matching the prototype's text-initial
+     * avatar circle.
+     */
+    background: linear-gradient(135deg, var(--aa, #64748b), var(--ab, #0f172a));
 }
 
 .vyg-card__channel-name {
