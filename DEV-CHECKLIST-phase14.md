@@ -51,11 +51,11 @@
 - [x] 14.6 Per-video tone color (`--tone` CSS variable) for varied card backgrounds
 - [x] 14.7 Per-channel avatar gradient (`--aa`, `--ab` two-color CSS variables)
 - [x] 14.8 Badge type × style matrix (7 types × 4 styles)
-- [ ] 14.9 Shared header (kicker + h1 + intro + layout pill + channel CTA) across all 8 layouts
-- [ ] 14.10 Trust strip on grid / masonry / carousel
-- [ ] 14.11 Relative countdown for live upcoming (`in 2h 15m`)
-- [ ] 14.12 Final parity contact-sheet side-by-side capture
-- [ ] 14.13 Close-out: archive Phase 14 file, update resume note in pre-prototype archive
+- [x] 14.9 Shared header (kicker + h1 + intro + layout pill + channel CTA) across all 8 layouts
+- [ ] 14.10 Trust strip on grid/masonry/carousel
+- [ ] 14.11 Relative countdown for live upcoming
+- [ ] 14.12 Final parity contact-sheet capture
+- [ ] 14.13 Close out + resume note
 
 ## Scope Lock
 
