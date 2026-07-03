@@ -497,12 +497,22 @@
  * "The Way Of Holiness Br..." on every card, which looked
  * repetitive and broken on a single-channel gallery. The 2-line
  * clamp keeps the row height bounded while preserving the full
- * channel name. */
+ * channel name.
+ *
+ * The `flex: 1 1 0` and `min-width: 0` are critical: this element
+ * is a child of a flex `.vyg-card__channel` row, and without these
+ * declarations the flex item keeps its natural content width
+ * instead of stretching to the available space — which makes the
+ * 2-line clamp moot because the box never gets narrow enough to
+ * force a wrap. */
 .vyg-card__channel-name {
+    flex: 1 1 0;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     font-weight: 600;
     color: var(--vyg-card-meta-color, #667085);
