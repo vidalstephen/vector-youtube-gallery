@@ -57,15 +57,15 @@ final class ShortcodeNewAttributesTest extends TestCase
 
     /**
      * The complete set of card-system attr names that the ShortcodeRegistrar
-     * must gate. Includes 22 new D1 attrs + the 14 Phase 13.1 legacy attrs
+     * must gate. Includes 25 D1/media attrs + the 14 Phase 13.1 legacy attrs
      * + the 5 header_* layout-specific attrs. Source-of-truth list —
      * if the constant changes, update this list (and the test that reads
      * it) intentionally.
      */
     private const EXPECTED_CARD_SYSTEM_ATTRS = array(
-        // 22 new card-system attrs (D1).
+        // 25 D1/media card-system attrs.
         'card_preset', 'card_style',
-        'show_thumbnail', 'thumbnail_ratio', 'show_duration',
+        'show_thumbnail', 'thumbnail_ratio', 'thumbnail_fit', 'thumbnail_position', 'thumbnail_override_url', 'show_duration',
         'show_title', 'show_channel', 'show_metadata',
         'show_description', 'show_cta', 'show_actions',
         'metadata_fields', 'date_format', 'metadata_separator',
@@ -84,7 +84,7 @@ final class ShortcodeNewAttributesTest extends TestCase
 
     private const NEW_D1_ATTRS = array(
         'card_preset', 'card_style',
-        'show_thumbnail', 'thumbnail_ratio', 'show_duration',
+        'show_thumbnail', 'thumbnail_ratio', 'thumbnail_fit', 'thumbnail_position', 'thumbnail_override_url', 'show_duration',
         'show_title', 'show_channel', 'show_metadata',
         'show_description', 'show_cta', 'show_actions',
         'metadata_fields', 'date_format', 'metadata_separator',
@@ -93,9 +93,9 @@ final class ShortcodeNewAttributesTest extends TestCase
         'compact_mobile', 'hide_description_mobile', 'hide_metadata_mobile',
     );
 
-    public function test_shortcode_atts_defaults_contain_all_22_new_d1_attrs(): void
+    public function test_shortcode_atts_defaults_contain_all_25_new_d1_media_attrs(): void
     {
-        // The 22 new D1 attrs must appear as keys in the shortcode_atts
+        // The 25 D1/media attrs must appear as keys in the shortcode_atts
         // default array. This pins down the contract that operators can
         // pass any of them in the shortcode without PHP warnings.
         $path = dirname( __DIR__, 3 ) . '/src/Render/ShortcodeRegistrar.php';
@@ -109,7 +109,7 @@ final class ShortcodeNewAttributesTest extends TestCase
         }
     }
 
-    public function test_card_system_attrs_constant_lists_22_new_plus_legacy_attrs(): void
+    public function test_card_system_attrs_constant_lists_25_new_plus_legacy_attrs(): void
     {
         // The ShortcodeRegistrar must expose a CARD_SYSTEM_ATTRS constant
         // listing every attr that the explicit-only filter gates. The

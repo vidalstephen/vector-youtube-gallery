@@ -38,9 +38,9 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 
-$hero_thumb = $renderer->best_thumbnail($hero, 'maxres');
+$hero_thumb = $renderer->thumbnail_url($hero, $card_settings ?? $attrs, 'maxres');
 if ('' === $hero_thumb) {
-    $hero_thumb = $renderer->best_thumbnail($hero);
+    $hero_thumb = $renderer->thumbnail_url($hero, $card_settings ?? $attrs);
 }
 $duration_label = $renderer->format_duration((int) ($hero['duration_seconds'] ?? 0));
 $hero_watch = $renderer->watch_url($hero);
@@ -48,6 +48,8 @@ $hero_embed = $renderer->embed_url($hero);
 $hero_title = (string) ($hero['title'] ?? '');
 $hero_description = (string) ($hero['description'] ?? '');
 $layout_slug = (string) ($attrs['layout'] ?? 'hero');
+$thumb_settings = is_array( $card_settings ?? null ) ? $card_settings : $attrs;
+$thumbnail_style = $renderer->thumbnail_style_attr( $thumb_settings );
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
 if (mb_strlen($hero_description) > 220) {
     $hero_description = mb_substr($hero_description, 0, 220) . '…';
@@ -106,6 +108,7 @@ $see_all_label = ('' !== $see_all_label) ? $see_all_label : __('View all videos 
                 <img class="vyg-hero__thumb"
                      src="<?php echo esc_url($hero_thumb); ?>"
                      alt="<?php echo esc_attr($hero_title); ?>"
+                     style="<?php echo esc_attr( $thumbnail_style ); ?>"
                      loading="eager" decoding="async"
                      fetchpriority="high" />
                 <?php if ('' !== $duration_label) : ?>
@@ -142,8 +145,9 @@ $see_all_label = ('' !== $see_all_label) ? $see_all_label : __('View all videos 
                        data-vyg-title="<?php echo esc_attr((string) ($video['title'] ?? '')); ?>">
                         <div class="vyg-card__thumb-wrap">
                             <img class="vyg-card__thumb"
-                                 src="<?php echo esc_url($renderer->best_thumbnail($video)); ?>"
+                                 src="<?php echo esc_url($renderer->thumbnail_url($video, $thumb_settings)); ?>"
                                  alt="<?php echo esc_attr((string) ($video['title'] ?? '')); ?>"
+                                 style="<?php echo esc_attr( $thumbnail_style ); ?>"
                                  loading="lazy" decoding="async" />
                             <span class="vyg-card__duration"><?php echo esc_html($renderer->format_duration((int) ($video['duration_seconds'] ?? 0))); ?></span>
                         </div>

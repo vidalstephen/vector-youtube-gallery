@@ -174,6 +174,61 @@ final class CardRendererTest extends TestCase
         $this->assertStringContainsString( 'vyg-thumb-ratio--9-16', $html );
     }
 
+    public function test_thumbnail_fit_and_position_emit_safe_img_style(): void
+    {
+        $html = $this->render(
+            array(
+                'thumbnail_fit'      => 'contain',
+                'thumbnail_position' => 'top_center',
+            )
+        );
+
+        $this->assertStringContainsString( 'style="object-fit:contain;object-position:top center"', $html );
+    }
+
+    public function test_thumbnail_override_url_replaces_youtube_thumbnail(): void
+    {
+        $html = $this->render(
+            array(
+                'thumbnail_override_url' => 'https://cdn.example.com/custom-poster.jpg',
+            )
+        );
+
+        $this->assertStringContainsString( 'https://cdn.example.com/custom-poster.jpg', $html );
+        $this->assertStringNotContainsString( 'https://example.com/medium.jpg', $html );
+    }
+
+    public function test_thumbnail_zoom_adds_transform_for_portrait_ratio(): void
+    {
+        $html = $this->render(
+            array( 'thumbnail_ratio' => '9_16' )
+        );
+
+        $this->assertStringContainsString( 'transform:scale(1.45)', $html );
+        $this->assertStringContainsString( 'object-position:center 18%', $html );
+    }
+
+    public function test_thumbnail_zoom_can_be_overridden_by_explicit_setting(): void
+    {
+        $html = $this->render(
+            array(
+                'thumbnail_ratio'  => '9_16',
+                'thumbnail_zoom'   => 1.4,
+            )
+        );
+
+        $this->assertStringContainsString( 'transform:scale(1.4)', $html );
+    }
+
+    public function test_thumbnail_zoom_does_not_apply_to_landscape_ratio(): void
+    {
+        $html = $this->render(
+            array( 'thumbnail_ratio' => '16_9' )
+        );
+
+        $this->assertStringNotContainsString( 'transform:scale(', $html );
+    }
+
     public function test_unsanitized_user_value_does_not_leak_into_classes(): void
     {
         // If a setting value is invalid, the renderer uses a safe default

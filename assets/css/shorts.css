@@ -57,10 +57,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transform-origin: center center;
     transition: transform 0.35s ease, filter 0.35s ease;
 }
 
 .vyg-shorts__card:hover .vyg-shorts__thumb {
+    /* combine inline thumbnail zoom (if any) with the hover scale */
     transform: scale(1.04);
     filter: saturate(1.08) contrast(1.04);
 }

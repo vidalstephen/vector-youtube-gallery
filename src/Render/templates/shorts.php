@@ -20,6 +20,11 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs );
 $layout_slug = (string) ( $attrs['layout'] ?? 'shorts' );
+$thumb_settings = is_array( $card_settings ?? null ) ? $card_settings : $attrs;
+if ( 'shorts' === $layout_slug && empty( $thumb_settings['thumbnail_ratio'] ) ) {
+    $thumb_settings['thumbnail_ratio'] = '9_16';
+}
+$thumbnail_style = $renderer->thumbnail_style_attr( $thumb_settings );
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
 ?>
 <div class="vyg-feed vyg-feed--shorts vyg-shorts <?php echo esc_attr( $width_class ); ?>"
@@ -40,8 +45,9 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
                data-vyg-title="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>">
                 <div class="vyg-shorts__thumb-wrap">
                     <img class="vyg-shorts__thumb"
-                         src="<?php echo esc_url( $renderer->best_thumbnail( $video, 'medium' ) ); ?>"
+                         src="<?php echo esc_url( $renderer->thumbnail_url( $video, $thumb_settings, 'medium' ) ); ?>"
                          alt="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>"
+                         style="<?php echo esc_attr( $thumbnail_style ); ?>"
                          loading="lazy" decoding="async" />
                     <span class="vyg-shorts__duration"><?php echo esc_html( $renderer->format_duration( (int) ( $video['duration_seconds'] ?? 0 ) ) ); ?></span>
                 </div>

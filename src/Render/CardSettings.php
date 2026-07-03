@@ -50,7 +50,9 @@ final class CardSettings {
 		'show_thumbnail',
 		'thumbnail_ratio',
 		'thumbnail_fit',
+		'thumbnail_position',
 		'thumbnail_radius',
+		'thumbnail_override_url',
 		// Phase 14.5 — prototype play icon + gradient overlay on the
 		// thumb. Both are visual-only (no admin / REST leak risk) so
 		// they are pure-public CardSettings keys.
@@ -218,6 +220,7 @@ final class CardSettings {
 		'feed_intro'          => 500,
 		'feed_cta_label'      => 60,
 		'feed_cta_url'        => 500,
+		'thumbnail_override_url' => 500,
 	);
 
 	/**
@@ -243,8 +246,12 @@ final class CardSettings {
 			'16_9',
 		),
 		'thumbnail_fit'      => array(
-			array( 'cover', 'contain' ),
+			array( 'cover', 'contain', 'fill', 'scale_down' ),
 			'cover',
+		),
+		'thumbnail_position' => array(
+			array( 'center_center', 'top_center', 'bottom_center', 'left_center', 'right_center' ),
+			'center_center',
 		),
 		'thumbnail_radius'   => array(
 			array( 'none', 'small', 'medium', 'large', 'inherit' ),
@@ -358,7 +365,9 @@ final class CardSettings {
 			'show_thumbnail'     => true,
 			'thumbnail_ratio'    => '16_9',
 			'thumbnail_fit'      => 'cover',
+			'thumbnail_position' => 'center_center',
 			'thumbnail_radius'   => 'medium',
+			'thumbnail_override_url' => '',
 			// Phase 14.5 — default the prototype's two visual signals ON.
 			// Mirrors the shortcode defaults in ShortcodeRegistrar so the
 			// admin Feed Builder and the shortcode/block/Elementor
@@ -716,6 +725,13 @@ final class CardSettings {
 		if ( isset( self::INT_SPECS[ $key ] ) ) {
 			[ $min, $max, $default ] = self::INT_SPECS[ $key ];
 			return CardSanitizer::int( $value, $min, $max, $default );
+		}
+
+		// Operator-provided image URL override. Keep it URL-shaped at
+		// storage/resolve time; final output still passes through esc_url().
+		if ( 'thumbnail_override_url' === $key ) {
+			$url = trim( (string) $value );
+			return ( '' !== $url && filter_var( $url, FILTER_VALIDATE_URL ) ) ? $url : '';
 		}
 
 		// Text.

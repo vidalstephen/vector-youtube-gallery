@@ -185,6 +185,9 @@ final class FeedsPage {
             'preset'         => isset( $_POST['preset'] ) ? sanitize_key( wp_unslash( $_POST['preset'] ) ) : 'default',
             'pagination'     => isset( $_POST['pagination'] ) ? sanitize_key( wp_unslash( $_POST['pagination'] ) ) : 'none',
             'player_mode'    => isset( $_POST['player_mode'] ) ? sanitize_key( wp_unslash( $_POST['player_mode'] ) ) : 'iframe',
+            'thumbnail_fit'  => isset( $_POST['thumbnail_fit'] ) ? sanitize_key( wp_unslash( $_POST['thumbnail_fit'] ) ) : 'cover',
+            'thumbnail_position' => isset( $_POST['thumbnail_position'] ) ? sanitize_key( wp_unslash( $_POST['thumbnail_position'] ) ) : 'center_center',
+            'thumbnail_override_url' => isset( $_POST['thumbnail_override_url'] ) ? esc_url_raw( wp_unslash( $_POST['thumbnail_override_url'] ) ) : '',
             // Phase 13.1 — grid redesign.
             'density'                => isset( $_POST['density'] ) ? sanitize_key( wp_unslash( $_POST['density'] ) ) : 'comfortable',
             'header_title'           => isset( $_POST['header_title'] ) ? sanitize_text_field( wp_unslash( $_POST['header_title'] ) ) : '',
@@ -592,7 +595,9 @@ final class FeedsPage {
         $display = wp_parse_args( $config['display'], array(
             'columns' => 3, 'per_page' => 12, 'lightbox' => true, 'load_more' => true,
             'pagination' => 'none', 'player_mode' => 'iframe',
+            'thumbnail_fit' => 'cover', 'thumbnail_position' => 'center_center', 'thumbnail_override_url' => '',
         ) );
+        wp_enqueue_media();
         $filter = wp_parse_args( $config['filter'], array(
             'content_type' => '', 'exclude_shorts' => false, 'shorts_policy' => 'include', 'availability' => 'available',
         ) );
@@ -788,6 +793,39 @@ final class FeedsPage {
                             </select>
                         </td>
                     </tr>
+                    <tr><th colspan="2"><h2><?php echo esc_html__( 'Thumbnail media', 'vector-youtube-gallery' ); ?></h2></th></tr>
+                    <tr>
+                        <th scope="row"><label for="thumbnail_fit"><?php echo esc_html__( 'Thumbnail fit', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <select name="thumbnail_fit" id="thumbnail_fit">
+                                <option value="cover" <?php selected( (string) ( $display['thumbnail_fit'] ?? 'cover' ), 'cover' ); ?>><?php echo esc_html__( 'Cover / zoom to fill', 'vector-youtube-gallery' ); ?></option>
+                                <option value="contain" <?php selected( (string) ( $display['thumbnail_fit'] ?? 'cover' ), 'contain' ); ?>><?php echo esc_html__( 'Contain / show whole image', 'vector-youtube-gallery' ); ?></option>
+                                <option value="fill" <?php selected( (string) ( $display['thumbnail_fit'] ?? 'cover' ), 'fill' ); ?>><?php echo esc_html__( 'Fill / stretch', 'vector-youtube-gallery' ); ?></option>
+                                <option value="scale_down" <?php selected( (string) ( $display['thumbnail_fit'] ?? 'cover' ), 'scale_down' ); ?>><?php echo esc_html__( 'Scale down', 'vector-youtube-gallery' ); ?></option>
+                            </select>
+                            <p class="description"><?php echo esc_html__( 'Cover is recommended for Shorts and portrait slots: it zooms landscape thumbnails so the media well has no empty bars.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="thumbnail_position"><?php echo esc_html__( 'Thumbnail focal point', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <select name="thumbnail_position" id="thumbnail_position">
+                                <option value="center_center" <?php selected( (string) ( $display['thumbnail_position'] ?? 'center_center' ), 'center_center' ); ?>><?php echo esc_html__( 'Center', 'vector-youtube-gallery' ); ?></option>
+                                <option value="top_center" <?php selected( (string) ( $display['thumbnail_position'] ?? 'center_center' ), 'top_center' ); ?>><?php echo esc_html__( 'Top center', 'vector-youtube-gallery' ); ?></option>
+                                <option value="bottom_center" <?php selected( (string) ( $display['thumbnail_position'] ?? 'center_center' ), 'bottom_center' ); ?>><?php echo esc_html__( 'Bottom center', 'vector-youtube-gallery' ); ?></option>
+                                <option value="left_center" <?php selected( (string) ( $display['thumbnail_position'] ?? 'center_center' ), 'left_center' ); ?>><?php echo esc_html__( 'Left center', 'vector-youtube-gallery' ); ?></option>
+                                <option value="right_center" <?php selected( (string) ( $display['thumbnail_position'] ?? 'center_center' ), 'right_center' ); ?>><?php echo esc_html__( 'Right center', 'vector-youtube-gallery' ); ?></option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="thumbnail_override_url"><?php echo esc_html__( 'Replacement thumbnail URL', 'vector-youtube-gallery' ); ?></label></th>
+                        <td>
+                            <input name="thumbnail_override_url" id="thumbnail_override_url" type="url" class="regular-text" value="<?php echo esc_attr( (string) ( $display['thumbnail_override_url'] ?? '' ) ); ?>" placeholder="https://example.com/custom-poster.jpg" />
+                            <button type="button" class="button" id="vyg-thumbnail-media-button"><?php echo esc_html__( 'Choose from Media Library', 'vector-youtube-gallery' ); ?></button>
+                            <p class="description"><?php echo esc_html__( 'Optional. Replaces synced YouTube thumbnails for this feed. Upload/select an image from Media Library or paste an external image URL.', 'vector-youtube-gallery' ); ?></p>
+                        </td>
+                    </tr>
 
                     <tr><th colspan="2"><h2><?php echo esc_html__( 'Grid layout (Phase 13.1)', 'vector-youtube-gallery' ); ?></h2></th></tr>
                     <tr>
@@ -919,6 +957,27 @@ final class FeedsPage {
             var container = document.getElementById('vyg-feed-sources');
             var template = document.getElementById('vyg-source-row-template');
             var addBtn   = document.getElementById('vyg-add-source');
+            var thumbButton = document.getElementById('vyg-thumbnail-media-button');
+            var thumbInput = document.getElementById('thumbnail_override_url');
+            if (thumbButton && thumbInput && window.wp && window.wp.media) {
+                thumbButton.addEventListener('click', function () {
+                    var frame = window.wp.media({
+                        title: '<?php echo esc_js( __( 'Choose replacement thumbnail', 'vector-youtube-gallery' ) ); ?>',
+                        button: { text: '<?php echo esc_js( __( 'Use this image', 'vector-youtube-gallery' ) ); ?>' },
+                        multiple: false
+                    });
+                    frame.on('select', function () {
+                        var attachment = frame.state().get('selection').first();
+                        if (attachment) {
+                            var data = attachment.toJSON();
+                            if (data && data.url) {
+                                thumbInput.value = data.url;
+                            }
+                        }
+                    });
+                    frame.open();
+                });
+            }
             if (!container || !template || !addBtn) {
                 return;
             }

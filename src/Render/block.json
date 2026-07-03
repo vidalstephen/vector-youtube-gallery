@@ -177,6 +177,18 @@
         "card_radius": {
             "type": "string",
             "default": "12px"
+        },
+        "thumbnail_fit": {
+            "type": "string",
+            "default": "cover"
+        },
+        "thumbnail_position": {
+            "type": "string",
+            "default": "center_center"
+        },
+        "thumbnail_override_url": {
+            "type": "string",
+            "default": ""
         }
     },
     "editorScript": "vyg-editor",

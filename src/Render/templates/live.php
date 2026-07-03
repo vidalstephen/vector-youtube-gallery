@@ -48,6 +48,8 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
     \VectorYT\Gallery\Render\TemplateAttributes::feed_root( $attrs, $source, $public_safe )
 );
 $layout_slug = (string) ( $attrs['layout'] ?? 'live' );
+$thumb_settings = is_array( $card_settings ?? null ) ? $card_settings : $attrs;
+$thumbnail_style = $renderer->thumbnail_style_attr( $thumb_settings );
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
 ?>
 <div class="vyg-feed vyg-feed--live vyg-live <?php echo esc_attr( \VectorYT\Gallery\Render\TemplateAttributes::width_class( $attrs ) ); ?>"
@@ -67,7 +69,7 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
             </div>
             <div class="vyg-live__grid">
                 <?php foreach ( $buckets['live'] as $video ) : ?>
-                    <?php vyg_render_live_card( $video, $renderer, 'live' ); ?>
+                    <?php vyg_render_live_card( $video, $renderer, 'live', $thumb_settings, $thumbnail_style ); ?>
                 <?php endforeach; ?>
             </div>
         </section>
@@ -80,7 +82,7 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
             </div>
             <div class="vyg-live__grid">
                 <?php foreach ( $buckets['upcoming'] as $video ) : ?>
-                    <?php vyg_render_live_card( $video, $renderer, 'upcoming' ); ?>
+                    <?php vyg_render_live_card( $video, $renderer, 'upcoming', $thumb_settings, $thumbnail_style ); ?>
                 <?php endforeach; ?>
             </div>
         </section>
@@ -93,7 +95,7 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
             </div>
             <div class="vyg-live__grid">
                 <?php foreach ( $buckets['replay'] as $video ) : ?>
-                    <?php vyg_render_live_card( $video, $renderer, 'ended' ); ?>
+                    <?php vyg_render_live_card( $video, $renderer, 'ended', $thumb_settings, $thumbnail_style ); ?>
                 <?php endforeach; ?>
             </div>
         </section>

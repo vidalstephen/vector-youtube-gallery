@@ -35,6 +35,8 @@ $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
 );
 $width_class = \VectorYT\Gallery\Render\TemplateAttributes::width_class($attrs);
 $layout_slug = (string) ($attrs['layout'] ?? 'masonry');
+$thumb_settings = is_array( $card_settings ?? null ) ? $card_settings : $attrs;
+$thumbnail_style = $renderer->thumbnail_style_attr( $thumb_settings );
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
 $trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
 ?>
@@ -52,7 +54,7 @@ $trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
         <?php
         $embed_url = $renderer->embed_url($video);
         $watch_url = $renderer->watch_url($video);
-        $thumb     = $renderer->best_thumbnail($video);
+        $thumb     = $renderer->thumbnail_url($video, $thumb_settings);
         $duration  = $renderer->format_duration((int) ($video['duration_seconds'] ?? 0));
         $is_live   = 'live' === ($video['live_status'] ?? '');
         ?>
@@ -68,6 +70,7 @@ $trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
                     <img class="vyg-card__thumb"
                          src="<?php echo esc_url($thumb); ?>"
                          alt="<?php echo esc_attr((string) ($video['title'] ?? '')); ?>"
+                         style="<?php echo esc_attr( $thumbnail_style ); ?>"
                          loading="lazy"
                          decoding="async" />
                     <?php if ('' !== $duration) : ?>

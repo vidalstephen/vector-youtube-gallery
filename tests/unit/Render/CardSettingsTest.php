@@ -106,6 +106,9 @@ final class CardSettingsTest extends TestCase {
 		$this->assertSame( 'comfortable', $defaults['density'] );
 		$this->assertTrue( $defaults['show_thumbnail'] );
 		$this->assertSame( '16_9', $defaults['thumbnail_ratio'] );
+		$this->assertSame( 'cover', $defaults['thumbnail_fit'] );
+		$this->assertSame( 'center_center', $defaults['thumbnail_position'] );
+		$this->assertSame( '', $defaults['thumbnail_override_url'] );
 		$this->assertTrue( $defaults['show_duration'] );
 		$this->assertTrue( $defaults['show_title'] );
 		$this->assertTrue( $defaults['show_channel'] );

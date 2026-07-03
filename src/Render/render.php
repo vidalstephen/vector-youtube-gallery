@@ -92,6 +92,9 @@ function render_block_vectoryt_gallery(array $attributes): string {
         'feed_intro'       => sanitize_text_field((string) ($attributes['feed_intro'] ?? $attributes['header_intro'] ?? '')),
         'feed_cta_label'   => sanitize_text_field((string) ($attributes['feed_cta_label'] ?? '')),
         'feed_cta_url'     => esc_url_raw((string) ($attributes['feed_cta_url'] ?? '')),
+        'thumbnail_fit'    => sanitize_key((string) ($attributes['thumbnail_fit'] ?? 'cover')),
+        'thumbnail_position' => sanitize_key((string) ($attributes['thumbnail_position'] ?? 'center_center')),
+        'thumbnail_override_url' => esc_url_raw((string) ($attributes['thumbnail_override_url'] ?? '')),
     );
 
     return $renderer->render($args);

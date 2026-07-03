@@ -239,6 +239,9 @@ final class CardRenderer {
             array( '16_9', '4_3', '1_1', '9_16', 'auto' ),
             '16_9'
         );
+        $thumbnail_fit      = $this->video_renderer->thumbnail_fit( $settings );
+        $thumbnail_position = $this->video_renderer->thumbnail_position( $settings );
+        $thumbnail_style    = $this->video_renderer->thumbnail_style_attr( $settings );
         $duration_position  = self::slug_to_class( (string) ( $settings['duration_position'] ?? 'bottom_right' ) );
         $badge_position     = self::slug_to_class( (string) ( $settings['badge_position'] ?? 'top_left' ) );
         $cta_style          = self::slug_to_class( (string) ( $settings['cta_style'] ?? 'primary' ) );
@@ -276,7 +279,7 @@ final class CardRenderer {
             'video'             => $video,
             'video_id'          => (string) ( $video['youtube_video_id'] ?? '' ),
             'watch_url'         => $this->video_renderer->watch_url( $video ),
-            'thumb_url'         => $this->video_renderer->best_thumbnail( $video ),
+            'thumb_url'         => $this->video_renderer->thumbnail_url( $video, $settings ),
             'duration_label'    => $this->video_renderer->format_duration( (int) ( $video['duration_seconds'] ?? 0 ) ),
             'views_label'       => $this->video_renderer->format_view_count( (int) ( $video['view_count'] ?? 0 ) ),
             'time_label'        => RelativeTime::humanize(
@@ -286,6 +289,9 @@ final class CardRenderer {
             'description'       => (string) ( $video['description'] ?? '' ),
             'channel_name'      => $channel_name,
             'thumbnail_ratio'   => $thumbnail_ratio,
+            'thumbnail_fit'     => $thumbnail_fit,
+            'thumbnail_position'=> $thumbnail_position,
+            'thumbnail_style'   => $thumbnail_style,
             'title_lines'       => (int) ( $settings['title_lines'] ?? 2 ),
             'duration_position' => $duration_position,
             'badge_position'    => $badge_position,

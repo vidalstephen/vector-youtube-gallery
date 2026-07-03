@@ -107,6 +107,7 @@ $action_label = static function ( string $slug ): string {
                 <img class="vyg-card__thumb"
                      src="<?php echo esc_url( $thumb_url ); ?>"
                      alt="<?php echo esc_attr( $title ); ?>"
+                     style="<?php echo esc_attr( (string) ( $thumbnail_style ?? 'object-fit:cover;object-position:center center' ) ); ?>"
                      loading="lazy"
                      decoding="async" />
                 <?php if ( $show_play_icon ) : ?>

@@ -73,6 +73,122 @@ final class VideoRenderer {
     }
 
     /**
+     * Resolve the thumbnail URL, honoring an operator-provided override.
+     *
+     * The override is intentionally feed/card-setting scoped rather than
+     * persisted on the video row. Operators can replace the artwork for a
+     * feed/layout without mutating YouTube sync data.
+     *
+     * @param array<string,mixed> $video
+     * @param array<string,mixed> $settings Resolved card settings or attrs.
+     */
+    public function thumbnail_url( array $video, array $settings = array(), string $preferred = 'medium' ): string {
+        $override = trim( (string) ( $settings['thumbnail_override_url'] ?? '' ) );
+        if ( '' !== $override && filter_var( $override, FILTER_VALIDATE_URL ) ) {
+            return $override;
+        }
+        return $this->best_thumbnail( $video, $preferred );
+    }
+
+    /**
+     * Sanitized object-fit value for thumbnail media wells.
+     *
+     * @param array<string,mixed> $settings Resolved card settings or attrs.
+     */
+    public function thumbnail_fit( array $settings = array() ): string {
+        $fit = strtolower( str_replace( '-', '_', trim( (string) ( $settings['thumbnail_fit'] ?? 'cover' ) ) ) );
+        return match ( $fit ) {
+            'contain'    => 'contain',
+            'fill'       => 'fill',
+            'scale_down' => 'scale-down',
+            default      => 'cover',
+        };
+    }
+
+    /**
+     * Sanitized object-position value for thumbnail media wells.
+     *
+     * @param array<string,mixed> $settings Resolved card settings or attrs.
+     */
+    public function thumbnail_position( array $settings = array() ): string {
+        $position = strtolower( str_replace( array( '-', ' ' ), '_', trim( (string) ( $settings['thumbnail_position'] ?? 'center_center' ) ) ) );
+        $allowed = array(
+            'center_center' => 'center center',
+            'top_center'    => 'top center',
+            'bottom_center' => 'bottom center',
+            'left_center'   => 'left center',
+            'right_center'  => 'right center',
+        );
+        return $allowed[ $position ] ?? 'center center';
+    }
+
+    /**
+     * Implicit object-position for portrait/shorts media wells.
+     *
+     * YouTube `mq*` / `hq*` thumbnails typically have a darker or black
+     * band below the actual video artwork. Centering the crop puts that
+     * black band in the middle of the well. Shifting the focal point to
+     * the upper third keeps the meaningful content (title graphic, main
+     * subject) visible after a large zoom.
+     *
+     * Returns the CSS value, or '' to defer to the resolved position.
+     */
+    public function thumbnail_portrait_position( array $settings = array() ): string {
+        $ratio = (string) ( $settings['thumbnail_ratio'] ?? '16_9' );
+        if ( '9_16' !== $ratio ) {
+            return '';
+        }
+        return 'center 18%';
+    }
+
+    /**
+     * Optional extra zoom for portrait/shorts media wells.
+     *
+     * Many YouTube thumbnails include black padding. Combined with the
+     * 9:16 portrait aspect, a plain `object-fit: cover` still shows
+     * black letterbox bands inside the well. A small uniform scale
+     * (default 1.18 for portrait ratios, 1.0 otherwise) crops that
+     * baked-in padding past the edges of the well.
+     *
+     * @param array<string,mixed> $settings Resolved card settings or attrs.
+     */
+    public function thumbnail_zoom( array $settings = array() ): string {
+        $raw = $settings['thumbnail_zoom'] ?? null;
+        if ( is_numeric( $raw ) ) {
+            $value = (float) $raw;
+        } else {
+            $ratio = (string) ( $settings['thumbnail_ratio'] ?? '16_9' );
+            // 1.45 = enough extra crop to cover the black padding that
+            // YouTube embeds in its `mq*` / `hq*` thumbnail variants.
+            $value = ( '9_16' === $ratio ) ? 1.45 : 1.0;
+        }
+        if ( $value < 1.0 ) {
+            $value = 1.0;
+        }
+        if ( $value > 2.5 ) {
+            $value = 2.5;
+        }
+        return (string) round( $value, 3 );
+    }
+
+    /**
+     * Inline style for <img> thumbnails.
+     *
+     * @param array<string,mixed> $settings Resolved card settings or attrs.
+     */
+    public function thumbnail_style_attr( array $settings = array() ): string {
+        $fit = $this->thumbnail_fit( $settings );
+        $position = $this->thumbnail_position( $settings );
+        $portrait_position = $this->thumbnail_portrait_position( $settings );
+        $style = 'object-fit:' . $fit . ';object-position:' . ( $portrait_position !== '' ? $portrait_position : $position );
+        $zoom  = (float) $this->thumbnail_zoom( $settings );
+        if ( $zoom > 1.0 ) {
+            $style .= ';transform:scale(' . rtrim( rtrim( (string) $zoom, '0' ), '.' ) . ')';
+        }
+        return $style;
+    }
+
+    /**
      * Format ISO seconds as M:SS or H:MM:SS.
      */
     public function format_duration( int $seconds ): string {

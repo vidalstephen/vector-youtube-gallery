@@ -64,7 +64,7 @@ final class ShortcodeRegistrar {
     public const CARD_SYSTEM_ATTRS = array(
         // New D1 attrs (per plan §9 D1).
         'card_preset', 'card_style',
-        'show_thumbnail', 'thumbnail_ratio', 'show_duration',
+        'show_thumbnail', 'thumbnail_ratio', 'thumbnail_fit', 'thumbnail_position', 'thumbnail_override_url', 'show_duration',
         'show_title', 'show_channel', 'show_metadata',
         'show_description', 'show_cta', 'show_actions',
         'metadata_fields', 'date_format', 'metadata_separator',
@@ -429,6 +429,9 @@ final class ShortcodeRegistrar {
             'card_style'             => 'bordered',
             'show_thumbnail'         => true,
             'thumbnail_ratio'        => '16_9',
+            'thumbnail_fit'          => 'cover',
+            'thumbnail_position'     => 'center_center',
+            'thumbnail_override_url' => '',
             'show_duration'          => true,
             'show_title'             => true,
             'show_channel'           => true,
@@ -464,6 +467,7 @@ final class ShortcodeRegistrar {
         // Enum-like attrs (sanitize_key preserves underscores + dashes).
         $enum_attrs = array(
             'density', 'card_preset', 'card_style', 'thumbnail_ratio',
+            'thumbnail_fit', 'thumbnail_position',
             'metadata_separator', 'cta_style', 'cta_position', 'date_format',
             // Phase 14.1 — width is an enum-like attr; sanitize_key
             // returns 'wide'/'theme'/'full' which match the WIDTH_MODES
@@ -517,6 +521,10 @@ final class ShortcodeRegistrar {
         }
         // Phase 14.9 — shared feed header channel CTA URL.
         if ( 'feed_cta_url' === $attr ) {
+            return esc_url_raw( (string) $value );
+        }
+        // Thumbnail artwork override URL.
+        if ( 'thumbnail_override_url' === $attr ) {
             return esc_url_raw( (string) $value );
         }
         // Phase 14.4 — section-head "View all" link URL. Sanitized via

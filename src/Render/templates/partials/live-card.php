@@ -22,9 +22,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * @param array<string,mixed> $video
  */
-function vyg_render_live_card( array $video, \VectorYT\Gallery\Render\VideoRenderer $renderer, string $status ): void {
+function vyg_render_live_card( array $video, \VectorYT\Gallery\Render\VideoRenderer $renderer, string $status, array $thumb_settings = array(), string $thumbnail_style = '' ): void {
     $watch_url = $renderer->watch_url( $video );
-    $thumb     = $renderer->best_thumbnail( $video );
+    $thumb     = $renderer->thumbnail_url( $video, $thumb_settings );
     $embed_url = $renderer->embed_url( $video, array( 'autoplay' => '1' ) );
     $viewers   = isset( $video['concurrent_viewers'] ) ? (int) $video['concurrent_viewers'] : 0;
     ?>
@@ -37,6 +37,7 @@ function vyg_render_live_card( array $video, \VectorYT\Gallery\Render\VideoRende
             <img class="vyg-live__thumb"
                  src="<?php echo esc_url( $thumb ); ?>"
                  alt="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>"
+                 style="<?php echo esc_attr( '' !== $thumbnail_style ? $thumbnail_style : $renderer->thumbnail_style_attr( $thumb_settings ) ); ?>"
                  loading="lazy" decoding="async" />
             <span class="vyg-live__badge">
                 <?php
