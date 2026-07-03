@@ -504,12 +504,20 @@
  * declarations the flex item keeps its natural content width
  * instead of stretching to the available space — which makes the
  * 2-line clamp moot because the box never gets narrow enough to
- * force a wrap. */
+ * force a wrap.
+ *
+ * The `white-space: normal` is the explicit override of the
+ * previous `nowrap` rule. Without it, `white-space: nowrap` from
+ * the original spec wins and the text never wraps regardless of
+ * the line-clamp declaration. The sub-agent diagnose caught this
+ * gap: the line-clamp was technically applied but `nowrap` was
+ * preventing any line breaks. */
 .vyg-card__channel-name {
     flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
