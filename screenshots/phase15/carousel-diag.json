@@ -1,0 +1,134 @@
+{
+  "url": "https://wpt.nsystems.live/vyg-14-12-carousel/?vyg_cache_bust=1783049500352-carousel",
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "feed": {
+    "width": 620,
+    "offsetWidth": 620,
+    "classes": "vyg-feed vyg-feed--carousel vyg-carousel vyg-carousel--per-3 vyg-wide",
+    "parentWidth": 1440
+  },
+  "article": {
+    "tag": "header",
+    "classes": "vyg-section-head",
+    "width": 620
+  },
+  "cardMetrics": {
+    "count": 12,
+    "widths": [
+      191,
+      191,
+      191
+    ],
+    "classes": [
+      "vyg-carousel__slide vyg-card",
+      "vyg-carousel__slide vyg-card",
+      "vyg-carousel__slide vyg-card"
+    ]
+  },
+  "titleMetrics": [
+    {
+      "text": "The Great World Reset Part 2",
+      "clientHeight": 38,
+      "scrollHeight": 39,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Strong Mind In The Day Of Tribulation",
+      "clientHeight": 38,
+      "scrollHeight": 39,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Spiritual Inheritance In Heavenly Places",
+      "clientHeight": 38,
+      "scrollHeight": 58,
+      "overflows": true,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "The Great World Reset",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "A Word From The Lord",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    }
+  ],
+  "channelMetrics": {
+    "count": 0,
+    "samples": []
+  },
+  "thumbMetrics": {
+    "count": 12,
+    "samples": [
+      {
+        "thumbW": 191.39431762695312,
+        "thumbH": 107.6544189453125,
+        "cardW": 191,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      },
+      {
+        "thumbW": 191.394287109375,
+        "thumbH": 107.6544189453125,
+        "cardW": 191,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      },
+      {
+        "thumbW": 191.394287109375,
+        "thumbH": 107.6544189453125,
+        "cardW": 191,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      }
+    ]
+  },
+  "css": {
+    "presetcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/presets.css?ver=0.1.1",
+    "cardcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/card.css?ver=0.1.1",
+    "allWithVyg": []
+  }
+}

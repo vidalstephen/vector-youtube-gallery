@@ -1,0 +1,177 @@
+{
+  "url": "https://wpt.nsystems.live/vyg-14-12-grid/?vyg_cache_bust=1783049488113-grid",
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "feed": {
+    "width": 620,
+    "offsetWidth": 620,
+    "classes": "vyg-feed vyg-feed--grid vyg-grid vyg-grid--cols-3 vyg-grid--density-comfortable vyg-wide",
+    "parentWidth": 1440
+  },
+  "article": {
+    "tag": "header",
+    "classes": "vyg-section-head",
+    "width": 620
+  },
+  "cardMetrics": {
+    "count": 12,
+    "widths": [
+      192,
+      192,
+      192
+    ],
+    "classes": [
+      "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable",
+      "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable",
+      "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    ]
+  },
+  "titleMetrics": [
+    {
+      "text": "The Great World Reset Part 2",
+      "clientHeight": 39,
+      "scrollHeight": 40,
+      "overflows": false,
+      "lineHeight": "19.52px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Strong Mind In The Day Of Tribulation",
+      "clientHeight": 39,
+      "scrollHeight": 59,
+      "overflows": true,
+      "lineHeight": "19.52px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Spiritual Inheritance In Heavenly Places",
+      "clientHeight": 39,
+      "scrollHeight": 59,
+      "overflows": true,
+      "lineHeight": "19.52px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "The Great World Reset",
+      "clientHeight": 39,
+      "scrollHeight": 40,
+      "overflows": false,
+      "lineHeight": "19.52px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "A Word From The Lord",
+      "clientHeight": 39,
+      "scrollHeight": 40,
+      "overflows": false,
+      "lineHeight": "19.52px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    }
+  ],
+  "channelMetrics": {
+    "count": 12,
+    "samples": [
+      {
+        "text": "The Way Of Holiness Broadcast",
+        "clientWidth": 160,
+        "scrollWidth": 229,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "overflowsX": true,
+        "overflowsY": false,
+        "whiteSpace": "nowrap",
+        "display": "block",
+        "webkitLineClamp": "none",
+        "classes": "vyg-card__channel-name",
+        "hasUC": false
+      },
+      {
+        "text": "The Way Of Holiness Broadcast",
+        "clientWidth": 160,
+        "scrollWidth": 229,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "overflowsX": true,
+        "overflowsY": false,
+        "whiteSpace": "nowrap",
+        "display": "block",
+        "webkitLineClamp": "none",
+        "classes": "vyg-card__channel-name",
+        "hasUC": false
+      },
+      {
+        "text": "The Way Of Holiness Broadcast",
+        "clientWidth": 160,
+        "scrollWidth": 229,
+        "clientHeight": 20,
+        "scrollHeight": 20,
+        "overflowsX": true,
+        "overflowsY": false,
+        "whiteSpace": "nowrap",
+        "display": "block",
+        "webkitLineClamp": "none",
+        "classes": "vyg-card__channel-name",
+        "hasUC": false
+      }
+    ]
+  },
+  "thumbMetrics": {
+    "count": 12,
+    "samples": [
+      {
+        "thumbW": 192.4578857421875,
+        "thumbH": 108.248779296875,
+        "cardW": 192,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      },
+      {
+        "thumbW": 192.4578857421875,
+        "thumbH": 108.248779296875,
+        "cardW": 192,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      },
+      {
+        "thumbW": 192.45794677734375,
+        "thumbH": 108.248779296875,
+        "cardW": 192,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      }
+    ]
+  },
+  "css": {
+    "presetcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/presets.css?ver=0.1.1",
+    "cardcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/card.css?ver=0.1.1",
+    "allWithVyg": []
+  }
+}

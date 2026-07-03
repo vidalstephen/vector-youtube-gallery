@@ -1,0 +1,98 @@
+{
+  "url": "https://wpt.nsystems.live/vyg-14-12-list/?vyg_cache_bust=1783049505965-list",
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "feed": {
+    "width": 620,
+    "offsetWidth": 620,
+    "classes": "vyg-feed vyg-feed--list vyg-list vyg-wide",
+    "parentWidth": 1440
+  },
+  "article": {
+    "tag": "header",
+    "classes": "vyg-section-head",
+    "width": 620
+  },
+  "cardMetrics": {
+    "count": 0,
+    "widths": [],
+    "classes": []
+  },
+  "titleMetrics": [
+    {
+      "text": "The Great World Reset Part 2",
+      "clientHeight": 22,
+      "scrollHeight": 24,
+      "overflows": true,
+      "lineHeight": "22.2784px",
+      "webkitLineClamp": "2",
+      "display": "block",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "classes": "vyg-row__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Strong Mind In The Day Of Tribulation",
+      "clientHeight": 45,
+      "scrollHeight": 46,
+      "overflows": false,
+      "lineHeight": "22.2784px",
+      "webkitLineClamp": "2",
+      "display": "block",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "classes": "vyg-row__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Spiritual Inheritance In Heavenly Places",
+      "clientHeight": 45,
+      "scrollHeight": 46,
+      "overflows": false,
+      "lineHeight": "22.2784px",
+      "webkitLineClamp": "2",
+      "display": "block",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "classes": "vyg-row__title vyg-card__title--2"
+    },
+    {
+      "text": "The Great World Reset",
+      "clientHeight": 22,
+      "scrollHeight": 24,
+      "overflows": true,
+      "lineHeight": "22.2784px",
+      "webkitLineClamp": "2",
+      "display": "block",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "classes": "vyg-row__title vyg-card__title--2"
+    },
+    {
+      "text": "A Word From The Lord",
+      "clientHeight": 22,
+      "scrollHeight": 24,
+      "overflows": true,
+      "lineHeight": "22.2784px",
+      "webkitLineClamp": "2",
+      "display": "block",
+      "overflow": "visible",
+      "textOverflow": "clip",
+      "classes": "vyg-row__title vyg-card__title--2"
+    }
+  ],
+  "channelMetrics": {
+    "count": 0,
+    "samples": []
+  },
+  "thumbMetrics": {
+    "count": 0,
+    "samples": []
+  },
+  "css": {
+    "presetcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/presets.css?ver=0.1.1",
+    "cardcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/card.css?ver=0.1.1",
+    "allWithVyg": []
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "found": true,
+  "layout": "carousel",
+  "feedWidth": 620,
+  "cardCount": 12,
+  "thumbCount": 12,
+  "firstCard": {
+    "width": 191,
+    "height": 146,
+    "classes": "vyg-carousel__slide vyg-card"
+  },
+  "firstThumb": {
+    "width": 191,
+    "height": 108,
+    "objectFit": "cover"
+  },
+  "title": {
+    "text": "The Great World Reset Part 2",
+    "height": 38,
+    "scrollHeight": 39,
+    "lineHeight": "19.1296px",
+    "webkitLineClamp": "2",
+    "overflow": "hidden",
+    "display": "flow-root",
+    "classes": "vyg-card__title vyg-card__title--2"
+  },
+  "overflowTitleCount": 4,
+  "missingChannelCount": 12,
+  "zeroThumbCount": 0,
+  "sampleChannel": null,
+  "titleSample": [
+    "The Great World Reset Part 2",
+    "REPOST: Strong Mind In The Day Of Tribulation",
+    "REPOST: Spiritual Inheritance In Heavenly Places"
+  ]
+}

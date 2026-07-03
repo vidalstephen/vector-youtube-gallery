@@ -1,0 +1,134 @@
+{
+  "url": "https://wpt.nsystems.live/vyg-14-12-hero/?vyg_cache_bust=1783049516612-hero",
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "feed": {
+    "width": 620,
+    "offsetWidth": 620,
+    "classes": "vyg-feed vyg-feed--hero vyg-hero vyg-wide",
+    "parentWidth": 1440
+  },
+  "article": {
+    "tag": "header",
+    "classes": "vyg-section-head",
+    "width": 620
+  },
+  "cardMetrics": {
+    "count": 12,
+    "widths": [
+      620,
+      620,
+      620
+    ],
+    "classes": [
+      "vyg-hero__primary vyg-card",
+      "vyg-card",
+      "vyg-card"
+    ]
+  },
+  "titleMetrics": [
+    {
+      "text": "REPOST: Strong Mind In The Day Of Tribulation",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "REPOST: Spiritual Inheritance In Heavenly Places",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "The Great World Reset",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "A Word From The Lord",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    },
+    {
+      "text": "Spirit and Truth Worshippers – June 20, 2026",
+      "clientHeight": 19,
+      "scrollHeight": 20,
+      "overflows": false,
+      "lineHeight": "19.1296px",
+      "webkitLineClamp": "2",
+      "display": "flow-root",
+      "overflow": "hidden",
+      "textOverflow": "clip",
+      "classes": "vyg-card__title vyg-card__title--2"
+    }
+  ],
+  "channelMetrics": {
+    "count": 0,
+    "samples": []
+  },
+  "thumbMetrics": {
+    "count": 11,
+    "samples": [
+      {
+        "thumbW": 620.6201171875,
+        "thumbH": 349.0986328125,
+        "cardW": 620,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      },
+      {
+        "thumbW": 620.6201171875,
+        "thumbH": 349.0986328125,
+        "cardW": 620,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      },
+      {
+        "thumbW": 620.6201171875,
+        "thumbH": 349.0986328125,
+        "cardW": 620,
+        "fillRatio": "1.00",
+        "objectFit": null,
+        "imgNatural": null,
+        "backgroundImage": "none"
+      }
+    ]
+  },
+  "css": {
+    "presetcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/presets.css?ver=0.1.1",
+    "cardcss": "https://wpt.nsystems.live/wp-content/plugins/vector-youtube-gallery/assets/css/card.css?ver=0.1.1",
+    "allWithVyg": []
+  }
+}

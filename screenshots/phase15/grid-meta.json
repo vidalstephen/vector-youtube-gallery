@@ -1,0 +1,36 @@
+{
+  "found": true,
+  "layout": "grid",
+  "feedWidth": 620,
+  "cardCount": 12,
+  "thumbCount": 12,
+  "firstCard": {
+    "width": 192,
+    "height": 232,
+    "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+  },
+  "firstThumb": {
+    "width": 192,
+    "height": 108,
+    "objectFit": "cover"
+  },
+  "title": {
+    "text": "The Great World Reset Part 2",
+    "height": 39,
+    "scrollHeight": 40,
+    "lineHeight": "19.52px",
+    "webkitLineClamp": "2",
+    "overflow": "hidden",
+    "display": "flow-root",
+    "classes": "vyg-card__title vyg-card__title--2"
+  },
+  "overflowTitleCount": 5,
+  "missingChannelCount": 12,
+  "zeroThumbCount": 0,
+  "sampleChannel": "The Way Of Holiness Broadcast",
+  "titleSample": [
+    "The Great World Reset Part 2",
+    "REPOST: Strong Mind In The Day Of Tribulation",
+    "REPOST: Spiritual Inheritance In Heavenly Places"
+  ]
+}
