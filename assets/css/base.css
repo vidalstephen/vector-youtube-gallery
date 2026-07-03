@@ -66,6 +66,32 @@
     max-width: 100% !important;
 }
 
+/* Phase 15.6 — break out of the WP Twenty Twenty-Four
+ * `is-layout-constrained` parent's `max-width: 620px` constraint
+ * by using a HIGHER-SPECIFICITY selector.
+ *
+ * The WordPress theme has:
+ *   .is-layout-constrained > :where(:not(.alignleft):not(.alignright):not(.alignfull)) {
+ *       max-width: var(--wp--style--global--content-size);  /* 620px */
+ *   }
+ * The `:where()` pseudo-class is a no-op for specificity, so the
+ * actual rule specificity is 0,1,4 (one class + 4 pseudo-class
+ * selectors on the right of `>`). My .vyg-feed.vyg-wide rule is
+ * only 0,2,0 — the parent's 0,1,4 wins regardless of `!important`
+ * because the parent rule has higher specificity.
+ *
+ * Adding `.entry-content` as an ancestor selector bumps the
+ * specificity to 0,3,1 (0,3,0 from 3 class selectors + 0,0,1 for
+ * entry-content's class). That beats 0,1,4, allowing our
+ * max-width to actually win.
+ *
+ * Verified by diagnose script: was 620px → 1400px after this fix. */
+.entry-content .vyg-feed.vyg-theme,
+.entry-content .vyg-feed.vyg-wide,
+.entry-content .vyg-feed.vyg-full {
+    max-width: var(--vyg-max) !important;
+}
+
 .vyg-feed *,
 .vyg-feed *::before,
 .vyg-feed *::after {

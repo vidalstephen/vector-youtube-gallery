@@ -1,0 +1,139 @@
+{
+  "url": "https://wpt.nsystems.live/vyg-14-12-grid/?vyg_cache_bust=1783049989508181019",
+  "cacheBust": "1783049989508181019",
+  "capturedAt": "2026-07-03T03:39:54.354Z",
+  "method": "fresh-css-injected-to-bypass-stale-cloudflare-cache",
+  "note": "The live page HTML enqueues base.css?ver=0.1.1 but Cloudflare is serving a stale cached variant of that URL (last-modified 03:26:07, age >10min). The freshly uploaded CSS is only available at the canonical URL with no ?ver= query. This diagnose fetches the fresh CSS from the canonical URLs and injects it into the page as additional <style> tags to verify the fixes actually work.",
+  "viewport": {
+    "w": 1440,
+    "h": 900
+  },
+  "feed": {
+    "offsetWidth": 1232,
+    "clientWidth": 1232,
+    "boundingWidth": 1232,
+    "classes": "vyg-feed vyg-feed--grid vyg-grid vyg-grid--cols-3 vyg-grid--density-comfortable vyg-wide",
+    "maxWidth": "1400px",
+    "width": "1232px",
+    "parentTag": "DIV",
+    "parentClasses": "entry-content wp-block-post-content has-global-padding is-layout-constrained wp-block-post-content-is-layout-constrained",
+    "parentOffsetWidth": 1440
+  },
+  "card": {
+    "offsetWidth": 397,
+    "clientWidth": 397,
+    "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable",
+    "computed": {
+      "maxWidth": "none",
+      "width": "397.328px",
+      "flex": "0 1 auto"
+    }
+  },
+  "cardCount": 12,
+  "cardWidths": [
+    {
+      "offsetWidth": 397,
+      "clientWidth": 397,
+      "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    },
+    {
+      "offsetWidth": 397,
+      "clientWidth": 397,
+      "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    },
+    {
+      "offsetWidth": 397,
+      "clientWidth": 397,
+      "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    },
+    {
+      "offsetWidth": 397,
+      "clientWidth": 397,
+      "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    },
+    {
+      "offsetWidth": 397,
+      "clientWidth": 397,
+      "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    },
+    {
+      "offsetWidth": 397,
+      "clientWidth": 397,
+      "classes": "vyg-card vyg-card--standard vyg-card--bordered vyg-density--comfortable"
+    }
+  ],
+  "channel": {
+    "text": "The Way Of Holiness Broadcast",
+    "clientWidth": 365,
+    "scrollWidth": 365,
+    "clientHeight": 20,
+    "scrollHeight": 20,
+    "overflowsX": false,
+    "overflowsY": false,
+    "whiteSpace": "nowrap",
+    "display": "flow-root",
+    "webkitLineClamp": "2",
+    "webkitBoxOrient": "vertical",
+    "flex": "1 1 0px",
+    "minWidth": "0px",
+    "classes": "vyg-card__channel-name"
+  },
+  "channelSamples": [
+    {
+      "text": "The Way Of Holiness Broadcast",
+      "clientWidth": 365,
+      "scrollWidth": 365,
+      "clientHeight": 20,
+      "scrollHeight": 20,
+      "overflowsX": false,
+      "whiteSpace": "nowrap",
+      "display": "flow-root",
+      "webkitLineClamp": "2"
+    },
+    {
+      "text": "The Way Of Holiness Broadcast",
+      "clientWidth": 365,
+      "scrollWidth": 365,
+      "clientHeight": 20,
+      "scrollHeight": 20,
+      "overflowsX": false,
+      "whiteSpace": "nowrap",
+      "display": "flow-root",
+      "webkitLineClamp": "2"
+    },
+    {
+      "text": "The Way Of Holiness Broadcast",
+      "clientWidth": 365,
+      "scrollWidth": 365,
+      "clientHeight": 20,
+      "scrollHeight": 20,
+      "overflowsX": false,
+      "whiteSpace": "nowrap",
+      "display": "flow-root",
+      "webkitLineClamp": "2"
+    },
+    {
+      "text": "The Way Of Holiness Broadcast",
+      "clientWidth": 365,
+      "scrollWidth": 365,
+      "clientHeight": 20,
+      "scrollHeight": 20,
+      "overflowsX": false,
+      "whiteSpace": "nowrap",
+      "display": "flow-root",
+      "webkitLineClamp": "2"
+    },
+    {
+      "text": "The Way Of Holiness Broadcast",
+      "clientWidth": 365,
+      "scrollWidth": 365,
+      "clientHeight": 20,
+      "scrollHeight": 20,
+      "overflowsX": false,
+      "whiteSpace": "nowrap",
+      "display": "flow-root",
+      "webkitLineClamp": "2"
+    }
+  ],
+  "stylesheetCount": 35
+}

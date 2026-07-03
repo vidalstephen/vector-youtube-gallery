@@ -20,7 +20,13 @@ defined('ABSPATH') || exit;
 final class AssetManager {
 
     private const HANDLE_BASE = 'vyg';
-    private const VERSION     = '0.1.1';
+    // Phase 15.6 — bumped from 0.1.1 to 0.1.2 to invalidate the
+    // Cloudflare browser cache (max-age=14400 / 4 hours). The
+    // version is appended to every stylesheet URL as `?ver=X.Y.Z`
+    // and serves as a cache-busting query string. With 0.1.1 the
+    // browser was loading the OLD CSS (width 620px, channel-name
+    // `nowrap`) even though the on-disk file was updated.
+    private const VERSION     = '0.1.2';
 
     private bool $lightbox_enqueued = false;
     private bool $load_more_enqueued = false;
