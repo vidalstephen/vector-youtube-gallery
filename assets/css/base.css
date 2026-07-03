@@ -43,23 +43,27 @@
     --vyg-max: 880px;
     width: min(100%, var(--vyg-max));
     margin-inline: auto;
+    max-width: var(--vyg-max) !important;
 }
-/* Phase 15.6 — bump the default `wide` width from 1180px to 1400px.
- * On modern desktop displays (1920px+), 1180px leaves a lot of
- * unused horizontal space and the gallery looks like a thin column
- * in the middle. 1400px fills the canvas more convincingly for a
- * full-width WordPress page without becoming a competing "full"
- * layout that bleeds off the edges. The theme default (880px) and
- * the full-bleed mode (100%) are unchanged — only the default
- * gets the bump. */
 .vyg-feed.vyg-wide {
     --vyg-max: 1400px;
     width: min(100%, var(--vyg-max));
     margin-inline: auto;
+    /* Phase 15.6 — break out of the WP Twenty Twenty-Four
+     * `is-layout-constrained` parent's `max-width: 620px` constraint
+     * by using a higher-specificity rule. Without this, the
+     * `entry-content.is-layout-constrained` ancestor caps the feed
+     * at 620px even when our `vyg-wide` class is present. The
+     * `max-width: 1400px` here with `!important` wins against
+     * `.is-layout-constrained > :where(...) { max-width: var(--wp--
+     * style--global--content-size) }` (specificity 0,2,0 with the
+     * `:where()` parent). */
+    max-width: var(--vyg-max) !important;
 }
 .vyg-feed.vyg-full {
     --vyg-max: 100%;
     width: 100%;
+    max-width: 100% !important;
 }
 
 .vyg-feed *,
