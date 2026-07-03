@@ -123,7 +123,7 @@ $active_index = (int) floor( $slide_count / 2 );
                             <span class="vyg-card__badge vyg-card__badge--live"><?php esc_html_e('LIVE', 'vector-youtube-gallery'); ?></span>
                         <?php endif; ?>
                     </div>
-                    <h3 class="vyg-card__title"><?php echo esc_html((string) ($video['title'] ?? '')); ?></h3>
+                    <h3 class="vyg-card__title vyg-card__title--2"><?php echo esc_html((string) ($video['title'] ?? '')); ?></h3>
                 </a>
             </li>
         <?php endforeach; ?>

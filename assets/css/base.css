@@ -30,8 +30,16 @@
     width: min(100%, var(--vyg-max));
     margin-inline: auto;
 }
+/* Phase 15.6 — bump the default `wide` width from 1180px to 1400px.
+ * On modern desktop displays (1920px+), 1180px leaves a lot of
+ * unused horizontal space and the gallery looks like a thin column
+ * in the middle. 1400px fills the canvas more convincingly for a
+ * full-width WordPress page without becoming a competing "full"
+ * layout that bleeds off the edges. The theme default (880px) and
+ * the full-bleed mode (100%) are unchanged — only the default
+ * gets the bump. */
 .vyg-feed.vyg-wide {
-    --vyg-max: 1180px;
+    --vyg-max: 1400px;
     width: min(100%, var(--vyg-max));
     margin-inline: auto;
 }

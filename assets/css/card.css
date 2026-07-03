@@ -77,6 +77,26 @@
     will-change: transform;
 }
 
+/* Phase 15.1 — increase specificity of card thumb so it wins against
+ * the .vyg-feed img { height:auto } rule in base.css (which has
+ * specificity 0,1,1). The descendant selector matches it and gives
+ * 0,2,0 which is enough to keep height:100%. Without this, legacy
+ * layout templates (carousel, masonry) that don't emit the ratio
+ * class on the media container see the image rendered at intrinsic
+ * height rather than filling the container. */
+.vyg-feed .vyg-card__thumb {
+    width: 100%;
+    height: 100%;
+    min-height: 0; /* Prevent flexbox from stretching the image */
+    object-fit: cover;
+    display: block;
+    /* Phase 15.1 — keep the hover transform baseline + transition
+     * from the original .vyg-card__thumb rule (now consolidated
+     * here so all card thumbs share the same hover scale behavior). */
+    transform: scale(1.001);
+    transition: transform 0.35s ease, filter 0.35s ease;
+}
+
 .vyg-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--vyg-card-shadow-hover, 0 0 0 1px rgba(17, 24, 39, 0.12), 0 12px 28px -14px rgba(17, 24, 39, 0.38), 0 24px 54px -32px rgba(17, 24, 39, 0.52));
@@ -119,6 +139,26 @@
     outline: 2px solid #0f0f0f;
     outline-offset: 2px;
     border-radius: 2px;
+}
+
+/* Phase 15.2 — high-specificity title line-clamp rules. The base
+ * `.vyg-card__title` rules below (0,1,0) are vulnerable to being
+ * overridden by later-loading rules in presets.css (`.vyg-feed
+ * .vyg-card__title` at 0,2,0) and the theme's `h3` styles. These
+ * descendant-selector versions carry 0,2,0 (base) and 0,3,0 (modifier)
+ * — strong enough to win the cascade after the load-order fix in
+ * AssetManager::enqueue_card_assets() (presets now loads first, so
+ * card.css always cascades after).
+ *
+ * `display: -webkit-box` and `-webkit-box-orient: vertical` carry
+ * `!important` as a defensive measure against any theme stylesheet
+ * that resets `display` on `h3` elements — `-webkit-line-clamp` is
+ * notoriously fragile and breaks the moment the box model
+ * properties get clobbered. */
+.vyg-feed .vyg-card__title {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden;
 }
 
 /* ---- 4. Media region (thumb wrap, thumb, duration, badges) ---------- */
@@ -214,18 +254,24 @@
     display: block;
     width: 100%;
     height: 100%;
+    /* Phase 15.1 — defensive aspect-ratio fallback. Legacy layout
+     * templates (carousel, masonry) don't emit the
+     * `vyg-thumb-ratio--*` class on the wrap, so without this rule
+     * the wrap has no constrained height and `height:100%` on the
+     * image has nothing to fill. This default ensures the image
+     * always fills a 16:9 area when the ratio class is missing. */
+    aspect-ratio: 16 / 9;
 }
 
-.vyg-card__thumb {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transform: scale(1.001);
-    transition: transform 0.35s ease, filter 0.35s ease;
-}
+/* Phase 15.1 — the .vyg-card__thumb rule is consolidated into
+ * `.vyg-feed .vyg-card__thumb` at the top of the file (Phase 15.1
+ * block). The lower-specificity version is removed so we don't
+ * have two competing rules — the higher-specificity descendant
+ * selector wins against both the `.vyg-feed img` global rule and
+ * any theme `h3`/`img` overrides. */
 
-.vyg-card:hover .vyg-card__thumb {
+.vyg-card:hover .vyg-card__thumb,
+.vyg-feed .vyg-card:hover .vyg-card__thumb {
     transform: scale(1.035);
     filter: saturate(1.06) contrast(1.03);
 }
@@ -398,20 +444,22 @@
 }
 
 /* Title line-clamp variants (set by the partial based on title_lines
- * setting: --1 / --2 / --3 / --unlimited). */
-.vyg-card__title--1 {
+ * setting: --1 / --2 / --3 / --unlimited). The high-specificity
+ * `.vyg-feed` versions ensure these win against any later-loading
+ * rule that tries to reset `-webkit-line-clamp` to `unset`. */
+.vyg-feed .vyg-card__title--1 {
     -webkit-line-clamp: 1;
 }
-.vyg-card__title--2 {
+.vyg-feed .vyg-card__title--2 {
     -webkit-line-clamp: 2;
 }
-.vyg-card__title--3 {
+.vyg-feed .vyg-card__title--3 {
     -webkit-line-clamp: 3;
 }
-.vyg-card__title--unlimited {
+.vyg-feed .vyg-card__title--unlimited {
     -webkit-line-clamp: unset;
     overflow: visible;
-    display: block;
+    display: block !important;
 }
 
 .vyg-card__channel {
@@ -443,10 +491,19 @@
     background: linear-gradient(135deg, var(--aa, #64748b), var(--ab, #0f172a));
 }
 
+/* Phase 15.5b — allow the channel name to wrap to 2 lines instead
+ * of truncating aggressively. The previous `white-space: nowrap`
+ * caused "The Way Of Holiness Broadcast" to render as
+ * "The Way Of Holiness Br..." on every card, which looked
+ * repetitive and broken on a single-channel gallery. The 2-line
+ * clamp keeps the row height bounded while preserving the full
+ * channel name. */
 .vyg-card__channel-name {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     font-weight: 600;
     color: var(--vyg-card-meta-color, #667085);
 }

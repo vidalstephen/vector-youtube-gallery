@@ -44,7 +44,8 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
                  data-video-id="<?php echo esc_attr( (string) ( $video['youtube_video_id'] ?? '' ) ); ?>">
             <a class="vyg-row__link" href="<?php echo esc_url( $watch_url ); ?>"
                data-vyg-lightbox="<?php echo esc_attr( $embed_url ); ?>"
-               data-vyg-title="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>">
+               data-vyg-title="<?php echo esc_attr( (string) ( $video['title'] ?? '' ) ); ?>"
+               aria-label="<?php echo esc_attr( sprintf( __( 'Watch %s', 'vector-youtube-gallery' ), (string) ( $video['title'] ?? '' ) ) ); ?>">
                 <div class="vyg-row__thumb-wrap">
                     <img class="vyg-row__thumb"
                          src="<?php echo esc_url( $thumb ); ?>"
@@ -56,8 +57,26 @@ $feed_header_partial = __DIR__ . '/partials/feed-header.php';
                     <?php endif; ?>
                 </div>
                 <div class="vyg-row__meta">
-                    <h3 class="vyg-row__title"><?php echo esc_html( (string) ( $video['title'] ?? '' ) ); ?></h3>
-                    <p class="vyg-row__channel"><?php echo esc_html( (string) ( $video['youtube_channel_id'] ?? '' ) ); ?></p>
+                    <h3 class="vyg-row__title vyg-card__title--2"><?php echo esc_html( (string) ( $video['title'] ?? '' ) ); ?></h3>
+                    <p class="vyg-row__channel">
+                        <?php
+                        // Phase 15.3 — use the JOINed channel title when
+                        // present (FeedQuery::get_feed_videos() LEFT
+                        // JOINs vyg_sources on youtube_channel_id and
+                        // returns it as `youtube_channel_title`).
+                        // Falls back to the source title for the
+                        // playlist/video source types, then to the raw
+                        // youtube_channel_id as a last resort.
+                        $row_channel = (string) ( $video['youtube_channel_title'] ?? '' );
+                        if ( '' === $row_channel && ! empty( $source['title'] ) ) {
+                            $row_channel = (string) $source['title'];
+                        }
+                        if ( '' === $row_channel ) {
+                            $row_channel = (string) ( $video['youtube_channel_id'] ?? '' );
+                        }
+                        echo esc_html( $row_channel );
+                        ?>
+                    </p>
                     <?php if ( ! empty( $video['view_count'] ) ) : ?>
                         <p class="vyg-row__views">
                             <?php

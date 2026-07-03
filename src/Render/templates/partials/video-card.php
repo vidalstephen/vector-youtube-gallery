@@ -102,6 +102,7 @@ $action_label = static function ( string $slug ): string {
              style="<?php echo $media_style; // esc_attr'd in the sprintf above; hex is whitelisted by tone_color(). ?>">
             <a class="vyg-card__link"
                href="<?php echo esc_url( $watch_url ); ?>"
+               data-vyg-lightbox="<?php echo esc_attr( $embed_url ?? '' ); ?>"
                data-vyg-title="<?php echo esc_attr( $title ); ?>"
                aria-label="<?php echo esc_attr( sprintf( __( 'Watch %s', 'vector-youtube-gallery' ), $title ) ); ?>">
                 <img class="vyg-card__thumb"
@@ -190,6 +191,8 @@ $action_label = static function ( string $slug ): string {
                 <?php if ( '' !== $title ) : ?>
                 <a class="vyg-card__title-link"
                    href="<?php echo esc_url( $watch_url ); ?>"
+                   data-vyg-lightbox="<?php echo esc_attr( $embed_url ?? '' ); ?>"
+                   data-vyg-title="<?php echo esc_attr( $title ); ?>"
                    aria-label="<?php echo esc_attr( sprintf( __( 'Watch %s', 'vector-youtube-gallery' ), $title ) ); ?>">
                     <?php echo esc_html( $title ); ?>
                 </a>

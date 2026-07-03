@@ -72,7 +72,7 @@ $see_all_label = ( '' !== $see_all_label ) ? $see_all_label : __( 'View all vide
                  alt="<?php echo esc_attr( (string) ( $hero['title'] ?? '' ) ); ?>"
                  style="<?php echo esc_attr( $thumbnail_style ); ?>"
                  loading="eager" decoding="async" />
-            <h3 class="vyg-featured__hero-title"><?php echo esc_html( (string) ( $hero['title'] ?? '' ) ); ?></h3>
+            <h3 class="vyg-featured__hero-title vyg-card__title--2"><?php echo esc_html( (string) ( $hero['title'] ?? '' ) ); ?></h3>
         </a>
     </article>
 
@@ -97,7 +97,7 @@ $see_all_label = ( '' !== $see_all_label ) ? $see_all_label : __( 'View all vide
                                  loading="lazy" decoding="async" />
                             <span class="vyg-card__duration"><?php echo esc_html( $renderer->format_duration( (int) ( $video['duration_seconds'] ?? 0 ) ) ); ?></span>
                         </div>
-                        <h3 class="vyg-card__title"><?php echo esc_html( (string) ( $video['title'] ?? '' ) ); ?></h3>
+                        <h3 class="vyg-card__title vyg-card__title--2"><?php echo esc_html( (string) ( $video['title'] ?? '' ) ); ?></h3>
                     </a>
                 </article>
             <?php endforeach; ?>

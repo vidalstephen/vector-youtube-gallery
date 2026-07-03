@@ -112,27 +112,25 @@ final class AssetManager {
     }
 
     /**
-     * Phase C1 — enqueue the shared card stylesheet.
+     * Phase 15.2 — ensure presets.css loads BEFORE card.css so the
+     * higher-specificity `.vyg-feed .vyg-card__title` rules in
+     * presets.css don't override the line-clamp rules in card.css.
      *
-     * Every layout that uses the shared card system (all 8 currently
-     * in the map: grid, list, featured, shorts, live, masonry,
-     * carousel, hero) calls this method. It registers and enqueues
-     * the `vyg-card` handle (assets/css/card.css) once per request.
-     *
-     * The handle depends on the base `vyg` handle (per the project's
-     * naming convention — `vyg-base`, `vyg-presets`, `vyg-grid`, etc.)
-     * so card.css always loads after base.css.
-     *
-     * Idempotent: wp_register_style + wp_enqueue_style are themselves
-     * idempotent in WordPress, and we additionally short-circuit when
-     * the local $card_enqueued flag is set, so repeated calls within
-     * a single request cost nothing.
+     * Previously: `vyg-card` depended on `vyg` (base only), so
+     * `presets.css` would enqueue after card.css and its
+     * `.vyg-feed .vyg-card__title` rules (specificity 0,2,0) would
+     * override card.css's `.vyg-card__title` rules (0,1,0). Now we
+     * call maybe_enqueue_presets() here first AND re-register the
+     * `vyg-card` handle to depend on `vyg-presets` so it cascades
+     * after.
      */
     public function enqueue_card_assets(): void {
         if ($this->card_enqueued) {
             return;
         }
-        wp_register_style('vyg-card', $this->url('css/card.css'), array(self::HANDLE_BASE), self::VERSION);
+        // Load presets first so card.css cascades after.
+        $this->maybe_enqueue_presets();
+        wp_register_style('vyg-card', $this->url('css/card.css'), array(self::HANDLE_BASE, self::HANDLE_BASE . '-presets'), self::VERSION);
         wp_enqueue_style('vyg-card');
         $this->card_enqueued = true;
     }

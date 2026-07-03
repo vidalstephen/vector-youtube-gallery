@@ -116,7 +116,7 @@ $see_all_label = ('' !== $see_all_label) ? $see_all_label : __('View all videos 
                 <?php endif; ?>
             </div>
             <div class="vyg-hero__meta">
-                <h2 class="vyg-hero__title"><?php echo esc_html($hero_title); ?></h2>
+                <h2 class="vyg-hero__title vyg-card__title--3"><?php echo esc_html($hero_title); ?></h2>
                 <?php if (! empty($source['title'])) : ?>
                     <p class="vyg-hero__channel"><?php echo esc_html((string) $source['title']); ?></p>
                 <?php endif; ?>
@@ -151,7 +151,7 @@ $see_all_label = ('' !== $see_all_label) ? $see_all_label : __('View all videos 
                                  loading="lazy" decoding="async" />
                             <span class="vyg-card__duration"><?php echo esc_html($renderer->format_duration((int) ($video['duration_seconds'] ?? 0))); ?></span>
                         </div>
-                        <h3 class="vyg-card__title"><?php echo esc_html((string) ($video['title'] ?? '')); ?></h3>
+                        <h3 class="vyg-card__title vyg-card__title--2"><?php echo esc_html((string) ($video['title'] ?? '')); ?></h3>
                     </a>
                 </article>
             <?php endforeach; ?>
