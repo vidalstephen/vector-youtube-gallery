@@ -71,3 +71,84 @@ When all 14.x items are `[x]`, the next active item is **Phase 13.2** in the arc
 > Channel metadata sync (avatar / verified / subscriber count) — data-layer extension for channel metadata; then toggle the corresponding `show_*` Inspector controls back on by default.
 
 Restore path: `git mv docs/archive/DEV-CHECKLIST-2026-07-02-pre-prototype.md DEV-CHECKLIST.md` (the archived file already has a "Phase 14 — Prototype Parity (COMPLETE)" footer appended at 14.13).
+
+---
+
+# Phase 15 — Frontend Polish (IN PROGRESS)
+
+> **Active phase:** Phase 15 — Frontend Polish. Goal: take the
+> rendering pipeline from "functional but unpolished" to "Smash
+> Balloon-quality production ready." Roadmap in
+> `docs/frontend-polish-plan.md` (1,067 lines, 5 phases, 43
+> sub-phases).
+
+## 15.0 — Architectural Foundations + Critical Bug Fixes (DONE)
+
+All 9 confirmed frontend issues from the live-screenshot investigation
+fixed in 3 commits (6235702, 0584dec, 3ac9537). Pushed to GitHub.
+
+| # | Issue | Status | Fix |
+|---|-------|--------|-----|
+| 1 | CSS load order: `presets.css` loaded after `card.css`, overriding line-clamp | ✅ | `AssetManager` now makes `vyg-card` depend on `vyg-presets` |
+| 2 | Title line-clamp specificity lost to `.vyg-feed .vyg-card__title` (0,2,0) in presets | ✅ | All `.vyg-card__title` rules now use `.vyg-feed` descendant (0,2,0 base) + `!important` on `display: -webkit-box` |
+| 3 | Card thumb `height: 100%` lost to `.vyg-feed img { height:auto }` (0,1,1) | ✅ | `.vyg-feed .vyg-card__thumb` (0,2,0) wins |
+| 4 | Legacy templates (carousel, masonry) had no constrained height for thumb-wrap | ✅ | Added `aspect-ratio: 16/9` as default on `.vyg-card__thumb-wrap` |
+| 5 | `data-vyg-lightbox` missing on shared partial outer link | ✅ | Added to both outer link and title link in `video-card.php` |
+| 6 | Lightbox data attribute missing on title link | ✅ | Added `data-vyg-lightbox` + `data-vyg-title` to `.vyg-card__title-link` |
+| 7 | List layout showed raw channel ID instead of joined channel title | ✅ | `list.php` now uses `youtube_channel_title` from JOIN with 3-tier fallback |
+| 8 | Legacy templates missing `vyg-card__title--2` class | ✅ | All 5 legacy templates (carousel, masonry, featured, hero, list) updated |
+| 9 | Hard-coded `-webkit-line-clamp: 3` in masonry CSS overriding modifier | ✅ | Removed from `masonry.css` |
+
+## 15.5b — Channel Name Truncation (DONE)
+
+`vyg-card__channel-name` was rendering as "The Way Of Holines..."
+on every card. Root cause: flex parent + 2-line clamp didn't work
+because the flex item kept its natural content width. Added
+`flex: 1 1 0` and `min-width: 0` so the box actually shrinks.
+
+## 15.6 — Default Width Bump (DONE)
+
+`.vyg-wide` max-width increased from 1180px to 1400px. On 1920px+
+displays the old default was making the gallery look like a thin
+column in the middle.
+
+## 16.1 — Sans-Serif Default Font (DONE)
+
+Theme was inheriting Twenty Twenty-Four's Charter/IBM Plex Serif
+fonts, making video metadata look unprofessional. Added a
+`--vyg-font-sans` CSS custom property with a clean system UI sans
+stack. Operators can override with `inherit` if they want theme
+fonts.
+
+## 15.5 — Shorts Letterboxing (DONE)
+
+Added `object-fit: cover !important` to `.vyg-shorts__thumb` to
+defend against any theme or preset rule that sets `object-fit: contain`.
+
+## Tests
+
+- **904 PHPUnit tests passing**, 0 failures (was 899 before, +5 new)
+- **CSS load order verified live**: presets.css now at position 2, card.css at position 3
+- **HTML verified live**: 12 `vyg-card__title--2` classes, 24 `data-vyg-lightbox` attrs on grid page
+- **Screenshots captured**: `/screenshots/phase15/{layout}-desktop.png` for all 8 layouts
+
+## Remaining Work (Sub-Phases Not Yet Implemented)
+
+- **15.5**: Channel header partial (avatar + sub count + subscribe button) — deferred to Phase 16.7
+- **15.7**: Live layout sectioning polish — already works
+- **16.2**: Sensible card defaults (per-layout density) — partial
+- **16.3**: Per-layout spacing tuning — partial
+- **16.4**: Tablet breakpoints
+- **16.5**: Hover enhancement
+- **16.6**: Thumbnail fallback for missing images
+- **16.7**: Channel header partial (Smash Balloon Gallery parity)
+- **17.x**: Channel metadata sync (Phase 13.2 deferred work)
+- **18.x**: Elementor widget enhancement (full Card Design + Header tabs)
+- **19.x**: Lightbox enhancement + production readiness
+
+The plugin is now in a significantly better visual state. The 9
+critical issues are all fixed. Phase 15 is technically "done" at
+the 15.0–15.5 level (the bug-fix layer). The remaining sub-phases
+(15.5b/16.7 channel header, 17.x metadata sync, 18.x Elementor
+enhancement, 19.x lightbox) are the polish layer and can be
+scheduled as separate phases.
