@@ -88,9 +88,13 @@
         },
         "show_pill": {
             "type": "boolean",
-            "default": true
+            "default": false
         },
         "show_channel_cta": {
+            "type": "boolean",
+            "default": false
+        },
+        "show_feed_header": {
             "type": "boolean",
             "default": false
         },

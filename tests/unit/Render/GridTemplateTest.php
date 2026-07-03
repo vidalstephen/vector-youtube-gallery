@@ -94,9 +94,13 @@ final class GridTemplateTest extends TestCase
         // when title + intro are set, via the modern feed_intro slot.
         // The legacy header_subtitle alias is exercised separately
         // in FeedHeaderTest's data-provider ("legacy aliases" row).
+        //
+        // Phase 15.7: show_feed_header defaults to false. To exercise
+        // the header in a test, we must opt in explicitly.
         $html = $this->loader->render('grid', $this->ctx( array(
-            'feed_title'  => 'My Channel',
-            'feed_intro'  => 'Latest uploads',
+            'feed_title'       => 'My Channel',
+            'feed_intro'       => 'Latest uploads',
+            'show_feed_header' => true,
         ) ) );
         $this->assertStringContainsString( 'vyg-section-head', $html );
         $this->assertStringContainsString( 'My Channel', $html );
@@ -126,10 +130,12 @@ final class GridTemplateTest extends TestCase
         // Phase 14.9: the channel CTA now lives in the shared
         // vyg-section-head__cta slot. feed-header.php renders the CTA
         // when feed_cta_url is set (not '#') and show_channel_cta is on.
+        // Phase 15.7: also need show_feed_header=true (master gate).
         $html = $this->loader->render('grid', $this->ctx( array(
-            'feed_title'     => 'Channel',
-            'feed_cta_label' => 'Visit',
-            'feed_cta_url'   => 'https://example.com',
+            'feed_title'       => 'Channel',
+            'feed_cta_label'   => 'Visit',
+            'feed_cta_url'     => 'https://example.com',
+            'show_feed_header' => true,
         ) ) );
         $this->assertStringContainsString( 'vyg-section-head__cta', $html );
         $this->assertStringContainsString( 'href="https://example.com"', $html );
@@ -140,11 +146,15 @@ final class GridTemplateTest extends TestCase
     {
         // Phase 14.9: the columns indicator was the old
         // vyg-grid__header-cols pill. It is now the
-        // vyg-section-head__pill that all 8 layouts share, and is
-        // rendered when show_pill is true. Default is true.
+        // vyg-section-head__pill that all 8 layouts share. Phase
+        // 15.7 flipped show_pill default to false (was true), so we
+        // must opt in here, and also enable the master gate
+        // show_feed_header.
         $html = $this->loader->render('grid', $this->ctx( array(
             'feed_title'              => 'Channel',
             'header_columns_visible'  => true,
+            'show_feed_header'        => true,
+            'show_pill'               => true,
         ) ) );
         $this->assertStringContainsString( 'vyg-section-head__pill', $html );
     }

@@ -127,6 +127,14 @@ final class CardSettings {
 		'show_intro',
 		'show_pill',
 		'show_channel_cta',
+		// Phase 15.7 — master gate for the entire feed-header partial.
+		// When false, the .vyg-section-head block is omitted from the
+		// output entirely (no kicker, no h1, no pill, no CTA). When
+		// true, the individual show_kicker/show_h1/show_pill/
+		// show_channel_cta/show_intro flags take over. Default: false
+		// (header is opt-in, not opt-out, so a clean front-end feed
+		// has no internal product chrome by default).
+		'show_feed_header',
 		'hide_channel_mobile',
 	);
 
@@ -181,6 +189,8 @@ final class CardSettings {
 		'show_intro',
 		'show_pill',
 		'show_channel_cta',
+		// Phase 15.7 — master gate for the entire feed-header block.
+		'show_feed_header',
 	);
 
 	/**
@@ -444,9 +454,19 @@ final class CardSettings {
 			'show_kicker'            => true,
 			'show_h1'                => true,
 			'show_intro'             => false,
-			'show_pill'              => true,
+			// Phase 15.7 — flipped to false. The per-layout pill ("Grid",
+			// "Masonry", etc.) was redundant with the actual layout
+			// operator already chose via shortcode attribute, and looked
+			// like debugging chrome on a polished front-end. When an
+			// operator wants it back, they can set show_pill="1" inline.
+			'show_pill'              => false,
 			'show_channel_cta'       => false,
-		);
+			// Phase 15.7 — master gate for the entire .vyg-section-head
+			// block. When false, the include site in each layout
+			// template skips rendering the partial entirely. The
+			// header is opt-in; default chrome is just the cards.
+			'show_feed_header'       => false,
+			);
 	}
 
 	/**

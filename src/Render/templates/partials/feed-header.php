@@ -61,6 +61,22 @@ $feed_cta_label = (string) ( $attrs['feed_cta_label'] ?? $attrs['header_cta_labe
 $feed_cta_url   = (string) ( $attrs['feed_cta_url']   ?? $attrs['header_cta_url']   ?? '' );
 
 // --- Visibility flags (per-slot) -------------------------------------
+// Phase 15.7 — `show_feed_header` is the master gate. When false
+// (the default), the entire .vyg-section-head block is omitted from
+// output. When true, the per-slot show_kicker/show_h1/show_pill/
+// show_channel_cta/show_intro flags take over. This lets operators
+// build a clean front-end feed with no product chrome (the user's
+// "the video gallery header stating the type of layout etc and the
+// badge stating the layout" critique — see Phase 15.7 plan).
+//
+// The master gate check happens at the include site (each layout
+// template), so this partial is only invoked when the gate is
+// already true. The defensive check below returns early if some
+// other code path tries to include this partial directly.
+$show_feed_header = ! isset( $attrs['show_feed_header'] ) || ! empty( $attrs['show_feed_header'] );
+if ( ! $show_feed_header ) {
+    return;
+}
 $show_kicker      = ! isset( $attrs['show_kicker'] )      || ! empty( $attrs['show_kicker'] );
 $show_h1          = ! isset( $attrs['show_h1'] )          || ! empty( $attrs['show_h1'] );
 // show_intro is text-driven: the intro paragraph renders whenever

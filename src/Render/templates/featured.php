@@ -28,6 +28,7 @@ $layout_slug = (string) ( $attrs['layout'] ?? 'featured' );
 $thumb_settings = is_array( $card_settings ?? null ) ? $card_settings : $attrs;
 $thumbnail_style = $renderer->thumbnail_style_attr( $thumb_settings );
 $feed_header_partial = __DIR__ . '/partials/feed-header.php';
+$has_feed_header     = ! empty( $attrs['show_feed_header'] );
 
 // Phase 14.4 — section head "View all videos" link. The href precedence:
 //   1. see_all_url attr (explicit shortcode / block override)
@@ -57,7 +58,7 @@ $see_all_label = ( '' !== $see_all_label ) ? $see_all_label : __( 'View all vide
     // The 14.4 "View all videos →" inner section head (above the rest
     // grid) is preserved below — this is the *top* shared header, not
     // a replacement for the inner one.
-    if ( file_exists( $feed_header_partial ) ) {
+    if ( $has_feed_header && file_exists( $feed_header_partial ) ) {
         // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
         include $feed_header_partial;
     }

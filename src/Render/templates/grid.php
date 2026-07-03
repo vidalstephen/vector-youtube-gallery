@@ -45,6 +45,7 @@ $public_safe       = ! empty( $attrs['public_safe'] );
 $has_trust_strip   = ! empty( $attrs['trust_strip'] );
 $layout_slug       = (string) ( $attrs['layout'] ?? 'grid' );
 $feed_header_partial  = __DIR__ . '/partials/feed-header.php';
+$has_feed_header     = ! empty( $attrs['show_feed_header'] );
 $trust_strip_partial = __DIR__ . '/partials/trust-strip.php';
 
 $root_attrs = \VectorYT\Gallery\Render\TemplateAttributes::to_html(
@@ -83,7 +84,7 @@ if ( empty( $videos ) ) {
     // 13.1/14.x operator base keeps working without changing shortcode
     // attrs. The new `feed_kicker` / `feed_intro` / `show_*` /
     // `show_channel_cta` attrs are the modern interface.
-    if ( file_exists( $feed_header_partial ) ) {
+    if ( $has_feed_header && file_exists( $feed_header_partial ) ) {
         // phpcs:ignore WordPressVIPMinimum.Files.IncludingFile.UsingVariable
         include $feed_header_partial;
     }

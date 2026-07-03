@@ -183,11 +183,16 @@ final class FeedHeaderTest extends TestCase
      * @dataProvider layout_slugs
      */
     public function test_feed_header_renders_for_layout( string $layout_slug ): void {
-        $html = $this->render_layout( $layout_slug, array( 'feed_title' => 'Test Title' ) );
+        // Phase 15.7 — show_feed_header must be explicitly enabled
+        // (it defaults to false) for the shared header to render.
+        $html = $this->render_layout( $layout_slug, array(
+            'feed_title'       => 'Test Title',
+            'show_feed_header' => true,
+        ) );
         $this->assertStringContainsString(
             'vyg-section-head',
             $html,
-            "layout '{$layout_slug}' must emit the shared .vyg-section-head block"
+            "layout '{$layout_slug}' must emit the shared .vyg-section-head block when show_feed_header=true"
         );
         $this->assertStringContainsString(
             'vyg-section-head__title',
@@ -200,12 +205,19 @@ final class FeedHeaderTest extends TestCase
      * @dataProvider layout_slugs
      */
     public function test_feed_header_pill_text_matches_layout_slug( string $layout_slug ): void {
-        $html = $this->render_layout( $layout_slug, array( 'feed_title' => 'Test Title' ) );
+        // Phase 15.7 — show_pill defaults to false (was true in 14.x).
+        // To get the pill text assertion to fire we need both gates
+        // enabled.
+        $html = $this->render_layout( $layout_slug, array(
+            'feed_title'       => 'Test Title',
+            'show_feed_header' => true,
+            'show_pill'        => true,
+        ) );
         // The pill is e.g. "Grid", "List", "Featured", "Hero", "Shorts",
         // "Live", "Masonry", "Carousel" — first-letter-uppercased slug.
         $expected_pill = ucfirst( $layout_slug );
         $this->assertMatchesRegularExpression(
-            '/<span[^>]*class="[^"]*\\bvyg-section-head__pill\\b[^"]*"[^>]*>\\s*' . preg_quote( $expected_pill, '/' ) . '\\s*<\\/span>/',
+            '/<span[^>]*class="[^"]*\\bvyg-section-head__pill\\b[^"]*"[^>]*>\\s*' . preg_quote( $expected_pill, '/' ) . '\\s*<\/span>/',
             $html,
             "layout '{$layout_slug}' must emit a pill reading '{$expected_pill}'"
         );
@@ -228,6 +240,7 @@ final class FeedHeaderTest extends TestCase
         $html = $this->render_layout( 'grid', array(
             'feed_title'  => 'Has h1',
             'feed_kicker' => 'FROM THE CHANNEL',
+            'show_feed_header' => true,
         ) );
         $this->assertMatchesRegularExpression(
             '/<span[^>]*class="[^"]*\\bvyg-section-head__kicker\\b[^"]*"[^>]*>\\s*FROM THE CHANNEL\\s*<\\/span>/',
@@ -250,7 +263,10 @@ final class FeedHeaderTest extends TestCase
     }
 
     public function test_feed_header_emits_h1_when_feed_title_set(): void {
-        $html = $this->render_layout( 'list', array( 'feed_title' => 'Latest Videos' ) );
+        $html = $this->render_layout( 'list', array(
+            'feed_title'       => 'Latest Videos',
+            'show_feed_header' => true,
+        ) );
         $this->assertMatchesRegularExpression(
             '/<h2[^>]*class="[^"]*\\bvyg-section-head__title\\b[^"]*"[^>]*>\\s*Latest Videos\\s*<\\/h2>/',
             $html,
@@ -287,6 +303,7 @@ final class FeedHeaderTest extends TestCase
             'feed_title' => 'Has h1',
             'show_intro' => true,
             'feed_intro' => 'A polished responsive grid with strong thumbnails.',
+            'show_feed_header' => true,
         ) );
         $this->assertMatchesRegularExpression(
             '/<p[^>]*class="[^"]*\\bvyg-section-head__intro\\b[^"]*"[^>]*>\\s*A polished responsive grid[^<]*<\\/p>/',
@@ -324,13 +341,88 @@ final class FeedHeaderTest extends TestCase
         );
     }
 
-    public function test_feed_header_layout_pill_default_is_visible(): void {
+    public function test_feed_header_layout_pill_hidden_by_default(): void {
+        // Phase 15.7 — the layout pill was redundant product chrome
+        // (the operator already chose the layout via shortcode/block
+        // attribute). Default flipped to false so a clean front-end
+        // feed shows no "Grid"/"Masonry" pill. Operators who want
+        // the pill back can set show_pill="1" inline.
         $html = $this->render_layout( 'carousel', array( 'feed_title' => 'Has h1' ) );
+        $this->assertStringNotContainsString(
+            'vyg-section-head__pill',
+            $html,
+            'show_pill default (false) must omit the layout pill'
+        );
+    }
+
+    public function test_feed_header_pill_visible_when_show_pill_true(): void {
+        $html = $this->render_layout( 'carousel', array(
+            'feed_title' => 'Has h1',
+            'show_pill'  => true,
+            'show_feed_header' => true,
+        ) );
         $this->assertStringContainsString(
             'vyg-section-head__pill',
             $html,
-            'show_pill default (true) must emit the pill on every layout'
+            'show_pill=true must emit the layout pill on the carousel layout'
         );
+    }
+
+    // -----------------------------------------------------------------
+    // 3b) Phase 15.7 — master gate `show_feed_header`. When false
+    // (the default), the entire .vyg-section-head block is omitted
+    // from output. This is the user's "video gallery header stating
+    // the type of layout etc" critique. The header is opt-in.
+    // -----------------------------------------------------------------
+
+    public function test_feed_header_omitted_by_default(): void {
+        $html = $this->render_layout( 'grid', array( 'feed_title' => 'Has h1' ) );
+        $this->assertStringNotContainsString(
+            'vyg-section-head',
+            $html,
+            'show_feed_header default (false) must omit the entire .vyg-section-head block'
+        );
+    }
+
+    public function test_feed_header_emitted_when_show_feed_header_true(): void {
+        $html = $this->render_layout( 'grid', array(
+            'feed_title'       => 'Has h1',
+            'show_feed_header' => true,
+        ) );
+        $this->assertStringContainsString(
+            'vyg-section-head',
+            $html,
+            'show_feed_header=true must emit the .vyg-section-head block'
+        );
+        $this->assertStringContainsString(
+            'vyg-section-head__title',
+            $html,
+            'show_feed_header=true must wrap the h1 in .vyg-section-head__title'
+        );
+    }
+
+    public function test_feed_header_gate_applies_to_all_layouts(): void {
+        // Even with feed_title set, the top shared feed header should
+        // not render by default on any layout. The user said: "I want
+        // them configured with a toggle and have them toggled off by
+        // default".
+        //
+        // We assert on `vyg-section-head__title` (the shared partial's
+        // h2 slot) rather than the bare class `vyg-section-head`
+        // because the featured + hero layouts have a separate inner
+        // "More Videos" section head (Phase 14.4) that uses the same
+        // class but is NOT gated by show_feed_header. That inner head
+        // is a "see all" link, not a "type of layout" indicator, and
+        // is out of scope for this toggle.
+        $layouts = array( 'grid', 'list', 'featured', 'hero', 'shorts', 'live', 'masonry', 'carousel' );
+        foreach ( $layouts as $slug ) {
+            $html = $this->render_layout( $slug, array( 'feed_title' => 'Should not appear' ) );
+            $this->assertStringNotContainsString(
+                'vyg-section-head__title',
+                $html,
+                "layout '{$slug}' must omit the shared feed header h2 by default"
+            );
+        }
     }
 
     // -----------------------------------------------------------------
@@ -364,6 +456,7 @@ final class FeedHeaderTest extends TestCase
             'feed_title'       => 'Has h1',
             'show_channel_cta' => true,
             'feed_cta_url'     => 'https://www.youtube.com/channel/UC_149',
+            'show_feed_header' => true,
         ) );
         $this->assertMatchesRegularExpression(
             '/<a[^>]*class="[^"]*\\bvyg-section-head__cta\\b[^"]*"[^>]*href="[^"]*youtube\\.com\\/channel\\/UC_149[^"]*"[^>]*>\\s*Watch on YouTube[^<]*<\\/a>/',
@@ -378,6 +471,7 @@ final class FeedHeaderTest extends TestCase
             'show_channel_cta' => true,
             'feed_cta_label'   => 'Visit the channel',
             'feed_cta_url'     => 'https://www.youtube.com/@wayofholiness',
+            'show_feed_header' => true,
         ) );
         $this->assertMatchesRegularExpression(
             '/<a[^>]*class="[^"]*\\bvyg-section-head__cta\\b[^"]*"[^>]*>\\s*Visit the channel[^<]*<\\/a>/',
@@ -398,10 +492,15 @@ final class FeedHeaderTest extends TestCase
         // defaults to visible, the intro slot defaults to hidden — so
         // we explicitly opt in to the intro for this test (the same
         // as any operator who saved a header_subtitle would do).
+        //
+        // Phase 15.7: show_feed_header defaults to false. The legacy
+        // header_title/header_subtitle flow still works once the
+        // master gate is opted in.
         $html = $this->render_layout( 'grid', array(
             'header_title'    => 'Legacy Header Title',
             'show_intro'      => true,
             'header_subtitle' => 'Legacy subtitle text',
+            'show_feed_header' => true,
         ) );
         $this->assertStringContainsString( 'Legacy Header Title', $html );
         $this->assertStringContainsString( 'Legacy subtitle text', $html );
@@ -412,6 +511,7 @@ final class FeedHeaderTest extends TestCase
             'header_title'      => 'Has h1',
             'header_cta_label'  => 'Visit Us',
             'header_cta_url'    => 'https://example.com/legacy',
+            'show_feed_header'  => true,
         ) );
         $this->assertStringContainsString( 'Visit Us', $html );
         $this->assertStringContainsString( 'https://example.com/legacy', $html );
@@ -454,6 +554,8 @@ final class FeedHeaderTest extends TestCase
         //   live:     "Live & Upcoming"
         //   masonry:  "Masonry Gallery"
         //   carousel: "Featured Video Carousel"
+        //
+        // Phase 15.7: the header is opt-in via show_feed_header=true.
         $defaults = array(
             'grid'     => 'Latest Videos',
             'list'     => 'Latest Videos',
@@ -465,11 +567,11 @@ final class FeedHeaderTest extends TestCase
             'carousel' => 'Featured Video Carousel',
         );
         foreach ( $defaults as $slug => $expected_h1 ) {
-            $html = $this->render_layout( $slug );
+            $html = $this->render_layout( $slug, array( 'show_feed_header' => true ) );
             $this->assertMatchesRegularExpression(
-                '/<h2[^>]*class="[^"]*\\bvyg-section-head__title\\b[^"]*"[^>]*>\\s*' . preg_quote( $expected_h1, '/' ) . '\\s*<\\/h2>/',
+                '/<h2[^>]*class="[^"]*\\bvyg-section-head__title\\b[^"]*"[^>]*>\\s*' . preg_quote( $expected_h1, '/' ) . '\\s*<\/h2>/',
                 $html,
-                "layout '{$slug}' with no feed_title must emit default h1 '{$expected_h1}'"
+                "layout '{$slug}' with no feed_title must emit default h1 '{$expected_h1}' when show_feed_header=true"
             );
         }
     }

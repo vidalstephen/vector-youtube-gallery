@@ -20,12 +20,12 @@ defined('ABSPATH') || exit;
 final class AssetManager {
 
     private const HANDLE_BASE = 'vyg';
-    // Phase 15.5b — bumped to 0.1.3 after the sub-agent diagnose
-    // caught that the channel-name rule was missing
-    // `white-space: normal`. The bump creates a new Cloudflare
-    // cache key (card.css?ver=0.1.3) so the new rule actually
-    // reaches browsers.
-    private const VERSION     = '0.1.3';
+    // Phase 15.7 — bumped to 0.1.4 after adding the show_feed_header
+    // master gate + flipping show_pill default to false. The bump
+    // creates a new Cloudflare cache key so the new defaults actually
+    // reach browsers (otherwise the OLD 0.1.3 CSS + PHP would still
+    // serve for 4 hours after deploy).
+    private const VERSION     = '0.1.4';
 
     private bool $lightbox_enqueued = false;
     private bool $load_more_enqueued = false;

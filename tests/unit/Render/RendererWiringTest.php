@@ -84,6 +84,10 @@ final class RendererWiringTest extends TestCase
             'header_cta_label' => 'Visit',
             'header_cta_url'   => 'https://example.com',
             'trust_strip'      => true,
+            // Phase 15.7: opt in to the master gate so the header text
+            // and CTA actually render (gate defaults to false).
+            'show_feed_header' => true,
+            'show_channel_cta' => true,
         ) );
         $this->assertStringContainsString( 'vyg-grid--density-editorial', $html );
         $this->assertStringContainsString( 'Inline Header', $html );
@@ -118,6 +122,12 @@ final class RendererWiringTest extends TestCase
                     'header_title' => 'Saved Header',
                     'trust_strip'  => true,
                     'show_views_and_time' => false,
+                    // Phase 15.7: opt in to the master gate in the saved
+                    // display config so the legacy saved header still
+                    // renders. The saved display config is the only way
+                    // operators can set this for non-shortcode callers
+                    // (Gutenberg block, Elementor widget).
+                    'show_feed_header' => true,
                 ),
             ),
         ) );
@@ -289,7 +299,10 @@ final class RendererWiringTest extends TestCase
         $this->assertIsArray( $ctx['card_settings'] );
         $this->assertNotEmpty( $ctx['card_settings'] );
         $allowed = CardSettings::allowed_keys();
-        $this->assertCount( 57, $allowed, 'sanity: CardSettings::allowed_keys() should return 57 keys (Phase 14 thumbnail controls added fit position + override URL)' );
+        // Phase 15.7: bumped 57 → 58 to include the new show_feed_header
+        // master gate attribute. The key is registered in
+        // CardSettings::boolean_specs() and CardSettings::defaults().
+        $this->assertCount( 58, $allowed, 'sanity: CardSettings::allowed_keys() should return 58 keys (Phase 15.7 added show_feed_header master gate)' );
         foreach ( $allowed as $key ) {
             $this->assertArrayHasKey( $key, $ctx['card_settings'], "card_settings must contain key: {$key}" );
         }
