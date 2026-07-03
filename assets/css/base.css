@@ -1,9 +1,23 @@
 /* Vector YouTube Gallery — base layout primitives.
  * Apply tokens that every layout can rely on.
  */
+/* Phase 16.1 — use a clean sans-serif stack by default instead of
+ * inheriting whatever the WordPress theme has. The WordPress
+ * theme is currently serif (Twenty Twenty-Four uses Charter and
+ * IBM Plex Serif) which looks unprofessional for video card
+ * metadata. Smash Balloon explicitly inherits theme fonts but
+ * ALSO ships a clean default that most sites fall back to. We
+ * use the system UI sans stack which matches the OS default and
+ * looks clean on every platform. Operators who want theme
+ * inheritance can override --vyg-font-sans with `inherit` in
+ * their customizer. */
+:root {
+    --vyg-font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
 .vyg-feed {
     box-sizing: border-box;
-    font-family: inherit;
+    font-family: var(--vyg-font-sans, inherit);
     color: var(--vyg-feed-text, inherit);
     line-height: 1.5;
     text-rendering: optimizeLegibility;

@@ -20,10 +20,15 @@
     -webkit-column-break-inside: avoid;
 }
 
-.vyg-feed--masonry.vyg-masonry .vyg-card__title {
-    -webkit-line-clamp: 3;
-}
-
+/* Phase 15.2 — the title line-clamp is now driven by the
+ * vyg-card__title--{N} modifier class emitted on the <h3> in
+ * masonry.php (--2 by default). The previous hard-coded
+ * `-webkit-line-clamp: 3` here was forcing all masonry titles to
+ * 3 lines regardless of the title_lines setting, and the
+ * specificity (0,2,0) was overriding the modifier class anyway
+ * since the class itself was missing from the legacy template.
+ * Both issues are fixed: the modifier class is now emitted, and
+ * this override is removed so the modifier wins. */
 @media (max-width: 900px) {
     .vyg-feed--masonry.vyg-masonry--cols-4,
     .vyg-feed--masonry.vyg-masonry--cols-5,

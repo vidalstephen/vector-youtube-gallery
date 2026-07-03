@@ -56,7 +56,7 @@
 .vyg-shorts__thumb {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: cover !important; /* Phase 15.5 — defensive override against any theme or preset that sets `object-fit: contain` on .vyg-feed img, which was causing the massive black letterboxing in 9:16 containers. */
     transform-origin: center center;
     transition: transform 0.35s ease, filter 0.35s ease;
 }
