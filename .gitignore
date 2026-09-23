@@ -55,3 +55,14 @@ screenshots/prototype-parity/*.png
 !screenshots/prototype-parity/contact-sheet-desktop.png
 !screenshots/prototype-parity/contact-sheet-mobile.png
 screenshots/prototype-parity/diffs/
+
+# --- added by pre-wipe sweep ---
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+.venv/
+venv/
+dist/
+.hermes/
